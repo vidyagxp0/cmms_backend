@@ -10,6 +10,12 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 Route::middleware('auth:sanctum')->group(function () {
 
+    /* common profile urls */
+    Route::get('/profile', [AuthController::class, 'profile'])->name('user-profile');
+    Route::put('/update/profile', [AuthController::class,'updateProfile'])->name('update-profile');
+    Route::put('/change-password', [AuthController::class,'changePassword'])->name('change-password');
+    Route::post('/logout', [ AuthController::class,'logout'])->name('logout');
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     /* admin apis */

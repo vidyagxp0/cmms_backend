@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Auth;
 use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\AuthRequest;
+use App\Http\Requests\Auth\ProfileRequest;
+use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,6 +38,70 @@ class AuthController extends Controller
         }
     }
 
+    /* get profile */
+    public function profile(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->authService->profile(
+                $request->user()
+            );
+
+            return ResponseHelper::success(
+                $data,
+                'Profile fetched successfully.'
+            );
+        } catch (Throwable $e) {
+            return ResponseHelper::error(
+                'Unable to fetch profile.',
+                500
+            );
+        }
+    }
+
+    /* update profile */
+    public function updateProfile(ProfileRequest $request): JsonResponse 
+    {
+        try {
+            $data = $this->authService->updateProfile(
+                $request->user(),
+                $request->validated()
+            );
+
+            return ResponseHelper::success(
+                $data,
+                'Profile updated successfully.'
+            );
+
+        } catch (Throwable $e) {
+            return ResponseHelper::error(
+                'Unable to update profile.',
+                500
+            );
+        }
+    }
+
+    /* change password api */
+    public function changePassword(ChangePasswordRequest $request): JsonResponse 
+    {
+        try {
+            $this->authService->changePassword(
+                $request->user(),
+                $request->validated('password')
+            );
+
+            return ResponseHelper::success(
+                null,
+                'Password changed successfully.'
+            );
+        } catch (Throwable $e) {
+            return ResponseHelper::error(
+                'Unable to change password.',
+                500
+            );
+        }
+    }
+
     public function logout(Request $request): JsonResponse
     {
         try {
@@ -50,7 +116,7 @@ class AuthController extends Controller
 
         } catch (Throwable $e) {
             return ResponseHelper::error(
-                $e->getMessage(),
+                'Unable to logout.',
                 500
             );
         }
