@@ -14,7 +14,7 @@ class RoleService
     public static function getRoles()
     {
         try {
-            $roles = Role::with('department')
+            $roles = Role::with(['department', 'permissions'])
                 ->whereHas('department', function ($query) {
                     $query->where('name', '!=', 'Admin');
                 })
@@ -40,11 +40,14 @@ class RoleService
     public static function getRole($id)
     {
         try {
-            $role = Role::findOrFail($id);
+            $role = Role::with(['department', 'permissions'])
+                ->findOrFail($id);
+
             return ResponseHelper::success(
                 $role,
                 'Role fetched successfully.'
             );
+
         } catch (\Exception $e) {
             info('Error in RoleService@getRole', [
                 'error' => $e

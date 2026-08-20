@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\AuditController;
 
 
 /* common routes for user/admin */
@@ -50,6 +51,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-user/{id}', [UserController::class, 'update'])->name('update-user');
         Route::delete('/delete-user/{id}', [UserController::class, 'destroy'])->name('delete-user');
         Route::patch('/toggle-user/{id}', [UserController::class, 'toggleActive'])->name('toggle-user');
+
+        /* admin audit route */
+        Route::get('/audit-listing', [AuditController::class, 'index'])->name('audit-listing');
     });
 
     /* user apis */ 

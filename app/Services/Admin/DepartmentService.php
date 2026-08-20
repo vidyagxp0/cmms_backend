@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateDepartmentRequest;
 use App\Models\Department;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Helpers\AuditHelper;
 
 class DepartmentService
 {
@@ -63,9 +64,25 @@ class DepartmentService
 
         try {
             $department = Department::create([
-                'name'          => $request->name,
-                'is_active'     => $request->is_active ?? 1,
+                'name'      => $request->name,
+                'is_active' => $request->is_active ?? 1,
             ]);
+
+            /* audit code  */
+             $newValue = [
+                'name'      => $department->name,
+                'is_active' => $department->is_active,
+            ];
+
+            AuditHelper::log(
+                'Department',
+                'Created',
+                'Department created successfully.',
+                $department->id,
+                null,
+                $newValue,
+                Department::class
+            );
 
             DB::commit();
 
@@ -88,24 +105,44 @@ class DepartmentService
     }
 
     /* update department */
-    public static function updateDepartment(UpdateDepartmentRequest $request, $id)
+    public static function updateDepartment(UpdateDepartmentRequest $request, $id) 
     {
         DB::beginTransaction();
 
         try {
             $department = Department::findOrFail($id);
-            $updateData = [];
 
+            $oldValue = [];
+            $newValue = [];
+
+            $updateData = [];
             if ($request->has('name')) {
+                $oldValue['name'] = $department->name;
+                $newValue['name'] = $request->name;
+
                 $updateData['name'] = $request->name;
             }
 
             if ($request->has('is_active')) {
+                $oldValue['is_active'] = $department->is_active;
+                $newValue['is_active'] = $request->is_active;
+
                 $updateData['is_active'] = $request->is_active;
             }
 
-            if (!empty($updateData)) {
-                $department->update($updateData);
+            /* save and audit code */
+            if (!empty($newValue)) {
+                $department->save();
+
+                AuditHelper::log(
+                    'Department',
+                    'Updated',
+                    'Department updated successfully.',
+                    $department->id,
+                    $oldValue,
+                    $newValue,
+                    Department::class
+                );
             }
 
             DB::commit();
@@ -114,6 +151,7 @@ class DepartmentService
                 $department,
                 'Department updated successfully.'
             );
+
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -134,7 +172,21 @@ class DepartmentService
 
         try {
             $department = Department::findOrFail($id);
+            $oldValue = [
+                'name'      => $department->name,
+            ];
             $department->delete();
+
+            /* audit code */
+            AuditHelper::log(
+                'Department',
+                'Deleted',
+                'Department deleted successfully.',
+                $department->id,
+                $oldValue,
+                null,
+                Department::class
+            );
 
             DB::commit();
 
@@ -162,10 +214,28 @@ class DepartmentService
 
         try {
             $department = Department::findOrFail($id);
+            $oldValue = [
+                'is_active' => $department->is_active,
+            ];
             $department->is_active = $department->is_active ? 0 : 1;
             $department->save();
 
+            $newValue = [
+                'is_active' => $department->is_active,
+            ];
+
             DB::commit();
+
+            /* audit code */
+            AuditHelper::log(
+                'Department',
+                'Status Updated',
+                'Status changed successfully.',
+                $department->id,
+                $oldValue,
+                $newValue,
+                Department::class
+            );
 
             return ResponseHelper::success(
                 $department,
