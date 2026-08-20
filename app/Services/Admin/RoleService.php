@@ -14,14 +14,20 @@ class RoleService
     public static function getRoles()
     {
         try {
-            $roles = Role::with('department')->orderBy('name')->get();
+            $roles = Role::with('department')
+                ->whereHas('department', function ($query) {
+                    $query->where('name', '!=', 'Admin');
+                })
+                ->orderBy('name')
+                ->get();
+
             return ResponseHelper::success(
                 $roles,
                 'Roles fetched successfully.'
             );
         } catch (\Exception $e) {
             info('Error in RoleService@getRoles', [
-                'error' => $e
+                'error' => $e->getMessage(),
             ]);
             return ResponseHelper::error(
                 'Failed to retrieve roles.',

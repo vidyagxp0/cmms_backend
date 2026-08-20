@@ -15,10 +15,10 @@ class DepartmentSeeder extends Seeder
     {
         Department::firstOrCreate(
             [
-                'name' => 'Engineering',
+                'name' => 'Admin',
             ],
             [
-                'name' => 'Engineering',
+                'name' => 'Admin',
             ]
         );
     }

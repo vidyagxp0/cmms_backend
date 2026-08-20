@@ -10,11 +10,11 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        /* Get Engineering department */
-        $department = Department::where('name', 'Engineering')->first();
+        /* Get Admin department */
+        $department = Department::where('name', 'Admin')->first();
 
         if (!$department) {
-            $this->command->error('Engineering department not found.');
+            $this->command->error('Admin department not found.');
             return;
         }
 

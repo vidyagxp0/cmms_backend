@@ -15,14 +15,14 @@ class DepartmentService
     public static function getDepartments()
     {
         try {
-            $departments = Department::orderBy('id', 'desc')
+            $departments = Department::where('name', '!=', 'Admin')
+                ->orderBy('id', 'desc')
                 ->get();
 
             return ResponseHelper::success(
                 $departments,
                 'Departments fetched successfully.'
             );
-
         } catch (\Exception $e) {
             info('Error in DepartmentService@getDepartments', [
                 'error' => $e->getMessage(),
