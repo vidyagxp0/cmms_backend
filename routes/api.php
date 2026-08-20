@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\AuthController;
 /* admin controller */
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\DepartmentController;
 
 
 /* common routes for user/admin */
@@ -26,6 +27,14 @@ Route::middleware('auth:sanctum')->group(function () {
     /* admin apis */
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
 
+        /* departments routes */
+        Route::get('/departments-listing', [DepartmentController::class, 'index'])->name('departments-listing');
+        Route::post('/store-department', [DepartmentController::class, 'store'])->name('store-department');
+        Route::get('/department-detail/{id}', [DepartmentController::class, 'show'])->name('department-details');
+        Route::put('/update-department/{id}', [DepartmentController::class, 'update'])->name('update-department');
+        Route::delete('/delete-department/{id}', [DepartmentController::class, 'destroy'])->name('delete-department');
+        Route::patch('/toggle-department/{id}', [DepartmentController::class, 'toggleActive'])->name('toggle-department');
+
         /* roles routes */
         Route::get('/roles-listing', [RoleController::class, 'index'])->name('roles-listing');
         Route::post('/store-role', [RoleController::class, 'store'])->name('store-role');
@@ -43,7 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/toggle-user/{id}', [UserController::class, 'toggleActive'])->name('toggle-user');
     });
 
-    /* user apis */
+    /* user apis */ 
     Route::middleware('role:User')->prefix('user')->group(function () {
 
     });
