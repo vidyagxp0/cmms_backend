@@ -14,7 +14,7 @@ class RoleService
     public static function getRoles()
     {
         try {
-            $roles = Role::orderBy('name')->get();
+            $roles = Role::with('department')->orderBy('name')->get();
             return ResponseHelper::success(
                 $roles,
                 'Roles fetched successfully.'

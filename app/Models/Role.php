@@ -36,4 +36,10 @@ class Role extends Model
     {
         return $this->belongsToMany(Permission::class, 'role_permissions');
     }
+
+    /* department relation */
+    public function department()
+    {
+        return $this->belongsTo(Division::class);
+    }
 }
