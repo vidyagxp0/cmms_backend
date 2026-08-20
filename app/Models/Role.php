@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Department;
 
 class Role extends Model
 {
@@ -40,6 +41,6 @@ class Role extends Model
     /* department relation */
     public function department()
     {
-        return $this->belongsTo(Division::class);
+        return $this->belongsTo(Department::class);
     }
 }
