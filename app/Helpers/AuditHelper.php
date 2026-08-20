@@ -41,8 +41,21 @@ class AuditHelper
 
         foreach ($value as $key => $data) {
             $label = $labels[$key] ?? $key;
+
             if ($key === 'is_active') {
                 $data = $data ? 'Active' : 'Inactive';
+            }
+
+            if ($key === 'permissions' && is_array($data)) {
+                $permissionData = $data[0] ?? [];
+                $permissions = [];
+
+                foreach ($permissionData as $permission => $allowed) {
+                    $permissions[] =
+                        ucfirst($permission) . ': ' .
+                        ($allowed ? 'Yes' : 'No');
+                }
+                $data = implode(', ', $permissions);
             }
             $formattedValue[$label] = $data;
         }
@@ -62,6 +75,8 @@ class AuditHelper
             'Role' => [
                 'name' => 'Role Name',
                 'is_active' => 'Active Status',
+                'department' => 'Department',
+                'permissions' => "Permissions"
             ],
 
             'User' => [
@@ -71,7 +86,8 @@ class AuditHelper
                 'username' => 'Username',
                 'email' => 'Email',
                 'mobile_no' => 'Mobile Number',
-                'department_id' => 'Department',
+                'department' => 'Department',
+                'roles' => 'Assigned Roles',
             ],
 
             default => [],

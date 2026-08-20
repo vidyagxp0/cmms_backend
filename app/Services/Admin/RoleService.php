@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\RoleRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\Role;
 use App\Models\Permission;
+use App\Helpers\AuditHelper;
 
 class RoleService
 {
@@ -78,6 +79,24 @@ class RoleService
 
             $role->permissions()->attach($permission->id);
 
+            /* Audit code */
+            $newValue = [
+                'department'    => $role->department?->name,
+                'name'          => $role->name,
+                'is_active'     => $role->is_active,
+                'permissions'   => $permission->name,
+            ];
+
+            AuditHelper::log(
+                'Role',
+                'Created',
+                'Role created successfully.',
+                $role->id,
+                null,
+                $newValue,
+                Role::class
+            );
+
             DB::commit();
 
             $role->load('permissions');
@@ -87,7 +106,6 @@ class RoleService
                 'Role created successfully.',
                 201
             );
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -109,27 +127,72 @@ class RoleService
         try {
             $role = Role::findOrFail($id);
 
-            $role->update([
-                'name' => $request->name,
-                'is_active' => $request->is_active ?? 1,
-            ]);
+            $oldValue = [];
+            $newValue = [];
+            $updateData = [];
 
-            $permission = $role->permissions()->first();
+            if ($request->has('department_id')) {
+                $oldValue['department'] = $role->department?->name;
+                $newValue['department'] = Department::find($request->department_id)?->name;
 
-            if ($permission) {
-                $permission->update([
-                    'name' => $request->permissions,
-                ]);
-            } else {
-                $permission = Permission::create([
-                    'name' => $request->permissions,
-                ]);
-                $role->permissions()->attach($permission->id);
+                $updateData['department_id'] = $request->department_id;
+            }
+
+            if ($request->has('name')) {
+                $oldValue['name'] = $role->name;
+                $newValue['name'] = $request->name;
+
+                $updateData['name'] = $request->name;
+            }
+
+            if ($request->has('is_active')) {
+                $oldValue['is_active'] = $role->is_active;
+                $newValue['is_active'] = $request->is_active;
+
+                $updateData['is_active'] = $request->is_active;
+            }
+
+            if (!empty($updateData)) {
+                $role->update($updateData);
+            }
+
+            if ($request->has('permissions')) {
+                $permission = $role->permissions()->first();
+
+                if ($permission) {
+                    $oldValue['permissions'] = $permission->name;
+
+                    $permission->update([
+                        'name' => $request->permissions,
+                    ]);
+                    $newValue['permissions'] = $request->permissions;
+                } else {
+                    $permission = Permission::create([
+                        'name' => $request->permissions,
+                    ]);
+
+                    $role->permissions()->attach($permission->id);
+
+                    $oldValue['permissions'] = null;
+                    $newValue['permissions'] = $request->permissions;
+                }
+            }
+
+            if (!empty($newValue)) {
+                AuditHelper::log(
+                    'Role',
+                    'Updated',
+                    'Role updated successfully.',
+                    $role->id,
+                    $oldValue,
+                    $newValue,
+                    Role::class
+                );
             }
 
             DB::commit();
 
-            $role->load('permissions');
+            $role->load(['department', 'permissions']);
 
             return ResponseHelper::success(
                 $role,
@@ -155,15 +218,38 @@ class RoleService
 
         try {
             $role = Role::findOrFail($id);
+
             if ($role->users()->exists()) {
                 throw new \Exception(
                     'This role cannot be deleted because it is assigned to users.'
                 );
             }
 
+            $oldValue = [
+                'name'          => $role->name,
+            ];
+
+            $permission = $role->permissions()->first();
+
+            if ($permission) {
+                $oldValue['permissions'] = $permission->name;
+            }
+
             $role->delete();
 
+            /* audit code */
+            AuditHelper::log(
+                'Role',
+                'Deleted',
+                'Role deleted successfully.',
+                $role->id,
+                $oldValue,
+                null,
+                Role::class
+            );
+
             DB::commit();
+
             return ResponseHelper::success(
                 null,
                 'Role deleted successfully.'
@@ -187,14 +273,32 @@ class RoleService
 
         try {
             $role = Role::findOrFail($id);
+            $oldValue = [
+                'is_active' => $role->is_active,
+            ];
 
             $role->is_active = $role->is_active ? 0 : 1;
             $role->save();
 
             DB::commit();
+
+            $newValue = [
+                'is_active' => $role->is_active,
+            ];
+
             $message = $role->is_active
                 ? 'Role activated successfully.'
                 : 'Role deactivated successfully.';
+
+            AuditHelper::log(
+                'Role',
+                'Status Updated',
+                $message,
+                $role->id,
+                $oldValue,
+                $newValue,
+                Role::class
+            );
 
             return ResponseHelper::success(
                 $role,

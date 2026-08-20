@@ -31,9 +31,10 @@ class AuditService
                 })
                 ->when($request->search, function ($query) use ($request) {
                     $query->where(function ($query) use ($request) {
-                        $query->where('description', 'like', '%' . $request->search . '%')
-                            ->orWhere('module', 'like', '%' . $request->search . '%')
-                            ->orWhere('action', 'like', '%' . $request->search . '%');
+                        $query->Where('module', 'like', '%' . $request->search . '%')
+                            ->orWhere('action', 'like', '%' . $request->search . '%')
+                            ->orWhere('old_value', 'like', '%' . $request->search . '%')
+                            ->orWhere('new_value', 'like', '%' . $request->search . '%');
                     });
                 })
                 ->when($request->from_date, function ($query) use ($request) {
