@@ -6,6 +6,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Requests\Admin\RoleRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\Role;
+use App\Models\Permission;
 
 class RoleService
 {
@@ -55,20 +56,32 @@ class RoleService
         DB::beginTransaction();
 
         try {
+
             $role = Role::create([
-                'name' => $request->name,
-                'is_active' => $request->is_active ?? 1,
+                'department_id' => $request->department_id,
+                'name'          => $request->name,
+                'is_active'     => $request->is_active ?? 1,
             ]);
 
+            $permission = Permission::create([
+                'name' => $request->permissions,
+            ]);
+
+            $role->permissions()->attach($permission->id);
+
             DB::commit();
+
+            $role->load('permissions');
 
             return ResponseHelper::success(
                 $role,
                 'Role created successfully.',
                 201
             );
+
         } catch (\Exception $e) {
             DB::rollBack();
+
             info('Error in RoleService@storeRole', [
                 'error' => $e
             ]);
@@ -86,12 +99,29 @@ class RoleService
 
         try {
             $role = Role::findOrFail($id);
+
             $role->update([
                 'name' => $request->name,
                 'is_active' => $request->is_active ?? 1,
             ]);
 
+            $permission = $role->permissions()->first();
+
+            if ($permission) {
+                $permission->update([
+                    'name' => $request->permissions,
+                ]);
+            } else {
+                $permission = Permission::create([
+                    'name' => $request->permissions,
+                ]);
+                $role->permissions()->attach($permission->id);
+            }
+
             DB::commit();
+
+            $role->load('permissions');
+
             return ResponseHelper::success(
                 $role,
                 'Role updated successfully.'
@@ -109,6 +139,7 @@ class RoleService
         }
     }
 
+    /* delete role */
     public static function deleteRole($id)
     {
         DB::beginTransaction();
