@@ -2,8 +2,12 @@
 
 use Illuminate\Support\Facades\Route;
 
-/* admin controller */
+/* common controller */
 use App\Http\Controllers\Auth\AuthController;
+
+/* admin controller */
+use App\Http\Controllers\Admin\RoleController;
+
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -19,12 +23,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     /* admin apis */
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
+    Route::middleware('role:Admin')->prefix('admin')->group(function () {
 
+        /* roles routes */
+        Route::get('/roles-listing', [RoleController::class, 'index'])->name('user-profile');
+        Route::post('/store-role', [RoleController::class, 'store'])->name('user-profile');
+        Route::get('/role-detail/{id}', [RoleController::class, 'show'])->name('user-profile');
+        Route::put('/update-role/{id}', [RoleController::class, 'update'])->name('user-profile');
+        Route::delete('/delete-role/{id}', [RoleController::class, 'destroy'])->name('user-profile');
+        Route::patch('/toggle-role/{id}', [RoleController::class, 'toggleActive'])->name('user-profile');
     });
 
     /* user apis */
-    Route::middleware('role:user')->prefix('user')->group(function () {
+    Route::middleware('role:User')->prefix('user')->group(function () {
 
     });
 });
