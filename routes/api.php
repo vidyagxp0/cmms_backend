@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\AuthController;
 
 /* admin controller */
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
 
 
 /* common routes for user/admin */
@@ -26,12 +27,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
 
         /* roles routes */
-        Route::get('/roles-listing', [RoleController::class, 'index'])->name('user-profile');
-        Route::post('/store-role', [RoleController::class, 'store'])->name('user-profile');
-        Route::get('/role-detail/{id}', [RoleController::class, 'show'])->name('user-profile');
-        Route::put('/update-role/{id}', [RoleController::class, 'update'])->name('user-profile');
-        Route::delete('/delete-role/{id}', [RoleController::class, 'destroy'])->name('user-profile');
-        Route::patch('/toggle-role/{id}', [RoleController::class, 'toggleActive'])->name('user-profile');
+        Route::get('/roles-listing', [RoleController::class, 'index'])->name('roles-listing');
+        Route::post('/store-role', [RoleController::class, 'store'])->name('store-role');
+        Route::get('/role-detail/{id}', [RoleController::class, 'show'])->name('role-details');
+        Route::put('/update-role/{id}', [RoleController::class, 'update'])->name('update-role');
+        Route::delete('/delete-role/{id}', [RoleController::class, 'destroy'])->name('delete-role');
+        Route::patch('/toggle-role/{id}', [RoleController::class, 'toggleActive'])->name('toggle-role');
+
+        /* user routes */
+        Route::get('/users-listing', [UserController::class, 'index'])->name('users-listing');
+        Route::post('/store-user', [UserController::class, 'store'])->name('store-user');
+        Route::get('/user-detail/{id}', [UserController::class, 'show'])->name('user-details');
+        Route::put('/update-user/{id}', [UserController::class, 'update'])->name('update-user');
+        Route::delete('/delete-user/{id}', [UserController::class, 'destroy'])->name('delete-user');
+        Route::patch('/toggle-user/{id}', [UserController::class, 'toggleActive'])->name('toggle-user');
     });
 
     /* user apis */

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->text('username')->nullable()->after('name');
             $table->text('mobile_no')->nullable()->after('email');
             $table->foreignId('department_id')->nullable()->constrained('departments')->onDelete('cascade')->after('mobile_no');
+            $table->boolean('is_active')->default(1)->after('department_id');
         });
     }
 
