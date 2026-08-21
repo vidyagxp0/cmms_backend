@@ -6,6 +6,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Requests\Admin\RoleRequest;
 use Illuminate\Support\Facades\DB;
 use App\Models\Role;
+use App\Models\Department;
 use App\Models\Permission;
 use App\Helpers\AuditHelper;
 
@@ -83,7 +84,6 @@ class RoleService
             $newValue = [
                 'department'    => $role->department?->name,
                 'name'          => $role->name,
-                'is_active'     => $role->is_active,
                 'permissions'   => $permission->name,
             ];
 
@@ -146,9 +146,6 @@ class RoleService
             }
 
             if ($request->has('is_active')) {
-                $oldValue['is_active'] = $role->is_active;
-                $newValue['is_active'] = $request->is_active;
-
                 $updateData['is_active'] = $request->is_active;
             }
 
