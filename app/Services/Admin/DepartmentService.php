@@ -71,7 +71,6 @@ class DepartmentService
             /* audit code  */
              $newValue = [
                 'name'      => $department->name,
-                'is_active' => $department->is_active,
             ];
 
             AuditHelper::log(
@@ -124,9 +123,6 @@ class DepartmentService
             }
 
             if ($request->has('is_active')) {
-                $oldValue['is_active'] = $department->is_active;
-                $newValue['is_active'] = $request->is_active;
-
                 $updateData['is_active'] = $request->is_active;
             }
 
@@ -250,7 +246,7 @@ class DepartmentService
                 'error' => $e
             ]);
             return ResponseHelper::error(
-                $e->getMessages(),
+                $e->getMessage(),
                 // 'Failed to update department status.',
                 500
             );

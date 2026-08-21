@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             UserRoleSeeder::class,
+            ProcessSeeder::class,
+            StageSeeder::class,
+            ActivitySeeder::class,
         ]);
     }
 }

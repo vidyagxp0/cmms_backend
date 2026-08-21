@@ -34,26 +34,25 @@ class AuditHelper
         if (!$value) {
             return null;
         }
-
         $labels = self::getFieldLabels($module);
-
         $formattedValue = [];
-
         foreach ($value as $key => $data) {
             $label = $labels[$key] ?? $key;
 
+            /* for handling status */
             if ($key === 'is_active') {
                 $data = $data ? 'Active' : 'Inactive';
             }
 
+            /* for handling user roles */
+            if (is_array($data) && $key !== 'permissions') {
+                $data = implode(' | ', $data);
+            }
             if ($key === 'permissions' && is_array($data)) {
                 $permissionData = $data[0] ?? [];
                 $permissions = [];
-
                 foreach ($permissionData as $permission => $allowed) {
-                    $permissions[] =
-                        ucfirst($permission) . ': ' .
-                        ($allowed ? 'Yes' : 'No');
+                    $permissions[] = ucfirst($permission) . ': ' . ($allowed ? 'Yes' : 'No');
                 }
                 $data = implode(', ', $permissions);
             }
