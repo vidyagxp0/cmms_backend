@@ -121,4 +121,16 @@ class AuthController extends Controller
             );
         }
     }
+
+    public function getUserActivities()
+    {
+        try {
+            return AuthService::getUserActivities();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve user activities.',
+            ], 500);
+        }
+    }
 }

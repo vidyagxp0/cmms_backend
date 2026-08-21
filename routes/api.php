@@ -30,6 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /* admin apis */
     Route::middleware('role:Admin')->prefix('admin')->group(function () {
 
+        /* user activity logs */
+        Route::get('/user-activity-logs', [ AuthController::class,'getUserActivities'])->name('user-activity-logs');
+
         /* departments routes */
         Route::get('/departments-listing', [DepartmentController::class, 'index'])->name('departments-listing');
         Route::post('/store-department', [DepartmentController::class, 'store'])->name('store-department');
