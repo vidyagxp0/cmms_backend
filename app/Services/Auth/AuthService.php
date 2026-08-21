@@ -34,6 +34,11 @@ class AuthService
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
+        /* user type */
+        $type = $user->roles->contains('name', 'Admin')
+            ? 'Admin'
+            : 'User';
+
         /* create user activity log */
         UserActivityLog::create([
             'user_id' => $user->id,
@@ -43,11 +48,12 @@ class AuthService
 
         return [
             'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'role_type' => $type,
 
-                'roles' => $user->roles
+                'roles'     => $user->roles
                     ->pluck('name')
                     ->values(),
 
