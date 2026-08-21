@@ -58,7 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     /* user apis */ 
-    Route::middleware('role:User')->prefix('user')->group(function () {
+    Route::middleware('users')->prefix('user')->group(function () {
 
     });
 });
