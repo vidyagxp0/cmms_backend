@@ -216,11 +216,11 @@ class RoleService
         try {
             $role = Role::findOrFail($id);
 
-            if ($role->users()->exists()) {
-                throw new \Exception(
-                    'This role cannot be deleted because it is assigned to users.'
-                );
-            }
+            // if ($role->users()->exists()) {
+            //     throw new \Exception(
+            //         'This role cannot be deleted because it is assigned to users.'
+            //     );
+            // }
 
             $oldValue = [
                 'name'          => $role->name,
