@@ -17,7 +17,7 @@ class UserService
     public static function getUserPID()
     {
         try {
-            $users = User::where(['is_active', 1])->count();
+            $users = User::where(['is_active' => "1"])->count();
             $pid = 'PID000' . $users;
             return ResponseHelper::success($pid, 'Users ID fetched successfully.');
         } catch (\Exception $e) {
