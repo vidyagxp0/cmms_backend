@@ -9,6 +9,19 @@ use App\Services\Admin\UserService;
 
 class UserController extends Controller
 {
+
+    public function getUserPID()
+    {
+        try {
+            return UserService::getUserPID();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve pid.',
+            ], 500);
+        }
+    }
+
     /* user listing function */
     public function index()
     {
