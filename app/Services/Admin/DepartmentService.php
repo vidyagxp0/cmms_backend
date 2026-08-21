@@ -246,7 +246,7 @@ class DepartmentService
                 'error' => $e
             ]);
             return ResponseHelper::error(
-                $e->getMessages(),
+                $e->getMessage(),
                 // 'Failed to update department status.',
                 500
             );
