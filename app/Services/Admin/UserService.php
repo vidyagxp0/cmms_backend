@@ -12,6 +12,21 @@ use Illuminate\Support\Facades\Hash;
 
 class UserService
 {
+
+    /* get user PID */
+    public static function getUserPID()
+    {
+        try {
+            $users = User::where(['is_active', 1])->count();
+            $pid = 'PID000' . $users;
+            return ResponseHelper::success($pid, 'Users ID fetched successfully.');
+        } catch (\Exception $e) {
+            info('Error in UserService@getUserPID', ['error' => $e->getMessage()]);
+            return ResponseHelper::error('Failed to retrieve PID.', 500);
+        }
+    }
+
+
     /* user listing */
     public static function getUsers()
     {

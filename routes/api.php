@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/toggle-role/{id}', [RoleController::class, 'toggleActive'])->name('toggle-role');
 
         /* user routes */
+        Route::get('/users-pid', [UserController::class, 'getUserPID'])->name('users-pid');
         Route::get('/users-listing', [UserController::class, 'index'])->name('users-listing');
         Route::post('/store-user', [UserController::class, 'store'])->name('store-user');
         Route::get('/user-detail/{id}', [UserController::class, 'show'])->name('user-details');
