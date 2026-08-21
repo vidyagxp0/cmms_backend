@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Services\Admin;
-
 use App\Helpers\ResponseHelper;
 use App\Helpers\AuditHelper;
 use App\Http\Requests\Admin\UserRequest;
@@ -9,10 +7,8 @@ use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
 class UserService
 {
-
     /* get user PID */
     public static function getUserPID()
     {
@@ -26,8 +22,7 @@ class UserService
         }
     }
 
-
-    /* user listing */
+    /* get user listing */
     public static function getUsers()
     {
         try {
@@ -43,8 +38,6 @@ class UserService
             return ResponseHelper::error('Failed to retrieve users.', 500);
         }
     }
-
-    /* get user details */
     public static function getUser($id)
     {
         try {
@@ -56,7 +49,7 @@ class UserService
         }
     }
 
-    /* store user */
+    /* store user apis */
     public static function storeUser(UserRequest $request)
     {
         DB::beginTransaction();
@@ -85,14 +78,13 @@ class UserService
                 'department' => $user->department?->name,
                 'roles' => $user->roles->pluck('name')->toArray(),
             ];
-
             AuditHelper::log(
                 'User',
                 'Created',
                 'User created successfully.',
-                $user->id, 
-                null, 
-                $newValue, 
+                $user->id,
+                null,
+                $newValue,
                 User::class
             );
 
@@ -100,14 +92,12 @@ class UserService
             return ResponseHelper::success($user, 'User created successfully.', 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            info('Error in UserService@storeUser', [
-                'error' => $e
-            ]);
+            info('Error in UserService@storeUser', ['error' => $e]);
             return ResponseHelper::error('Failed to create user.', 500);
         }
     }
 
-    /* update user */
+    /* update user apis */
     public static function updateUser(UpdateUserRequest $request, $id)
     {
         DB::beginTransaction();
@@ -117,72 +107,83 @@ class UserService
             $newValue = [];
             $updateData = [];
 
-            if ($request->has('salutation')) {
+            if ($request->has('salutation') && $request->salutation !== $user->salutation) {
                 $oldValue['salutation'] = $user->salutation;
                 $newValue['salutation'] = $request->salutation;
+
                 $updateData['salutation'] = $request->salutation;
             }
-            if ($request->has('person_id')) {
+
+            if ($request->has('person_id') && $request->person_id !== $user->person_id) {
                 $oldValue['person_id'] = $user->person_id;
                 $newValue['person_id'] = $request->person_id;
+
                 $updateData['person_id'] = $request->person_id;
             }
-            if ($request->has('name')) {
+
+            if ($request->has('name') && $request->name !== $user->name) {
                 $oldValue['name'] = $user->name;
                 $newValue['name'] = $request->name;
+
                 $updateData['name'] = $request->name;
             }
-            if ($request->has('username')) {
+
+            if ($request->has('username') && $request->username !== $user->username) {
                 $oldValue['username'] = $user->username;
                 $newValue['username'] = $request->username;
+
                 $updateData['username'] = $request->username;
             }
-            if ($request->has('email')) {
+
+            if ($request->has('email') && $request->email !== $user->email) {
                 $oldValue['email'] = $user->email;
                 $newValue['email'] = $request->email;
+
                 $updateData['email'] = $request->email;
             }
-            if ($request->has('mobile_no')) {
+
+            if ($request->has('mobile_no') && $request->mobile_no !== $user->mobile_no) {
                 $oldValue['mobile_no'] = $user->mobile_no;
                 $newValue['mobile_no'] = $request->mobile_no;
+
                 $updateData['mobile_no'] = $request->mobile_no;
             }
-            if ($request->has('department_id')) {
+
+            if ($request->has('department_id') && $request->department_id !== $user->department_id) {
                 $oldValue['department'] = $user->department?->name;
                 $department = \App\Models\Department::find($request->department_id);
                 $newValue['department'] = $department?->name;
+
                 $updateData['department_id'] = $request->department_id;
-            }
-            if ($request->has('is_active')) {
-                $oldValue['is_active'] = $user->is_active;
-                $newValue['is_active'] = $request->is_active;
-                $updateData['is_active'] = $request->is_active;
             }
 
             if (!empty($updateData)) {
                 $user->update($updateData);
             }
-
             if ($request->filled('password')) {
                 $user->update(['password' => Hash::make($request->password)]);
             }
 
             if ($request->has('roles')) {
-                $oldValue['roles'] = $user->roles->pluck('name')->toArray();
+                $oldRoles = $user->roles->pluck('name')->sort()->values()->toArray();
                 $user->roles()->sync($request->roles);
                 $user->load('roles');
-                $newValue['roles'] = $user->roles->pluck('name')->toArray();
+                $newRoles = $user->roles->pluck('name')->sort()->values()->toArray();
+                if ($oldRoles !== $newRoles) {
+                    $oldValue['roles'] = $oldRoles;
+                    $newValue['roles'] = $newRoles;
+                }
             }
 
-            /* audit code */
+            /* Audit Code */
             if (!empty($newValue)) {
                 AuditHelper::log(
                     'User',
-                    'Updated', 
-                    'User updated successfully.', 
-                    $user->id, 
-                    $oldValue, 
-                    $newValue, 
+                    'Updated',
+                    'User updated successfully.',
+                    $user->id,
+                    $oldValue,
+                    $newValue,
                     User::class
                 );
             }
@@ -197,13 +198,14 @@ class UserService
         }
     }
 
-    /* delete user */
+    /* delete user apis */
     public static function deleteUser($id)
     {
         DB::beginTransaction();
         try {
             $user = User::with(['department', 'roles'])->findOrFail($id);
 
+            /* old values */
             $oldValue = [
                 'salutation' => $user->salutation,
                 'person_id' => $user->person_id,
@@ -213,21 +215,21 @@ class UserService
                 'mobile_no' => $user->mobile_no,
                 'department' => $user->department?->name,
                 'roles' => $user->roles->pluck('name')->toArray(),
-                'is_active' => $user->is_active,
             ];
-
             $user->roles()->detach();
             $user->delete();
 
+            /* audit code */
             AuditHelper::log(
-                'User', 
-                'Deleted', 
-                'User deleted successfully.', 
-                $user->id, 
-                $oldValue, 
-                null, 
+                'User',
+                'Deleted',
+                'User deleted successfully.',
+                $user->id,
+                $oldValue,
+                null,
                 User::class
             );
+
             DB::commit();
             return ResponseHelper::success(null, 'User deleted successfully.');
         } catch (\Exception $e) {
@@ -237,28 +239,31 @@ class UserService
         }
     }
 
+    /* active/inactive user apis */
     public static function toggleActive($id)
     {
         DB::beginTransaction();
         try {
             $user = User::findOrFail($id);
-            $oldValue = ['is_active' => $user->is_active];
 
+            $oldValue = ['is_active' => $user->is_active];
             $user->is_active = $user->is_active ? 0 : 1;
             $user->save();
 
             $newValue = ['is_active' => $user->is_active];
             $message = $user->is_active ? 'User activated successfully.' : 'User deactivated successfully.';
 
+            /* audit code */
             AuditHelper::log(
-                'User', 
-                'Status Updated', 
-                $message, 
-                $user->id, 
-                $oldValue, 
-                $newValue, 
+                'User',
+                'Status Updated',
+                $message,
+                $user->id,
+                $oldValue,
+                $newValue,
                 User::class
             );
+            
             DB::commit();
             return ResponseHelper::success($user, $message);
         } catch (\Exception $e) {
