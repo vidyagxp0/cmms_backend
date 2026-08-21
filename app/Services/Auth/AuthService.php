@@ -12,7 +12,8 @@ class AuthService
     {
         $user = User::with([
             'roles' => function ($query) {
-                $query->where('is_active', true);
+                $query->where('is_active', true)
+                    ->with('permissions');
             }
         ])
         ->where('email', $data['email'])
@@ -35,8 +36,19 @@ class AuthService
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
-                'roles' => $user->roles->pluck('name')->values(),
+
+                'roles' => $user->roles
+                    ->pluck('name')
+                    ->values(),
+
+                'permissions' => $user->roles
+                    ->flatMap(function ($role) {
+                        return $role->permissions;
+                    })
+                    ->pluck('name')
+                    ->values(),
             ],
+
             'token' => $token,
         ];
     }

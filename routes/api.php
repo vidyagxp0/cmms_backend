@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\AuditController;
 
+/* users controller */
+use App\Http\Controllers\User\ProcessConfigController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -60,5 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     /* user apis */ 
     Route::middleware('users')->prefix('user')->group(function () {
 
+        /* process/stages/activities routes */
+        Route::get('/process-list', [ProcessConfigController::class, 'getProcesses'])->name('process-listing');
+        Route::get('/stages-list/{processId}', [ProcessConfigController::class, 'getProcessStages'])->name('stages-list');
+        Route::get('/activities-list/{stageId}', [ProcessConfigController::class, 'getStageActivities'])->name('activities-list');
     });
 });
