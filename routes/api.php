@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\AuditController;
 
 /* users controller */
 use App\Http\Controllers\User\ProcessConfigController;
+use App\Http\Controllers\User\ProcessRecordController;
+use App\Http\Controllers\User\EquipmentMasterController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -69,5 +71,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/process-list', [ProcessConfigController::class, 'getProcesses'])->name('process-listing');
         Route::get('/stages-list/{processId}', [ProcessConfigController::class, 'getProcessStages'])->name('stages-list');
         Route::get('/activities-list/{stageId}', [ProcessConfigController::class, 'getStageActivities'])->name('activities-list');
+
+        /* process records routes */
+        Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
+        Route::get('/get-engineering-records', [ProcessRecordController::class, 'getEngineeringRecord'])->name('get-engineering-records');
+
+        /* equipment master routes */
+        Route::get('/equipment-master-listing',[EquipmentMasterController::class, 'index'])->name('equipment-master-listing');
+        Route::post('/store-equipment-master',[EquipmentMasterController::class, 'store'])->name('store-equipment-master');
+        Route::get('/equipment-master-detail/{id}',[EquipmentMasterController::class, 'show'])->name('equipment-master-detail');
+        Route::put('/update-master-equipment/{id}',[EquipmentMasterController::class, 'update'])->name('update-master-equipment');
     });
 });
