@@ -74,7 +74,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
-        Route::get('/get-engineering-records', [ProcessRecordController::class, 'getEngineeringRecord'])->name('get-engineering-records');
 
         /* equipment master routes */
         Route::get('/equipment-master-listing',[EquipmentMasterController::class, 'index'])->name('equipment-master-listing');
