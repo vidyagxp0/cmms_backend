@@ -23,21 +23,45 @@ class UserService
     }
 
     /* get user listing */
-    public static function getUsers()
-    {
-        try {
-            $users = User::with(['department', 'roles'])
-                ->whereDoesntHave('roles', function ($query) {
-                    $query->where('name', 'Admin');
-                })
-                ->orderBy('id', 'desc')
-                ->get();
-            return ResponseHelper::success($users, 'Users fetched successfully.');
-        } catch (\Exception $e) {
-            info('Error in UserService@getUsers', ['error' => $e->getMessage()]);
-            return ResponseHelper::error('Failed to retrieve users.', 500);
+     public static function getUsers()
+        {
+            try {
+                $query = User::with(['department', 'roles'])
+                    ->whereDoesntHave('roles', function ($query) {
+                        $query->where('name', 'Admin');
+                    })
+                    ->orderByDesc('id');
+                $search = trim((string) request()->input('search', ''));
+
+                if ($search !== '') {
+                    $query->where(function ($query) use ($search) {
+                        $query->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%")
+                            ->orWhere('username', 'like', "%{$search}%")
+                            ->orWhere('person_id', 'like', "%{$search}%");
+                    });
+                }
+                $perPage = (int) request()->input('per_page', 10);
+                $perPage = min(max($perPage, 1), 100);
+
+                $users = $query
+                    ->paginate($perPage)
+                    ->withQueryString();
+                return ResponseHelper::success(
+                    $users,
+                    'Users fetched successfully.'
+                );
+
+            } catch (\Exception $e) {
+                info('Error in UserService@getUsers', [
+                    'error' => $e->getMessage(),
+                ]);
+                return ResponseHelper::error(
+                    'Failed to retrieve users.'
+                    
+                );
+            }
         }
-    }
     public static function getUser($id)
     {
         try {

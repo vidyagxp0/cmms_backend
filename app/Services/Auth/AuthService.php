@@ -163,17 +163,39 @@ class AuthService
     public static function getUserActivities()
     {
         try {
-            $activities = UserActivityLog::with('user')
-                ->orderBy('id', 'desc')
-                ->get()
-                ->map(function ($activity) {
-                    return [
-                        'user_name'   => $activity->user?->name,
-                        'login_time'  => $activity->login_time?->format('d-m-Y H:i:s'),
-                        'logout_time' => $activity->logout_time?->format('d-m-Y H:i:s'),
-                        'status'      => $activity->status,
-                    ];
+            $query = UserActivityLog::with('user')
+                ->orderBy('id', 'desc');
+
+            // Search by user/person name
+            if (request()->filled('search')) {
+                $search = request('search');
+
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', '%' . $search . '%');
                 });
+            }
+            if (request()->filled('start_date')) {
+                $query->whereDate('login_time', '>=', request('start_date'));
+            }
+
+            if (request()->filled('end_date')) {
+                $query->whereDate('login_time', '<=', request('end_date'));
+            }
+
+            // Pagination
+            $perPage = request()->get('per_page', 10);
+
+            $activities = $query->paginate($perPage);
+
+            // Format paginated collection
+            $activities->getCollection()->transform(function ($activity) {
+                return [
+                    'user_name'   => $activity->user?->name,
+                    'login_time'  => $activity->login_time?->format('d-m-Y H:i:s'),
+                    'logout_time' => $activity->logout_time?->format('d-m-Y H:i:s'),
+                    'status'      => $activity->status,
+                ];
+            });
 
             return ResponseHelper::success(
                 $activities,
@@ -181,8 +203,8 @@ class AuthService
             );
         } catch (\Exception $e) {
             return ResponseHelper::error(
-                'Failed to retrieve user activities.',
-                500
+                'Failed to retrieve user activities.'
+                
             );
         }
     }
