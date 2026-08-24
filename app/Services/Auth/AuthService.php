@@ -182,6 +182,10 @@ class AuthService
                 $query->whereDate('login_time', '<=', request('end_date'));
             }
 
+            if (request()->filled('status')) {
+                $query->where('status', '=', request('status'));
+            }
+
             // Pagination
             $perPage = request()->get('per_page', 10);
 

@@ -5,11 +5,12 @@ namespace App\Services\User;
 use App\Helpers\ResponseHelper;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Models\ProcessRecord;
+use Illuminate\Http\Request;
 
 class ProcessRecordService
 {
     /* all process records */
-    public static function getEngineeringRecords(ProcessRecordRequest $request) 
+    public static function getEngineeringRecords(Request $request) 
     {
         try {
             $records = ProcessRecord::with([
@@ -71,7 +72,7 @@ class ProcessRecordService
             );
         } catch (\Exception $e) {
             return ResponseHelper::error(
-                'Failed to retrieve Engineering records.',
+                $e->getMessage(),
                 500
             );
         }

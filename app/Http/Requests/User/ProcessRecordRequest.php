@@ -14,34 +14,67 @@ class ProcessRecordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'search' => [
-                'nullable',
-                'string',
-            ],
-
             'process_id' => [
-                'nullable',
+                'required',
                 'integer',
                 'exists:processes,id',
             ],
 
-            'from_date' => [
-                'nullable',
-                'date',
-            ],
-
-            'to_date' => [
-                'nullable',
-                'date',
-                'after_or_equal:from_date',
-            ],
-
-            'per_page' => [
-                'nullable',
+            'stage_id' => [
+                'required',
                 'integer',
-                'min:1',
-                'max:100',
+                'exists:stages,id',
             ],
+
+            'department_id' => [
+                'required',
+                'integer',
+                'exists:departments,id',
+            ],
+
+            'initiator_id' => [
+                'required',
+                'integer',
+                'exists:users,id',
+            ],
+
+            'short_description' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'initiation_date' => [
+                'required',
+                'date',
+            ],
+
+            'process_data' => [
+                'required',
+                'array',
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'process_id.required' => 'Process is required.',
+            'process_id.exists' => 'Selected process does not exist.',
+
+            'stage_id.required' => 'Stage is required.',
+            'stage_id.exists' => 'Selected stage does not exist.',
+
+            'department_id.required' => 'Department is required.',
+            'department_id.exists' => 'Selected department does not exist.',
+
+            'initiator_id.required' => 'Initiator is required.',
+            'initiator_id.exists' => 'Selected initiator does not exist.',
+
+            'short_description.required' => 'Short description is required.',
+
+            'initiation_date.required' => 'Initiation date is required.',
+            'initiation_date.date' => 'Initiation date must be a valid date.',
         ];
     }
 }

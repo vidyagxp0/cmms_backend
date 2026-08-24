@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\User\ProcessConfigController;
 use App\Http\Controllers\User\ProcessRecordController;
 use App\Http\Controllers\User\EquipmentMasterController;
+use App\Http\Controllers\User\CalibrationPlannerController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -70,7 +71,16 @@ Route::middleware('auth:sanctum')->group(function () {
         /* process/stages/activities routes */
         Route::get('/process-list', [ProcessConfigController::class, 'getProcesses'])->name('process-listing');
         Route::get('/stages-list/{processId}', [ProcessConfigController::class, 'getProcessStages'])->name('stages-list');
-        Route::get('/activities-list/{stageId}', [ProcessConfigController::class, 'getStageActivities'])->name('activities-list');
+        Route::get('/activities-list/{stageId}', [ProcessConfigController::class, 'getStageActivities'])->name('activities-list');        
+
+        /* process records listing routes */
+        Route::get('/get-engineering-records', [ProcessRecordController::class, 'getEngineeringRecord'])->name('get-engineering-records');
+
+        /* calibration planner routes */
+        Route::post('/store-calibration-planner-record', [CalibrationPlannerController::class, 'store'])->name('store-calibration-planner-record');
+        Route::get('/show-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'show'])->name('show-calibration-planner-record');
+        Route::put('/update-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'update'])->name('update-calibration-planner-record');
+
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');

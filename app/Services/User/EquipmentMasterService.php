@@ -6,6 +6,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Requests\User\EquipmentMasterRequest;
 use App\Models\EquipmentMaster;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\UserAuditHelper;
 
 class EquipmentMasterService
 {
@@ -82,6 +83,24 @@ class EquipmentMasterService
                 'equipment_type' => $request->equipment_type,
             ]);
 
+            /* audit data */
+            $newValue = [
+                'name' => $equipment->name,
+                'equipment_id' => $equipment->equipment_id,
+                'make' => $equipment->make,
+                'model' => $equipment->model,
+                'equipment_type' => $equipment->equipment_type,
+            ];
+
+            UserAuditHelper::log(
+                'Equipment Master',
+                'Created',
+                'Equipment created successfully.',
+                $equipment->id,
+                null,
+                $newValue,
+                EquipmentMaster::class
+            );
             DB::commit();
 
             return ResponseHelper::success(
@@ -99,7 +118,7 @@ class EquipmentMasterService
         }
     }
 
-    /* update equipment */
+/* update equipment */
     public static function updateEquipment(EquipmentMasterRequest $request,$id)
     {
         DB::beginTransaction();
@@ -107,32 +126,71 @@ class EquipmentMasterService
         try {
             $equipment = EquipmentMaster::findOrFail($id);
 
+            $oldValue = [];
+            $newValue = [];
             $updateData = [];
 
-            if ($request->has('name')) {
+            /* name */
+            if ($request->has('name') &&$request->name != $equipment->name)
+            {
+                $oldValue['name'] = $equipment->name;
+                $newValue['name'] = $request->name;
+
                 $updateData['name'] = $request->name;
             }
 
-            if ($request->has('equipment_id')) {
+            /* equipment id */
+            if ($request->has('equipment_id') &&$request->equipment_id != $equipment->equipment_id)
+            {
+                $oldValue['equipment_id'] = $equipment->equipment_id;
+                $newValue['equipment_id'] = $request->equipment_id;
+
                 $updateData['equipment_id'] = $request->equipment_id;
             }
 
-            if ($request->has('make')) {
+            /* make */
+            if ($request->has('make') &&$request->make != $equipment->make)
+            {
+                $oldValue['make'] = $equipment->make;
+                $newValue['make'] = $request->make;
+
                 $updateData['make'] = $request->make;
             }
 
-            if ($request->has('model')) {
+            /* model */
+            if ($request->has('model') &&$request->model != $equipment->model)
+            {
+                $oldValue['model'] = $equipment->model;
+                $newValue['model'] = $request->model;
+
                 $updateData['model'] = $request->model;
             }
 
-            if ($request->has('equipment_type')) {
+            /* equipment type */
+            if ($request->has('equipment_type') &&$request->equipment_type != $equipment->equipment_type)
+            {
+                $oldValue['equipment_type'] = $equipment->equipment_type;
+                $newValue['equipment_type'] = $request->equipment_type;
+
                 $updateData['equipment_type'] = $request->equipment_type;
             }
 
+            /* update only changed fields */
             if (!empty($updateData)) {
-                $equipment->update($updateData);
-            }
 
+                $equipment->update($updateData);
+
+                /* audit only changed fields */
+                UserAuditHelper::log(
+                    'Equipment Master',
+                    'Updated',
+                    'Equipment updated successfully.',
+                    $equipment->id,
+                    $oldValue,
+                    $newValue,
+                    EquipmentMaster::class
+                );
+            }
             DB::commit();
 
             return ResponseHelper::success(
