@@ -74,6 +74,7 @@ class AuthService
     {
         try {
             $user->load([
+                'department',
                 'roles' => function ($query) {
                     $query->where('is_active', true);
                 }
@@ -83,6 +84,10 @@ class AuthService
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'department' => [
+                    'id' => $user->department?->id,
+                    'name' => $user->department?->name,
+                ],
                 'roles' => $user->roles
                     ->pluck('name')
                     ->values(),
