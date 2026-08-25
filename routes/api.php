@@ -30,6 +30,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/change-password', [AuthController::class,'changePassword'])->name('change-password');
     Route::post('/logout', [ AuthController::class,'logout'])->name('logout');
 
+    /* role based users */
+    Route::get('/role-based-users', [AuthController::class, 'getRoleBasedUsers'])->name('role-based-users');
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     /* admin apis */

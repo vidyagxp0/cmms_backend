@@ -133,4 +133,17 @@ class AuthController extends Controller
             ], 500);
         }
     }
+    
+    /* get users data of different roles */
+    public function getRoleBasedUsers()
+    {
+        try {
+            return AuthService::getRoleBasedUsers();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve workflow users.',
+            ], 500);
+        }
+    }
 }

@@ -212,4 +212,64 @@ class AuthService
             );
         }
     }
+
+    /* get users data of different roles */
+    public static function getRoleBasedUsers()
+    {
+        try {
+            $hodUsers = User::where('is_active', true)
+                ->whereHas('roles', function ($query) {
+                    $query->where('name', 'HOD/Designee')
+                        ->where('is_active', true);
+                })
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'name',
+                    'email',
+                    'department_id',
+                ]);
+
+            $qaReviewers = User::where('is_active', true)
+                ->whereHas('roles', function ($query) {
+                    $query->where('name', 'QA Reviewer')
+                        ->where('is_active', true);
+                })
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'name',
+                    'email',
+                    'department_id',
+                ]);
+
+            $qaApprovers = User::where('is_active', true)
+                ->whereHas('roles', function ($query) {
+                    $query->where('name', 'QA Approver')
+                        ->where('is_active', true);
+                })
+                ->orderBy('name')
+                ->get([
+                    'id',
+                    'name',
+                    'email',
+                    'department_id',
+                ]);
+
+            return ResponseHelper::success(
+                [
+                    'hod' => $hodUsers,
+                    'qa_reviewer' => $qaReviewers,
+                    'qa_approver' => $qaApprovers,
+                ],
+                'Workflow users fetched successfully.'
+            );
+
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to retrieve workflow users.',
+                500
+            );
+        }
+    }
 }
