@@ -4,11 +4,16 @@ namespace App\Services\User;
 
 use App\Helpers\ResponseHelper;
 use App\Http\Requests\User\ProcessRecordRequest;
+use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
 use App\Helpers\UserAuditHelper;
 use App\Models\Stage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use App\Http\Requests\User\MoveProcessRecordRequest;
+use App\Models\Activity;
+use App\Models\RecordActivityHistory;
+use Illuminate\Support\Facades\Auth;
 
 class CalibrationPlannerService
 {
@@ -232,6 +237,134 @@ class CalibrationPlannerService
 
             return ResponseHelper::error(
                 'Failed to update process record.',
+                500
+            );
+        }
+    }
+
+    /* move process record stage */
+    public static function moveStage(RecordActivityRequest $request, $id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $processRecord = ProcessRecord::with([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+            ])->findOrFail($id);
+
+            /* get activity details */
+            $activity = Activity::with([
+                'fromStage',
+                'toStage',
+            ])
+            ->where('id', $request->activity_id)
+            ->where('is_active', true)
+            ->where('from_stage', $processRecord->stage_id)
+            ->first();
+
+            if (!$activity) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Selected activity is not available for the current stage.',
+                    422
+                );
+            }
+
+            /* make sure activity belongs to current process */
+            if (!$activity->fromStage || $activity->fromStage->process_id != $processRecord->process_id)
+            {
+                DB::rollBack();
+                return ResponseHelper::error(
+                    'Selected activity does not belong to this process.',
+                    422
+                );
+            }
+
+            /* make sure stage belongs to current process */
+            if (!$activity->toStage || $activity->toStage->process_id != $processRecord->process_id)
+            {
+                DB::rollBack();
+                return ResponseHelper::error(
+                    'Invalid target stage for this process.',
+                    422
+                );
+            }
+
+            $currentStage = $processRecord->stage;
+            $targetStage = $activity->toStage;
+
+            /* record activity code */
+            RecordActivityHistory::create([
+                'process_record_id' => $processRecord->id,
+                'activity_id' => $activity->id,
+                'performed_by' => Auth::id(),
+                'stage_id' => $currentStage->id,
+                'target_stage' => $targetStage->id,
+                'comment' => $request->comment,
+                'performed_at' => now(),
+            ]);
+
+            /* update current stage */
+            $processRecord->stage_id = $targetStage->id;
+            $processRecord->save();
+
+            /* audit code */
+            $oldValue = [
+                'process' => $processRecord->process?->name,
+                'stage' => $currentStage?->name,
+            ];
+
+            $newValue = [
+                'process' => $processRecord->process?->name,
+                'stage' => $targetStage?->name,
+                'activity' => $activity->name,
+            ];
+
+            if ($request->filled('comment')) {
+                $newValue['comment'] = $request->comment;
+            }
+
+            UserAuditHelper::log(
+                'Process Record',
+                'Activity Performed',
+                'Process record stage updated successfully.',
+                $processRecord->id,
+                $oldValue,
+                $newValue,
+                ProcessRecord::class
+            );
+
+            DB::commit();
+
+            /* load latest data */
+            $processRecord->load([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+            ]);
+
+            return ResponseHelper::success(
+                [
+                    'record' => $processRecord,
+                    'activity' => [
+                        'id' => $activity->id,
+                        'name' => $activity->name,
+                        'from_stage' => $currentStage->name,
+                        'to_stage' => $targetStage->name,
+                    ],
+                ],
+                'Process record stage updated successfully.'
+            );
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return ResponseHelper::error(
+                $e->getMessage(),
                 500
             );
         }

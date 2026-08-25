@@ -16,6 +16,7 @@ use App\Http\Controllers\User\ProcessConfigController;
 use App\Http\Controllers\User\ProcessRecordController;
 use App\Http\Controllers\User\EquipmentMasterController;
 use App\Http\Controllers\User\CalibrationPlannerController;
+use App\Http\Controllers\User\UserAuditController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -84,6 +85,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
+
+        /* user audit routes */
+        Route::get('/user-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('user-audit-listing');
+
+        /* record activity routes */
+        Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
 
         /* equipment master routes */
         Route::get('/equipment-master-listing',[EquipmentMasterController::class, 'index'])->name('equipment-master-listing');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProcessRecordRequest;
+use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\CalibrationPlannerService;
 use Illuminate\Http\Request;
 
@@ -47,6 +48,22 @@ class CalibrationPlannerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update process record.',
+            ], 500);
+        }
+    }
+
+        /* move process record stage */
+    public function moveStage(RecordActivityRequest $request, $id) 
+    {
+        try {
+            return CalibrationPlannerService::moveStage(
+                $request,
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update process record stage.',
             ], 500);
         }
     }
