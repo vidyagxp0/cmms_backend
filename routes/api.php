@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\User\RecordActivityController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -91,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
+        Route::get('/user-activity-history/{recordId}',[RecordActivityController::class, 'index'])->name('user-activity-history');
 
         /* equipment master routes */
         Route::get('/equipment-master-listing',[EquipmentMasterController::class, 'index'])->name('equipment-master-listing');
