@@ -21,4 +21,19 @@ class UserAuditController extends Controller
             ], 500);
         }
     }
+
+    /* equipment audit records data */
+    public function getEquipmentMasterAudit($recordId)
+    {
+        try {
+            return UserAuditService::getEquipmentMasterAudit(
+                $recordId
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+            ], 500);
+        }
+    }
 }

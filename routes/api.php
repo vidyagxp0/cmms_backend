@@ -92,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* user audit routes */
         Route::get('/user-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('user-audit-listing');
+        Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');

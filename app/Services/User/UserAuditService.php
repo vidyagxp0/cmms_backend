@@ -52,6 +52,51 @@ class UserAuditService
         }
     }
 
+    /* get equipment master audits data */
+    public static function getEquipmentMasterAudit($recordId)
+    {
+        try {
+
+            $audits = Audit::with('user')
+                ->where('record_id', $recordId)
+                ->where('model', 'App\Models\EquipmentMaster')
+                ->orderBy('id', 'desc')
+                ->get();
+
+            $audits->transform(function ($audit) {
+
+                return [
+                    'id' => $audit->id,
+                    'user_id' => $audit->user_id,
+                    'user_name' => $audit->user?->name,
+                    'module' => $audit->module,
+                    'model' => $audit->model,
+                    'action' => $audit->action,
+                    'description' => $audit->description,
+                    'record_id' => $audit->record_id,
+
+                    'old_value' => self::prepareValue(
+                        $audit->old_value
+                    ),
+                    'new_value' => self::prepareValue(
+                        $audit->new_value
+                    ),
+                    'created_at' => $audit->created_at ? $audit->created_at->format('d-m-Y H:i:s') : null,
+                ];
+            });
+
+            return ResponseHelper::success(
+                $audits,
+                'Equipment Master audits fetched successfully.'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to retrieve equipment master audits.',
+                500
+            );
+        }
+    }
+
 
     /* prepare audit value */
     private static function prepareValue($value)
