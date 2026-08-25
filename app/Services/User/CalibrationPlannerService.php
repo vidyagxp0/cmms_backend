@@ -14,6 +14,7 @@ use App\Http\Requests\User\MoveProcessRecordRequest;
 use App\Models\Activity;
 use App\Models\RecordActivityHistory;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CalibrationPlannerService
 {
@@ -87,7 +88,7 @@ class CalibrationPlannerService
             DB::rollBack();
 
             return ResponseHelper::error(
-                'Failed to create process record.',
+                $e->getMessage(),
                 500
             );
         }

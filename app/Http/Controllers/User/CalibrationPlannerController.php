@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\CalibrationPlannerService;
+use App\Services\UserReport\CalibrationReportService;
 use Illuminate\Http\Request;
 
 class CalibrationPlannerController extends Controller
@@ -52,7 +53,7 @@ class CalibrationPlannerController extends Controller
         }
     }
 
-        /* move process record stage */
+    /* move process record stage */
     public function moveStage(RecordActivityRequest $request, $id) 
     {
         try {
@@ -64,6 +65,21 @@ class CalibrationPlannerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update process record stage.',
+            ], 500);
+        }
+    }
+
+    /* calibration single report */
+    public function calibrationSingleReport($id) 
+    {
+        try {
+            return CalibrationReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
             ], 500);
         }
     }
