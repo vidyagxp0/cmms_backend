@@ -101,10 +101,19 @@ class AuthService
     public function updateProfile(User $user, array $data): array
     {
         try {
-            $user->update([
-                'name' => $data['name'],
-                'email' => $data['email'],
-            ]);
+            $updateData = [];
+
+            if (array_key_exists('name', $data)) {
+                $updateData['name'] = $data['name'];
+            }
+
+            if (array_key_exists('email', $data)) {
+                $updateData['email'] = $data['email'];
+            }
+
+            if (!empty($updateData)) {
+                $user->update($updateData);
+            }
 
             $user->load([
                 'roles' => function ($query) {

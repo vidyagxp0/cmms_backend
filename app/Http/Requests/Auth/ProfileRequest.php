@@ -16,16 +16,17 @@ class ProfileRequest extends FormRequest
     {
         return [
             'name' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
             ],
 
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($this->user()->id),
+                Rule::unique('users', 'email')
+                    ->ignore($this->user()->id),
             ],
         ];
     }
@@ -33,10 +34,11 @@ class ProfileRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Name is required.',
-            'email.required' => 'Email is required.',
+            'name.string' => 'Name must be a valid string.',
+            'name.max' => 'Name may not be greater than 255 characters.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email is already registered.',
+            'email.max' => 'Email may not be greater than 255 characters.',
         ];
     }
 }

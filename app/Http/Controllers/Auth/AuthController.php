@@ -75,7 +75,7 @@ class AuthController extends Controller
 
         } catch (Throwable $e) {
             return ResponseHelper::error(
-                'Unable to update profile.',
+                $e->getMessage(),
                 500
             );
         }
