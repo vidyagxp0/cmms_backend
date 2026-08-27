@@ -65,8 +65,6 @@ class UserAuditHelper
     {
         $result = [];
         foreach ($data as $key => $value) {
-
-            /* remove default db fields */
             if (in_array($key, [
                 'id',
                 'created_at',
@@ -75,51 +73,59 @@ class UserAuditHelper
             ])) {
                 continue;
             }
-
-            /* department */
             if ($key === 'department_id') {
                 $result['Department'] = self::getDepartmentName($value);
                 continue;
             }
-
-            /* initiator */
             if ($key === 'initiator_id') {
                 $result['Initiator'] = self::getUserName($value);
                 continue;
             }
-
-            /* process */
             if ($key === 'process_id') {
                 $result['Process'] = self::getProcessName($value);
                 continue;
             }
-
-            /* stage */
             if ($key === 'stage_id') {
                 $result['Stage'] = self::getStageName($value);
                 continue;
             }
-
-            /* nested array */
             if (is_array($value)) {
-                $label = FieldLabelHelper::getLabel($module, $key);
-                $result[$label] = self::cleanNestedValue($value);
+                if (self::isProcessDataArray($value)) {
+                    $processed = self::cleanProcessData($value);
+                    if (!empty($processed)) {
+                        $result['process_data'] = $processed;
+                    }
+                    continue;
+                }
 
+                $label = FieldLabelHelper::getLabel($module, $key);
+                $cleaned = self::cleanNestedValue($value);
+                if ($cleaned === [] || $cleaned === null) {
+                    continue;
+                }
+                $result[$label] = $cleaned;
                 continue;
             }
-
-            /* JSON stored as string */
             if (is_string($value)) {
                 $decoded = json_decode($value, true);
                 if (json_last_error() === JSON_ERROR_NONE) {
-                    $label = FieldLabelHelper::getLabel($module, $key);
-                    $result[$label] = self::cleanNestedValue($decoded);
+                    if (self::isProcessDataArray($decoded)) {
+                        $processed = self::cleanProcessData($decoded);
+                        if (!empty($processed)) {
+                            $result['process_data'] = $processed;
+                        }
+                        continue;
+                    }
 
+                    $label = FieldLabelHelper::getLabel($module, $key);
+                    $cleaned = self::cleanNestedValue($decoded);
+                    if ($cleaned === [] || $cleaned === null) {
+                        continue;
+                    }
+                    $result[$label] = $cleaned;
                     continue;
                 }
             }
-
-            /* normal field */
             $label = FieldLabelHelper::getLabel($module, $key);
             $result[$label] = $value;
         }
@@ -130,29 +136,43 @@ class UserAuditHelper
     private static function cleanNestedValue($value)
     {
         if (!is_array($value)) {
+            if ($value === null || $value === '') {
+                return null;
+            }
             return $value;
         }
 
         $result = [];
-
         foreach ($value as $key => $item) {
-            if (is_array($item)) {
-                $result[$key] = self::cleanNestedValue($item);
+            if ($item === null || $item === '') {
                 continue;
             }
-
+            if (is_array($item)) {
+                $cleaned = self::cleanNestedValue($item);
+                if ($cleaned === null || $cleaned === []) {
+                    continue;
+                }
+                $result[$key] = $cleaned;
+                continue;
+            }
             if (is_object($item)) {
-                $result[$key] = self::cleanNestedValue(
+                $cleaned = self::cleanNestedValue(
                     $item->toArray()
                 );
+                if ($cleaned === null || $cleaned === []) {
+                    continue;
+                }
+                $result[$key] = $cleaned;
                 continue;
             }
-
             if (is_string($item)) {
                 $decoded = json_decode($item, true);
-
                 if (json_last_error() === JSON_ERROR_NONE) {
-                    $result[$key] = self::cleanNestedValue($decoded);
+                    $cleaned = self::cleanNestedValue($decoded);
+                    if ($cleaned === null || $cleaned === []) {
+                        continue;
+                    }
+                    $result[$key] = $cleaned;
                     continue;
                 }
             }
@@ -195,5 +215,62 @@ class UserAuditHelper
             return null;
         }
         return Stage::where('id', $id)->value('name');
+    }
+
+    /* remove null values and blank array storing in audits */
+    private static function isProcessDataArray($value): bool
+    {
+        if (!is_array($value) || empty($value)) {
+            return false;
+        }
+        foreach ($value as $item) {
+            if (!is_array($item)) {
+                return false;
+            }
+            if (
+                !array_key_exists('key', $item) ||
+                !array_key_exists('label', $item) ||
+                !array_key_exists('value', $item)
+            ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static function cleanProcessData(array $data): array
+    {
+        $result = [];
+        foreach ($data as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $label = $item['label'] ?? null;
+            $value = $item['value'] ?? null;
+            if (!$label) {
+                continue;
+            }
+            if ($value === null || $value === '') {
+                continue;
+            }
+            if (is_array($value)) {
+                $value = self::cleanNestedValue($value);
+                if (empty($value)) {
+                    continue;
+                }
+            }
+            if (is_string($value)) {
+                $decoded = json_decode($value, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $value = self::cleanNestedValue($decoded);
+                    if (empty($value)) {
+                        continue;
+                    }
+                }
+            }
+            $result[$label] = $value;
+        }
+        return $result;
     }
 }

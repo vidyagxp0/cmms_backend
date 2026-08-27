@@ -86,14 +86,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'show'])->name('show-calibration-planner-record');
         Route::put('/update-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'update'])->name('update-calibration-planner-record');
         Route::get('/calibration-planner-singleReport/{id}', [CalibrationPlannerController::class, 'calibrationSingleReport'])->name('calibration-planner-singleReport');
-
+        Route::get('/calibration-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('calibration-audit-listing');
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
-
-        /* user audit routes */
-        Route::get('/user-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('user-audit-listing');
-        Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
@@ -104,5 +100,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/store-equipment-master',[EquipmentMasterController::class, 'store'])->name('store-equipment-master');
         Route::get('/equipment-master-detail/{id}',[EquipmentMasterController::class, 'show'])->name('equipment-master-detail');
         Route::put('/update-master-equipment/{id}',[EquipmentMasterController::class, 'update'])->name('update-master-equipment');
+        Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
     });
 });
