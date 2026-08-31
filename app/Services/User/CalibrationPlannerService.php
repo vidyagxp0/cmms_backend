@@ -49,9 +49,15 @@ class CalibrationPlannerService
 
             /* Store grid data */
             if ($request->has('gridData') && is_array($request->gridData) && !empty($request->gridData)) {
+
+                $gridData = array_map(function ($row) {
+                    unset($row['_rowId'], $row['row_id']);
+                    return $row;
+                }, $request->gridData);
+
                 $gridRecord = GridRecord::create([
                     'process_record_id' => $processRecord->id,
-                    'grid_data' => $request->gridData,
+                    'grid_data' => $gridData,
                 ]);
 
                 /* Grid audit */
@@ -220,9 +226,14 @@ class CalibrationPlannerService
 
             /* grid data */
             if ($request->has('gridData')) {
+
                 $gridData = is_array($request->gridData)
-                    ? $request->gridData
+                    ? array_map(function ($row) {
+                        unset($row['_rowId'], $row['row_id']);
+                        return $row;
+                    }, $request->gridData)
                     : [];
+
                 $gridRecord = GridRecord::where(
                     'process_record_id',
                     $processRecord->id
@@ -230,9 +241,15 @@ class CalibrationPlannerService
 
                 /* existing grid */
                 if ($gridRecord) {
+
                     $oldGridData = is_array($gridRecord->grid_data)
                         ? $gridRecord->grid_data
                         : [];
+
+                    $oldGridData = array_map(function ($row) {
+                        unset($row['_rowId'], $row['row_id']);
+                        return $row;
+                    }, $oldGridData);
 
                     [$gridOldChanges, $gridNewChanges] = self::getGridDataChanges(
                         $oldGridData,
@@ -262,7 +279,9 @@ class CalibrationPlannerService
                             'grid_data' => $gridData,
                         ]);
                     }
+
                 } elseif (!empty($gridData)) {
+
                     /* create grid if it does not exist */
                     $gridRecord = GridRecord::create([
                         'process_record_id' => $processRecord->id,
