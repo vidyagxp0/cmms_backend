@@ -206,4 +206,21 @@ class EquipmentMasterService
             );
         }
     }
+
+    public static function getAllEquipments()
+    {
+        try {
+            $equipments = EquipmentMaster::orderBy('id', 'asc')->get();
+
+            return ResponseHelper::success(
+                $equipments,
+                'Equipment fetched successfully.'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to retrieve equipment.',
+                500
+            );
+        }
+    }
 }

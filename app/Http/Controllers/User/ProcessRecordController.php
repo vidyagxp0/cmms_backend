@@ -21,4 +21,18 @@ class ProcessRecordController extends Controller
             ], 500);
         }
     }
+    
+        /* generate record number for a process */
+    public function generateRecordNumber($processId)
+    {
+        try {
+            return ProcessRecordService::generateRecordNumber($processId);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate record number.',
+            ], 500);
+        }
+    }
+
 }

@@ -90,12 +90,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
+        Route::get('/generate-record-number/{processId}', [ProcessRecordController::class, 'generateRecordNumber'])->name('generate-record-number');
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
         Route::get('/user-activity-history/{recordId}',[RecordActivityController::class, 'index'])->name('user-activity-history');
 
         /* equipment master routes */
+        Route::get('/all-equipment-masters', [EquipmentMasterController::class, 'getAllEquipments'])->name('all-equipment-masters');
         Route::get('/equipment-master-listing',[EquipmentMasterController::class, 'index'])->name('equipment-master-listing');
         Route::post('/store-equipment-master',[EquipmentMasterController::class, 'store'])->name('store-equipment-master');
         Route::get('/equipment-master-detail/{id}',[EquipmentMasterController::class, 'show'])->name('equipment-master-detail');
