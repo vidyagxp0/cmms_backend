@@ -122,6 +122,8 @@ class CalibrationPlannerService
                 'stage',
                 'department',
                 'initiator',
+                'gridRecords',
+                'checklistRecords'
             ])->findOrFail($id);
 
             return ResponseHelper::success(
