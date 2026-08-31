@@ -3,19 +3,18 @@
 namespace App\Services\User;
 
 use App\Helpers\ResponseHelper;
-use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
 use App\Helpers\UserAuditHelper;
 use App\Models\Stage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use App\Http\Requests\User\MoveProcessRecordRequest;
 use App\Models\Activity;
 use App\Models\RecordActivityHistory;
 use Illuminate\Support\Facades\Auth;
-use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\GridRecord;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class CalibrationPlannerService
 {
@@ -382,6 +381,22 @@ class CalibrationPlannerService
             $currentStage = $processRecord->stage;
             $targetStage = $activity->toStage;
 
+            /* verify activity user */
+            $user = User::find($request->user_id);
+
+            if (
+                !$user ||
+                $user->email !== $request->email ||
+                !Hash::check($request->password, $user->password)
+            ) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Invalid email or password.',
+                    422
+                );
+            }
+
             /* record activity code */
             RecordActivityHistory::create([
                 'process_record_id' => $processRecord->id,
@@ -627,5 +642,75 @@ class CalibrationPlannerService
         }
 
         return [$oldChanges, $newChanges];
+    }
+
+    /* get user permissions */
+    public static function checkRecordPermission($id)
+    {
+        try {
+
+            /* logged in user */
+            $user = Auth::user();
+
+            if (!$user) {
+                return ResponseHelper::error(
+                    'Unauthenticated.',
+                    401
+                );
+            }
+
+            /* get record with current stage */
+            $record = ProcessRecord::with([
+                'stage',
+            ])->findOrFail($id);
+
+            /* get user roles */
+            $roles = $user->roles()
+                ->pluck('name')
+                ->toArray();
+
+            /* stage => allowed role */
+            $stageRoles = [
+                'Opened' => 'Initiator',
+                'Pending HOD/Designee Review' => 'HOD/Designee',
+                'Pending QA Review' => 'QA Reviewer',
+                'Pending QA Approval' => 'QA Approver',
+            ];
+
+            $stageName = $record->stage?->name;
+
+            $allowedRole = $stageRoles[$stageName] ?? null;
+
+            /* check permission */
+            $canPerformAction = $allowedRole
+                ? in_array($allowedRole, $roles)
+                : false;
+
+            return ResponseHelper::success(
+                [
+                    'record_id' => $record->id,
+                    'stage' => [
+                        'id' => $record->stage?->id,
+                        'name' => $stageName,
+                    ],
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'roles' => $roles,
+                    ],
+                    'permission' => [
+                        'allowed_role' => $allowedRole,
+                        'can_perform_action' => $canPerformAction,
+                    ],
+                ],
+                'Record permission checked successfully.'
+            );
+
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                $e->getMessage(),
+                500
+            );
+        }
     }
 }

@@ -83,4 +83,19 @@ class CalibrationPlannerController extends Controller
             ], 500);
         }
     }
+
+    /* user permission */
+    public function checkRecordPermission($id) 
+    {
+        try {
+            return CalibrationPlannerService::checkRecordPermission(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
 }
