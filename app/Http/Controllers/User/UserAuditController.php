@@ -4,20 +4,23 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Services\User\UserAuditService;
+use Illuminate\Http\Request;
 
 class UserAuditController extends Controller
 {
     /* process record audit listing */
-    public function index($recordId)
+    public function index(Request $request, $recordId)
     {
         try {
             return UserAuditService::getProcessRecordAudits(
-                $recordId
+                $recordId,
+                $request
             );
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -32,7 +35,8 @@ class UserAuditController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve process record audits.',
+                'message' => 'Failed to retrieve equipment master audits.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

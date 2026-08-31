@@ -378,24 +378,21 @@ class CalibrationPlannerService
 
             /* audit code */
             $oldValue = [
-                'process' => $processRecord->process?->name,
                 'stage' => $currentStage?->name,
             ];
 
             $newValue = [
-                'process' => $processRecord->process?->name,
                 'stage' => $targetStage?->name,
-                'activity' => $activity->name,
             ];
 
-            if ($request->filled('comment')) {
-                $newValue['comment'] = $request->comment;
-            }
+            $description = $request->filled('comment')
+                ? $request->comment
+                : 'Process record stage updated successfully.';
 
             UserAuditHelper::log(
                 'Process Record',
                 'Activity Performed',
-                'Process record stage updated successfully.',
+                $description,
                 $processRecord->id,
                 $oldValue,
                 $newValue,
