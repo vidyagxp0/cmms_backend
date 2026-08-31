@@ -133,18 +133,19 @@ class UserAuditService
             if ($search !== '') {
                 $searchLower = strtolower($search);
 
-                $auditRows = array_values(
-                    array_filter($auditRows, function ($row) use ($searchLower) {
-                        $module = strtolower((string) ($row['module'] ?? ''));
-                        $fieldName = strtolower((string) ($row['field_name'] ?? ''));
-                        $responsiblePerson = strtolower((string) ($row['responsible_person'] ?? $row['user_name'] ?? ''));
+                $auditRows = array_values(array_filter(
+                    $auditRows,
+                    function ($row) use ($searchLower) {
 
-                        return
-                            str_contains($module, $searchLower)
-                            || str_contains($fieldName, $searchLower)
-                            || str_contains($responsiblePerson, $searchLower);
-                    })
-                );
+                        return str_contains(
+                            strtolower((string) ($row['module'] ?? '')),
+                            $searchLower
+                        ) || str_contains(
+                            strtolower((string) ($row['responsible_person'] ?? '')),
+                            $searchLower
+                        );
+                    }
+                ));
             }
 
             usort($auditRows, function ($a, $b) {
@@ -289,7 +290,7 @@ class UserAuditService
             $keys = array_unique(array_merge(array_keys($oldRow), array_keys($newRow)));
 
             foreach ($keys as $key) {
-                if (in_array(strtolower($key), ['id', 'row_id', 'grid_record_id', 'process_record_id', 'created_at', 'updated_at'])) {
+                if (in_array(strtolower($key), ['id', 'row_id', '_rowId', 'grid_record_id', 'process_record_id', 'created_at', 'updated_at'])) {
                     continue;
                 }
 
@@ -406,33 +407,42 @@ class UserAuditService
         ];
     }
 
-    private static function flattenProcessRecordData($value)
-    {
-        if (!is_array($value)) {
-            return [];
-        }
+private static function flattenProcessRecordData($value)
+{
+    if (!is_array($value)) {
+        return [];
+    }
 
-        $result = [];
+    $result = [];
 
-        foreach ($value as $key => $item) {
-            // Unnest process_data
-            if ($key === 'process_data' && is_array($item)) {
-                foreach ($item as $processKey => $processValue) {
-                    if (!self::isEmptyValue($processValue)) {
-                        $result[$processKey] = $processValue;
-                    }
+    foreach ($value as $key => $item) {
+
+        if ($key === 'process_data' && is_array($item)) {
+
+            foreach ($item as $field) {
+
+                if (!is_array($field)) {
+                    continue;
                 }
 
-                continue;
+                $fieldKey = $field['key'] ?? null;
+                $fieldValue = $field['value'] ?? null;
+
+                if ($fieldKey && !self::isEmptyValue($fieldValue)) {
+                    $result[$fieldKey] = $fieldValue;
+                }
             }
 
-            if (!self::isEmptyValue($item)) {
-                $result[$key] = $item;
-            }
+            continue;
         }
 
-        return self::removeEmptyValues($result);
+        if (!self::isEmptyValue($item)) {
+            $result[$key] = $item;
+        }
     }
+
+    return $result;
+}
 
     private static function extractGridRows($value)
     {
