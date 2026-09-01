@@ -62,4 +62,17 @@ class EquipmentMasterController extends Controller
             ], 500);
         }
     }
+
+
+    public function getAllEquipments()
+    {
+        try {
+            return EquipmentMasterService::getAllEquipments();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve equipment.',
+            ], 500);
+        }
+    }
 }

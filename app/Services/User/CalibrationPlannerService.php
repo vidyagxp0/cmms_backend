@@ -3,6 +3,7 @@
 namespace App\Services\User;
 
 use App\Helpers\ResponseHelper;
+use App\Services\User\ProcessRecordService;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
 use App\Helpers\UserAuditHelper;
@@ -36,6 +37,15 @@ class CalibrationPlannerService
                 );
             }
 
+            $recordNumber = ProcessRecordService::getGeneratedRecordNumber($request->process_id);
+
+            $processData = $request->process_data;
+            if (is_array($processData)) {
+                $processData['record_number'] = $recordNumber;
+            } else {
+                $processData = ['record_number' => $recordNumber];
+            }
+
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,
                 'stage_id' => $request->stage_id,
@@ -43,7 +53,7 @@ class CalibrationPlannerService
                 'initiator_id' => $request->initiator_id,
                 'short_description' => $request->short_description,
                 'initiation_date' => $request->initiation_date,
-                'process_data' => $request->process_data,
+                'process_data' => $processData,
             ]);
 
             /* Store grid data */
