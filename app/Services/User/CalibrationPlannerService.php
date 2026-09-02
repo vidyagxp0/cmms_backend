@@ -31,19 +31,42 @@ class CalibrationPlannerService
 
             if (!$stageExists) {
                 DB::rollBack();
+
                 return ResponseHelper::error(
                     'Selected stage does not belong to the selected process.',
                     422
                 );
             }
 
-            $recordNumber = ProcessRecordService::getGeneratedRecordNumber($request->process_id);
+            $recordNumber = ProcessRecordService::getGeneratedRecordNumber(
+                $request->process_id
+            );
 
-            $processData = $request->process_data;
-            if (is_array($processData)) {
-                $processData['record_number'] = $recordNumber;
-            } else {
-                $processData = ['record_number' => $recordNumber];
+            $processData = is_array($request->process_data)
+                ? $request->process_data
+                : [];
+
+            $recordNumberFound = false;
+
+            foreach ($processData as &$field) {
+                if (
+                    is_array($field) &&
+                    ($field['key'] ?? null) === 'recordNumber'
+                ) {
+                    $field['value'] = $recordNumber;
+                    $recordNumberFound = true;
+                    break;
+                }
+            }
+
+            unset($field);
+
+            if (!$recordNumberFound) {
+                $processData[] = [
+                    'key' => 'recordNumber',
+                    'label' => 'Record Number',
+                    'value' => $recordNumber,
+                ];
             }
 
             $processRecord = ProcessRecord::create([
@@ -57,10 +80,14 @@ class CalibrationPlannerService
             ]);
 
             /* Store grid data */
-            if ($request->has('gridData') && is_array($request->gridData) && !empty($request->gridData)) {
-
+            if (
+                $request->has('gridData') &&
+                is_array($request->gridData) &&
+                !empty($request->gridData)
+            ) {
                 $gridData = array_map(function ($row) {
                     unset($row['_rowId'], $row['row_id']);
+
                     return $row;
                 }, $request->gridData);
 
@@ -86,13 +113,7 @@ class CalibrationPlannerService
 
             /* Process record audit */
             $newValue = [
-                'process_id' => $processRecord->process_id,
-                'stage_id' => $processRecord->stage_id,
-                'department_id' => $processRecord->department_id,
-                'initiator_id' => $processRecord->initiator_id,
-                'short_description' => $processRecord->short_description,
-                'initiation_date' => $processRecord->initiation_date,
-                'process_data' => $processRecord->process_data,
+                'process_data' => $processData,
             ];
 
             UserAuditHelper::log(
@@ -121,6 +142,7 @@ class CalibrationPlannerService
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return ResponseHelper::error(
                 'Failed to create process record.',
                 500
@@ -154,25 +176,30 @@ class CalibrationPlannerService
     }
 
     /* update process record */
-    public static function updateCalibrationPlannerRecord(Request $request, $id)
-    {
+    public static function updateCalibrationPlannerRecord(
+        Request $request,
+        $id
+    ) {
         DB::beginTransaction();
 
         try {
             $processRecord = ProcessRecord::findOrFail($id);
 
-            $processId = $request->has('process_id') ? $request->process_id : $processRecord->process_id;
-            $stageId = $request->has('stage_id') ? $request->stage_id : $processRecord->stage_id;
+            $processId = $request->has('process_id')
+                ? $request->process_id
+                : $processRecord->process_id;
 
-            /* check stage belongs to selected process */
+            $stageId = $processRecord->stage_id;
+
             $stageExists = Stage::where('id', $stageId)
                 ->where('process_id', $processId)
                 ->exists();
 
             if (!$stageExists) {
                 DB::rollBack();
+
                 return ResponseHelper::error(
-                    'Selected stage does not belong to the selected process.',
+                    'Current stage does not belong to the selected process.',
                     422
                 );
             }
@@ -181,14 +208,90 @@ class CalibrationPlannerService
             $newValue = [];
             $updateData = [];
 
-            /* short description */
+            $requestProcessData = is_array($request->process_data)
+                ? $request->process_data
+                : [];
+
+            $hasShortDescriptionInProcessData =
+                self::processDataHasKey(
+                    $requestProcessData,
+                    'short_description'
+                );
+
+            $scalarFieldsMap = [
+                'process_id' => [
+                    'key' => 'process_id',
+                    'label' => 'Process',
+                    'resolver' => fn($value) =>
+                        \App\Models\Process::where('id', $value)->value('name'),
+                ],
+
+                'department_id' => [
+                    'key' => 'department_id',
+                    'label' => 'Department',
+                    'resolver' => fn($value) =>
+                        \App\Models\Department::where('id', $value)->value('name'),
+                ],
+
+                'initiator_id' => [
+                    'key' => 'initiator_id',
+                    'label' => 'Initiator',
+                    'resolver' => fn($value) =>
+                        User::where('id', $value)->value('name'),
+                ],
+            ];
+
+            foreach ($scalarFieldsMap as $field => $meta) {
+                if (!$request->has($field)) {
+                    continue;
+                }
+
+                $oldFieldValue = $processRecord->{$field};
+                $newFieldValue = $request->{$field};
+
+                if ($oldFieldValue == $newFieldValue) {
+                    continue;
+                }
+
+                $oldValue['process_data'][] = [
+                    'key' => $meta['key'],
+                    'label' => $meta['label'],
+                    'value' => $oldFieldValue
+                        ? $meta['resolver']($oldFieldValue)
+                        : null,
+                ];
+
+                $newValue['process_data'][] = [
+                    'key' => $meta['key'],
+                    'label' => $meta['label'],
+                    'value' => $newFieldValue
+                        ? $meta['resolver']($newFieldValue)
+                        : null,
+                ];
+
+                $updateData[$field] = $newFieldValue;
+            }
+
             if (
                 $request->has('short_description') &&
                 $request->short_description != $processRecord->short_description
             ) {
-                $oldValue['short_description'] = $processRecord->short_description;
-                $newValue['short_description'] = $request->short_description;
-                $updateData['short_description'] = $request->short_description;
+                $updateData['short_description'] =
+                    $request->short_description;
+
+                if (!$hasShortDescriptionInProcessData) {
+                    $oldValue['process_data'][] = [
+                        'key' => 'short_description',
+                        'label' => 'Short Description',
+                        'value' => $processRecord->short_description,
+                    ];
+
+                    $newValue['process_data'][] = [
+                        'key' => 'short_description',
+                        'label' => 'Short Description',
+                        'value' => $request->short_description,
+                    ];
+                }
             }
 
             /* process data */
@@ -196,18 +299,27 @@ class CalibrationPlannerService
                 $oldProcessData = is_array($processRecord->process_data)
                     ? $processRecord->process_data
                     : [];
-                $newProcessData = is_array($request->process_data)
-                    ? $request->process_data
-                    : [];
 
-                [$processOldChanges, $processNewChanges] = self::getProcessDataChanges(
-                    $oldProcessData,
-                    $newProcessData
-                );
+                $newProcessData = $requestProcessData;
+
+                [$processOldChanges, $processNewChanges] =
+                    self::getProcessDataChanges(
+                        $oldProcessData,
+                        $newProcessData
+                    );
+
+                if (!empty($processOldChanges)) {
+                    $oldValue['process_data'] = array_merge(
+                        $oldValue['process_data'] ?? [],
+                        $processOldChanges
+                    );
+                }
 
                 if (!empty($processNewChanges)) {
-                    $oldValue['process_data'] = $processOldChanges;
-                    $newValue['process_data'] = $processNewChanges;
+                    $newValue['process_data'] = array_merge(
+                        $newValue['process_data'] ?? [],
+                        $processNewChanges
+                    );
                 }
 
                 if ($oldProcessData != $newProcessData) {
@@ -215,57 +327,57 @@ class CalibrationPlannerService
                 }
             }
 
-            /* update process record */
             if (!empty($updateData)) {
                 $processRecord->update($updateData);
             }
 
-            /* process record audit */
-            if (!empty($newValue)) {
+            if (!empty($newValue) || !empty($oldValue)) {
                 UserAuditHelper::log(
                     'Process Record',
                     'Updated',
                     'Process record updated successfully.',
                     $processRecord->id,
-                    $oldValue,
-                    $newValue,
+                    !empty($oldValue) ? $oldValue : null,
+                    !empty($newValue) ? $newValue : null,
                     ProcessRecord::class
                 );
             }
 
             /* grid data */
             if ($request->has('gridData')) {
-
                 $gridData = is_array($request->gridData)
-                    ? array_map(function ($row) {
-                        unset($row['_rowId'], $row['row_id']);
-                        return $row;
-                    }, $request->gridData)
+                    ? $request->gridData
                     : [];
+
+                $gridData = array_map(function ($row) {
+                    unset(
+                        $row['_rowId'],
+                        $row['row_id']
+                    );
+
+                    return $row;
+                }, $gridData);
 
                 $gridRecord = GridRecord::where(
                     'process_record_id',
                     $processRecord->id
                 )->first();
 
-                /* existing grid */
                 if ($gridRecord) {
-
                     $oldGridData = is_array($gridRecord->grid_data)
                         ? $gridRecord->grid_data
                         : [];
 
-                    $oldGridData = array_map(function ($row) {
-                        unset($row['_rowId'], $row['row_id']);
-                        return $row;
-                    }, $oldGridData);
+                    [$gridOldChanges, $gridNewChanges] =
+                        self::getGridDataChanges(
+                            $oldGridData,
+                            $gridData
+                        );
 
-                    [$gridOldChanges, $gridNewChanges] = self::getGridDataChanges(
-                        $oldGridData,
-                        $gridData
-                    );
-
-                    if (!empty($gridNewChanges)) {
+                    if (
+                        !empty($gridOldChanges) ||
+                        !empty($gridNewChanges)
+                    ) {
                         UserAuditHelper::log(
                             'Grid Record',
                             'Updated',
@@ -288,10 +400,7 @@ class CalibrationPlannerService
                             'grid_data' => $gridData,
                         ]);
                     }
-
                 } elseif (!empty($gridData)) {
-
-                    /* create grid if it does not exist */
                     $gridRecord = GridRecord::create([
                         'process_record_id' => $processRecord->id,
                         'grid_data' => $gridData,
@@ -328,9 +437,12 @@ class CalibrationPlannerService
         } catch (\Exception $e) {
             DB::rollBack();
 
-            info('Error in CalibrationPlannerService@updateCalibrationPlannerRecord', [
-                'error' => $e->getMessage(),
-            ]);
+            info(
+                'Error in CalibrationPlannerService@updateCalibrationPlannerRecord',
+                [
+                    'error' => $e->getMessage(),
+                ]
+            );
 
             return ResponseHelper::error(
                 'Failed to update process record.',
@@ -339,9 +451,408 @@ class CalibrationPlannerService
         }
     }
 
-    /* move process record stage */
-    public static function moveStage(RecordActivityRequest $request, $id)
+    private static function processDataHasKey(
+        array $processData,
+        string $key
+    ): bool {
+        foreach ($processData as $field) {
+            if (
+                is_array($field) &&
+                ($field['key'] ?? null) === $key
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /* process data diff */
+    private static function getProcessDataChanges(
+        array $oldData,
+        array $newData
+    ): array {
+        $old = [];
+        $new = [];
+
+        $oldFields = self::indexProcessData($oldData);
+        $newFields = self::indexProcessData($newData);
+
+        foreach (
+            array_unique(
+                array_merge(
+                    array_keys($oldFields),
+                    array_keys($newFields)
+                )
+            ) as $key
+        ) {
+            $oldItem = $oldFields[$key] ?? null;
+            $newItem = $newFields[$key] ?? null;
+
+            $oldVal = self::extractProcessFieldValue(
+                $oldItem['value'] ?? null
+            );
+
+            $newVal = self::extractProcessFieldValue(
+                $newItem['value'] ?? null
+            );
+
+            if (self::processValuesAreSame($oldVal, $newVal)) {
+                continue;
+            }
+
+            $old[] = [
+                'key' => $oldItem['key'] ?? $key,
+                'label' => $oldItem['label']
+                    ?? $newItem['label']
+                    ?? $key,
+                'value' => $oldVal,
+            ];
+
+            $new[] = [
+                'key' => $newItem['key'] ?? $key,
+                'label' => $newItem['label']
+                    ?? $oldItem['label']
+                    ?? $key,
+                'value' => $newVal,
+            ];
+        }
+
+        return [$old, $new];
+    }
+
+    /* unwrap process field values */
+    private static function extractProcessFieldValue($value)
     {
+        if (is_object($value)) {
+            $value = method_exists($value, 'toArray')
+                ? $value->toArray()
+                : (array) $value;
+        }
+
+        if (is_array($value) && isset($value['name'])) {
+            return $value['name'];
+        }
+
+        if (is_array($value) && empty($value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /* compare process values */
+    private static function processValuesAreSame($old, $new): bool
+    {
+        $oldEmpty = $old === null || $old === '' || $old === [];
+        $newEmpty = $new === null || $new === '' || $new === [];
+
+        if ($oldEmpty && $newEmpty) {
+            return true;
+        }
+
+        return $old == $new;
+    }
+
+    /* index process data by key */
+    private static function indexProcessData(array $data): array
+    {
+        $result = [];
+
+        foreach ($data as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $key = $item['key'] ?? null;
+
+            if ($key) {
+                $result[$key] = $item;
+            }
+        }
+
+        return $result;
+    }
+
+    /* grid data diff */
+    private static function getGridDataChanges(
+        array $oldData,
+        array $newData
+    ): array {
+        $oldChanges = [];
+        $newChanges = [];
+
+        $oldRows = [];
+        $newRows = [];
+
+        foreach ($oldData as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $oldRows[] = self::removeGridTechnicalFields($row);
+        }
+
+        foreach ($newData as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $newRows[] = self::removeGridTechnicalFields($row);
+        }
+
+        $maxRows = max(
+            count($oldRows),
+            count($newRows)
+        );
+
+        for ($index = 0; $index < $maxRows; $index++) {
+            $rowNumber = $index + 1;
+
+            $oldRow = $oldRows[$index] ?? null;
+            $newRow = $newRows[$index] ?? null;
+
+            if ($oldRow === null && $newRow !== null) {
+                if (!empty($newRow)) {
+                    $newChanges[] = [
+                        'row' => $rowNumber,
+                        'fields' => self::convertGridRowToAuditFields(
+                            $newRow
+                        ),
+                    ];
+                }
+
+                continue;
+            }
+
+            if ($oldRow !== null && $newRow === null) {
+                if (!empty($oldRow)) {
+                    $oldChanges[] = [
+                        'row' => $rowNumber,
+                        'fields' => self::convertGridRowToAuditFields(
+                            $oldRow
+                        ),
+                    ];
+                }
+
+                continue;
+            }
+
+            $columns = array_unique(
+                array_merge(
+                    array_keys($oldRow),
+                    array_keys($newRow)
+                )
+            );
+
+            $oldChangedFields = [];
+            $newChangedFields = [];
+
+            foreach ($columns as $column) {
+                $oldColumn = self::extractGridColumnValue(
+                    $oldRow[$column] ?? null
+                );
+
+                $newColumn = self::extractGridColumnValue(
+                    $newRow[$column] ?? null
+                );
+
+                if (
+                    self::processValuesAreSame(
+                        $oldColumn,
+                        $newColumn
+                    )
+                ) {
+                    continue;
+                }
+
+                $label = self::getGridColumnLabel(
+                    $oldRow[$column] ?? null,
+                    $newRow[$column] ?? null,
+                    $column
+                );
+
+                $oldChangedFields[] = [
+                    'key' => $column,
+                    'label' => $label,
+                    'value' => $oldColumn,
+                ];
+
+                $newChangedFields[] = [
+                    'key' => $column,
+                    'label' => $label,
+                    'value' => $newColumn,
+                ];
+            }
+
+            if (
+                !empty($oldChangedFields) ||
+                !empty($newChangedFields)
+            ) {
+                $oldChanges[] = [
+                    'row' => $rowNumber,
+                    'fields' => $oldChangedFields,
+                ];
+
+                $newChanges[] = [
+                    'row' => $rowNumber,
+                    'fields' => $newChangedFields,
+                ];
+            }
+        }
+
+        return [$oldChanges, $newChanges];
+    }
+
+    private static function convertGridRowToAuditFields(
+        array $row
+    ): array {
+        $fields = [];
+
+        foreach ($row as $key => $column) {
+            $value = self::extractGridColumnValue($column);
+
+            if (self::processValuesAreSame(null, $value)) {
+                continue;
+            }
+
+            $fields[] = [
+                'key' => $key,
+                'label' => self::getGridColumnLabel(
+                    $column,
+                    null,
+                    $key
+                ),
+                'value' => $value,
+            ];
+        }
+
+        return $fields;
+    }
+
+    private static function getGridColumnLabel(
+        $oldColumn,
+        $newColumn,
+        $fallback
+    ): string {
+        if (
+            is_array($newColumn) &&
+            isset($newColumn['label'])
+        ) {
+            return $newColumn['label'];
+        }
+
+        if (
+            is_array($oldColumn) &&
+            isset($oldColumn['label'])
+        ) {
+            return $oldColumn['label'];
+        }
+
+        return self::formatFieldLabel($fallback);
+    }
+
+
+    /* unwrap grid column value */
+    private static function extractGridColumnValue($value)
+    {
+        if (
+            is_array($value) &&
+            array_key_exists('value', $value) &&
+            array_key_exists('label', $value)
+        ) {
+            return $value['value'];
+        }
+
+        if (is_array($value) && isset($value['name'])) {
+            return $value['name'];
+        }
+
+        return $value;
+    }
+
+    private static function removeGridTechnicalFields(array $row): array
+    {
+        foreach (
+            [
+                'id',
+                '_rowId',
+                'row_id',
+                'grid_record_id',
+                'process_record_id',
+                'created_at',
+                'updated_at',
+            ] as $field
+        ) {
+            unset($row[$field]);
+        }
+
+        return $row;
+    }
+
+    private static function formatFieldLabel($key)
+    {
+        $key = str_replace(
+            ['_', '-'],
+            ' ',
+            (string) $key
+        );
+
+        $key = str_replace(
+            '/',
+            ' / ',
+            $key
+        );
+
+        return ucwords(
+            strtolower(
+                trim($key)
+            )
+        );
+    }
+
+    /* compare grid values */
+    private static function gridValuesAreSame($old, $new): bool
+    {
+        if (is_object($old)) {
+            $old = method_exists($old, 'toArray')
+                ? $old->toArray()
+                : (array) $old;
+        }
+
+        if (is_object($new)) {
+            $new = method_exists($new, 'toArray')
+                ? $new->toArray()
+                : (array) $new;
+        }
+
+        return $old === $new || $old == $new;
+    }
+
+    private static function indexGridRow(array $row): array
+    {
+        $result = [];
+
+        foreach ($row as $key => $column) {
+            if (!is_array($column)) {
+                continue;
+            }
+
+            if (!isset($column['label'])) {
+                continue;
+            }
+
+            $result[$key] = $column;
+        }
+
+        return $result;
+    }
+
+    /* move process record stage */
+    public static function moveStage(
+        RecordActivityRequest $request,
+        $id
+    ) {
         DB::beginTransaction();
 
         try {
@@ -364,6 +875,7 @@ class CalibrationPlannerService
 
             if (!$activity) {
                 DB::rollBack();
+
                 return ResponseHelper::error(
                     'Selected activity is not available for the current stage.',
                     422
@@ -371,8 +883,13 @@ class CalibrationPlannerService
             }
 
             /* make sure activity belongs to current process */
-            if (!$activity->fromStage || $activity->fromStage->process_id != $processRecord->process_id) {
+            if (
+                !$activity->fromStage ||
+                $activity->fromStage->process_id !=
+                $processRecord->process_id
+            ) {
                 DB::rollBack();
+
                 return ResponseHelper::error(
                     'Selected activity does not belong to this process.',
                     422
@@ -380,8 +897,13 @@ class CalibrationPlannerService
             }
 
             /* make sure stage belongs to current process */
-            if (!$activity->toStage || $activity->toStage->process_id != $processRecord->process_id) {
+            if (
+                !$activity->toStage ||
+                $activity->toStage->process_id !=
+                $processRecord->process_id
+            ) {
                 DB::rollBack();
+
                 return ResponseHelper::error(
                     'Invalid target stage for this process.',
                     422
@@ -397,7 +919,10 @@ class CalibrationPlannerService
             if (
                 !$user ||
                 $user->email !== $request->email ||
-                !Hash::check($request->password, $user->password)
+                !Hash::check(
+                    $request->password,
+                    $user->password
+                )
             ) {
                 DB::rollBack();
 
@@ -469,6 +994,7 @@ class CalibrationPlannerService
             );
         } catch (\Exception $e) {
             DB::rollBack();
+
             return ResponseHelper::error(
                 $e->getMessage(),
                 500
@@ -476,189 +1002,10 @@ class CalibrationPlannerService
         }
     }
 
-    private static function getProcessDataChanges(array $oldData, array $newData): array
-    {
-        $oldMap = [];
-        $newMap = [];
-
-        foreach ($oldData as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-            $key = $item['key'] ?? $item['label'] ?? null;
-            if ($key !== null) {
-                $oldMap[$key] = $item;
-            }
-        }
-
-        foreach ($newData as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-            $key = $item['key'] ?? $item['label'] ?? null;
-            if ($key !== null) {
-                $newMap[$key] = $item;
-            }
-        }
-
-        $oldChanges = [];
-        $newChanges = [];
-
-        $allKeys = array_unique(
-            array_merge(
-                array_keys($oldMap),
-                array_keys($newMap)
-            )
-        );
-
-        foreach ($allKeys as $key) {
-            $oldItem = $oldMap[$key] ?? null;
-            $newItem = $newMap[$key] ?? null;
-
-            $oldValue = $oldItem['value'] ?? null;
-            $newValue = $newItem['value'] ?? null;
-
-            if ($oldValue == $newValue) {
-                continue;
-            }
-
-            $label = $newItem['label']
-                ?? $oldItem['label']
-                ?? $key;
-
-            $oldChanges[] = [
-                'key' => $key,
-                'label' => $label,
-                'value' => $oldValue,
-            ];
-
-            $newChanges[] = [
-                'key' => $key,
-                'label' => $label,
-                'value' => $newValue,
-            ];
-        }
-
-        return [$oldChanges, $newChanges];
-    }
-
-    private static function getGridDataChanges(array $oldData, array $newData): array
-    {
-        $oldRows = [];
-        $newRows = [];
-
-        foreach ($oldData as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-            $rowId = $row['row_id'] ?? null;
-            if ($rowId !== null) {
-                $oldRows[$rowId] = $row;
-            }
-        }
-
-        foreach ($newData as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-            $rowId = $row['row_id'] ?? null;
-            if ($rowId !== null) {
-                $newRows[$rowId] = $row;
-            }
-        }
-
-        $oldChanges = [];
-        $newChanges = [];
-
-        $allRows = array_unique(
-            array_merge(
-                array_keys($oldRows),
-                array_keys($newRows)
-            )
-        );
-
-        foreach ($allRows as $rowId) {
-            $oldRow = $oldRows[$rowId] ?? null;
-            $newRow = $newRows[$rowId] ?? null;
-
-            /* newly added row */
-            if ($oldRow === null && $newRow !== null) {
-                $cleanNewRow = [];
-                foreach ($newRow as $column => $value) {
-                    if ($column === 'row_id') {
-                        continue;
-                    }
-                    $cleanNewRow[$column] = $value;
-                }
-
-                if (!empty($cleanNewRow)) {
-                    $cleanNewRow['row_id'] = $rowId;
-                    $newChanges[] = $cleanNewRow;
-                }
-                continue;
-            }
-
-            /* deleted row */
-            if ($oldRow !== null && $newRow === null) {
-                $cleanOldRow = [];
-                foreach ($oldRow as $column => $value) {
-                    if ($column === 'row_id') {
-                        continue;
-                    }
-                    $cleanOldRow[$column] = $value;
-                }
-
-                if (!empty($cleanOldRow)) {
-                    $cleanOldRow['row_id'] = $rowId;
-                    $oldChanges[] = $cleanOldRow;
-                }
-                continue;
-            }
-
-            /* compare columns */
-            $columns = array_unique(
-                array_merge(
-                    array_keys($oldRow),
-                    array_keys($newRow)
-                )
-            );
-
-            $oldChangedRow = [];
-            $newChangedRow = [];
-
-            foreach ($columns as $column) {
-                if ($column === 'row_id') {
-                    continue;
-                }
-
-                $oldValue = $oldRow[$column] ?? null;
-                $newValue = $newRow[$column] ?? null;
-
-                if ($oldValue == $newValue) {
-                    continue;
-                }
-
-                $oldChangedRow[$column] = $oldValue;
-                $newChangedRow[$column] = $newValue;
-            }
-
-            if (!empty($oldChangedRow) || !empty($newChangedRow)) {
-                $oldChangedRow['row_id'] = $rowId;
-                $newChangedRow['row_id'] = $rowId;
-
-                $oldChanges[] = $oldChangedRow;
-                $newChanges[] = $newChangedRow;
-            }
-        }
-
-        return [$oldChanges, $newChanges];
-    }
-
     /* get user permissions */
     public static function checkRecordPermission($id)
     {
         try {
-
             /* logged in user */
             $user = Auth::user();
 
@@ -715,7 +1062,6 @@ class CalibrationPlannerService
                 ],
                 'Record permission checked successfully.'
             );
-
         } catch (\Exception $e) {
             return ResponseHelper::error(
                 $e->getMessage(),
