@@ -17,6 +17,7 @@ use App\Http\Controllers\User\ProcessConfigController;
 use App\Http\Controllers\User\ProcessRecordController;
 use App\Http\Controllers\User\EquipmentMasterController;
 use App\Http\Controllers\User\CalibrationPlannerController;
+use App\Http\Controllers\User\CalibrationManagementController;
 use App\Http\Controllers\User\UserAuditController;
 
 /* common routes for user/admin */
@@ -88,16 +89,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/calibration-planner-singleReport/{id}', [CalibrationPlannerController::class, 'calibrationSingleReport'])->name('calibration-planner-singleReport');
         Route::get('/calibration-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('calibration-audit-listing');
 
+        /* calibration management routes */
+        Route::post('/store-calibration-management-record', [CalibrationManagementController::class, 'store'])->name('store-calibration-management-record');
+        Route::get('/show-calibration-management-record/{id}', [CalibrationManagementController::class, 'show'])->name('show-calibration-management-record');
+        Route::put('/update-calibration-management-record/{id}', [CalibrationManagementController::class, 'update'])->name('update-calibration-management-record');
+        Route::post('/calibrationManagement-record-stage/{id}',[CalibrationManagementController::class, 'moveStage'])->name('calibrationManagement-record-stage');
+
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
         Route::get('/generate-record-number/{processId}', [ProcessRecordController::class, 'generateRecordNumber'])->name('generate-record-number');
+        Route::get('/user-record-permission/{recordId}',[ProcessRecordController::class, 'checkRecordPermission'])->name('user-record-permission');
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
         Route::get('/user-activity-history/{recordId}',[RecordActivityController::class, 'index'])->name('user-activity-history');
-
-        /* user record permission routes */
-        Route::get('/user-record-permission/{recordId}',[CalibrationPlannerController::class, 'checkRecordPermission'])->name('user-record-permission');
 
         /* equipment master routes */
         Route::get('/all-equipment-masters', [EquipmentMasterController::class, 'getAllEquipments'])->name('all-equipment-masters');

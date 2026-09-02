@@ -17,10 +17,10 @@ use App\Models\GridRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class CalibrationPlannerService
+class CalibrationManagementService
 {
     /* store process record */
-    public static function storeCalibrationProcessData(Request $request)
+    public static function storeCalibrationManagementData(Request $request)
     {
         DB::beginTransaction();
 
@@ -71,6 +71,8 @@ class CalibrationPlannerService
 
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,
+                'is_child' => true,
+                'parent_id' => $request->parent_id,
                 'stage_id' => $request->stage_id,
                 'department_id' => $request->department_id,
                 'initiator_id' => $request->initiator_id,
@@ -151,7 +153,7 @@ class CalibrationPlannerService
     }
 
     /* get process record details */
-    public static function getCalibrationPlannerRecord($id)
+    public static function getCalibrationManagementRecord($id)
     {
         try {
             $processRecord = ProcessRecord::with([
@@ -176,7 +178,7 @@ class CalibrationPlannerService
     }
 
     /* update process record */
-    public static function updateCalibrationPlannerRecord(
+    public static function updateCalibrationManagementRecord(
         Request $request,
         $id
     ) {
@@ -438,7 +440,7 @@ class CalibrationPlannerService
             DB::rollBack();
 
             info(
-                'Error in CalibrationPlannerService@updateCalibrationPlannerRecord',
+                'Error in CalibrationManagementService@updateCalibrationManagementRecord',
                 [
                     'error' => $e->getMessage(),
                 ]

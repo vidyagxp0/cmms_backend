@@ -5,17 +5,17 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
-use App\Services\User\CalibrationPlannerService;
+use App\Services\User\CalibrationManagementService;
 use App\Services\UserReport\CalibrationReportService;
 use Illuminate\Http\Request;
 
-class CalibrationPlannerController extends Controller
+class CalibrationManagementController extends Controller
 {
     /* store process record */
     public function store(Request $request)
     {
         try {
-            return CalibrationPlannerService::storeCalibrationProcessData($request);
+            return CalibrationManagementService::storeCalibrationManagementData($request);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -28,7 +28,7 @@ class CalibrationPlannerController extends Controller
     public function show($id)
     {
         try {
-            return CalibrationPlannerService::getCalibrationPlannerRecord($id);
+            return CalibrationManagementService::getCalibrationManagementRecord($id);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -41,7 +41,7 @@ class CalibrationPlannerController extends Controller
     public function update(Request $request,$id) 
     {
         try {
-            return CalibrationPlannerService::updateCalibrationPlannerRecord(
+            return CalibrationManagementService::updateCalibrationManagementRecord(
                 $request,
                 $id
             );
@@ -57,7 +57,7 @@ class CalibrationPlannerController extends Controller
     public function moveStage(RecordActivityRequest $request, $id) 
     {
         try {
-            return CalibrationPlannerService::moveStage(
+            return CalibrationManagementService::moveStage(
                 $request,
                 $id
             );
@@ -70,17 +70,17 @@ class CalibrationPlannerController extends Controller
     }
 
     /* calibration single report */
-    public function calibrationSingleReport($id) 
-    {
-        try {
-            return CalibrationReportService::generateReport(
-                $id
-            );
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load report.',
-            ], 500);
-        }
-    }
+    // public function calibrationManagementSingleReport($id) 
+    // {
+    //     try {
+    //         return CalibrationReportService::generateCalibrationManagementReport(
+    //             $id
+    //         );
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to load report.',
+    //         ], 500);
+    //     }
+    // }
 }

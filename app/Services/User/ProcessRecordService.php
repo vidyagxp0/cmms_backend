@@ -6,6 +6,7 @@ use App\Helpers\ResponseHelper;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Models\Process;
 use App\Models\ProcessRecord;
+use Auth;
 use Illuminate\Http\Request;
 
 class ProcessRecordService
@@ -128,6 +129,98 @@ class ProcessRecordService
         } catch (\Exception $e) {
             return ResponseHelper::error(
                 'Failed to generate record number.',
+                500
+            );
+        }
+    }
+
+    /* user record permissions function */
+    public static function checkRecordPermission($id)
+    {
+        try {
+            /* logged in user */
+            $user = Auth::user();
+
+            if (!$user) {
+                return ResponseHelper::error(
+                    'Unauthenticated.',
+                    401
+                );
+            }
+
+            /* get record with current stage */
+            $record = ProcessRecord::with([
+                'stage',
+                'process',
+            ])->findOrFail($id);
+
+            /* get user roles */
+            $roles = $user->roles()
+                ->pluck('name')
+                ->toArray();
+
+            /* process wise stage allowed */
+            $stageRoles = [
+
+                /* Calibration Planner - Process ID 1 */
+                1 => [
+                    'Opened' => 'Initiator',
+                    'Pending HOD/Designee Review' => 'HOD/Designee',
+                    'Pending QA Review' => 'QA Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
+                /* Calibration Management - Process ID 5 */
+                5 => [
+                    'Opened' => 'Initiator',
+                    'Calibration In Progress' => 'HOD',
+                    'Pending Out of Actions' => 'QA Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+            ];
+
+            $processId = $record->process_id;
+            $stageName = $record->stage?->name;
+
+            /* get stage => role mapping for current process */
+            $currentProcessStageRoles = $stageRoles[$processId] ?? [];
+
+            /* get allowed role for current stage */
+            $allowedRole = $currentProcessStageRoles[$stageName] ?? null;
+
+            /* check permission */
+            $canPerformAction = $allowedRole
+                ? in_array($allowedRole, $roles)
+                : false;
+
+            return ResponseHelper::success(
+                [
+                    'record_id' => $record->id,
+
+                    'process' => [
+                        'id' => $record->process?->id,
+                        'name' => $record->process?->name,
+                    ],
+                    'stage' => [
+                        'id' => $record->stage?->id,
+                        'name' => $stageName,
+                    ],
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'roles' => $roles,
+                    ],
+                    'permission' => [
+                        'allowed_role' => $allowedRole,
+                        'can_perform_action' => $canPerformAction,
+                    ],
+                ],
+                'Record permission checked successfully.'
+            );
+
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                $e->getMessage(),
                 500
             );
         }

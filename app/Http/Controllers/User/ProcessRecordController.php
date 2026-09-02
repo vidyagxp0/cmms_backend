@@ -35,4 +35,19 @@ class ProcessRecordController extends Controller
         }
     }
 
+    /* user permission */
+    public function checkRecordPermission($id) 
+    {
+        try {
+            return ProcessRecordService::checkRecordPermission(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
+
 }

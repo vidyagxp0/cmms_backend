@@ -14,6 +14,8 @@ class ProcessRecord extends Model
         'short_description',
         'initiation_date',
         'process_data',
+        'parent_id',
+        'is_child',
     ];
 
     protected function casts(): array
