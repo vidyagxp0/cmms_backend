@@ -16,8 +16,8 @@ class StageSeeder extends Seeder
 
             'Calibration Planner' => [
                 'Opened',
-                'Pending HOD/Designee Review',
-                'Pending QA Review',
+                'Reviewed By HOD/Designee (Engineering)',
+                'Reviewed By User Department',
                 'Pending QA Approval',
                 'Closed - Done',
                 'Close - Cancelled',
@@ -43,9 +43,8 @@ class StageSeeder extends Seeder
 
             'Calibration Management' => [
                 'Opened',
-                'Calibration In Progress',
-                'Pending Out of Actions',
-                'Pending QA Approval',
+                'Reviewed By HOD/Designee',
+                'Verified By QA',
                 'Closed - Done',
                 'Close - Cancelled',
             ],

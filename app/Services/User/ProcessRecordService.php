@@ -165,17 +165,16 @@ class ProcessRecordService
                 /* Calibration Planner - Process ID 1 */
                 1 => [
                     'Opened' => 'Initiator',
-                    'Pending HOD/Designee Review' => 'HOD/Designee',
-                    'Pending QA Review' => 'QA Reviewer',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Reviewed By User Department' => 'User Department Role',
                     'Pending QA Approval' => 'QA Approver',
                 ],
 
                 /* Calibration Management - Process ID 5 */
                 5 => [
                     'Opened' => 'Initiator',
-                    'Calibration In Progress' => 'HOD',
-                    'Pending Out of Actions' => 'QA Reviewer',
-                    'Pending QA Approval' => 'QA Approver',
+                    'Reviewed By' => 'HOD/Designee',
+                    'Verified By QA' => 'QA Approver',
                 ],
             ];
 

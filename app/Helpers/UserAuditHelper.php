@@ -241,36 +241,43 @@ class UserAuditHelper
                     continue;
                 }
 
-                if (
-                    is_array($column) &&
-                    array_key_exists('label', $column)
-                ) {
-                    $label = $column['label'];
-                    $value = self::extractDisplayValue(
-                        $column['value'] ?? null
-                    );
-
-                    if (!$label) {
-                        continue;
-                    }
-
-                    $cleanRow[] = [
-                        'key' => $column['key'] ?? $columnKey,
-                        'label' => $label,
-                        'value' => $value,
-                    ];
-                } else {
-                    $value = self::extractDisplayValue($column);
-
+                if (!is_array($column)) {
                     $cleanRow[] = [
                         'key' => $columnKey,
-                        'label' => FieldLabelHelper::getLabel(
-                            'Grid Record',
-                            $columnKey
-                        ),
-                        'value' => $value,
+                        'label' => self::getGridFieldLabel($columnKey),
+                        'value' => self::extractDisplayValue($column),
                     ];
+
+                    continue;
                 }
+
+                $fieldKey = $column['key']
+                    ?? $column['Key']
+                    ?? $columnKey;
+
+                $fieldValue = array_key_exists('value', $column)
+                    ? $column['value']
+                    : ($column['Value'] ?? $column);
+
+                if ($fieldKey === 'monthlyCalibration') {
+                    $cleanValue = self::cleanNestedValue($fieldValue);
+
+                    if ($cleanValue !== null && $cleanValue !== []) {
+                        $cleanRow[] = [
+                            'key' => 'monthlyCalibration',
+                            'label' => 'Monthly Calibration',
+                            'value' => $cleanValue,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                $cleanRow[] = [
+                    'key' => $fieldKey,
+                    'label' => self::getGridFieldLabel($fieldKey),
+                    'value' => self::extractDisplayValue($fieldValue),
+                ];
             }
 
             if (!empty($cleanRow)) {
@@ -279,6 +286,43 @@ class UserAuditHelper
         }
 
         return $result;
+    }
+
+
+    /* get grid field label */
+    private static function getGridFieldLabel(string $key): string
+    {
+        $labels = [
+            'equipmentInstrumentName' => 'Equipment / Instrument Name',
+            'equipmentInstrumentId' => 'Equipment / Instrument ID',
+            'department' => 'Department',
+            'location' => 'Location',
+            'makeModel' => 'Make & Model',
+            'range' => 'Range',
+            'leastCount' => 'Least Count',
+            'accuracy' => 'Accuracy',
+            'cNc' => 'C / NC',
+            'calibrationFrequency' => 'Calibration Frequency',
+            'previousCalibrationDate' => 'Previous / Calibration Date',
+            'nextCalibrationDate' => 'Next Calibration Date',
+            'alert' => 'Alert',
+            'remark' => 'Remark',
+            'monthlyCalibration' => 'Monthly Calibration',
+            'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
+            'schedulerDate' => 'Scheduler Date',
+            'calibrationDate' => 'Calibration Date',
+        ];
+
+        return $labels[$key] ?? self::formatGridLabel($key);
+    }
+
+    /* format grid label */
+    private static function formatGridLabel(string $key): string
+    {
+        $key = preg_replace('/([a-z])([A-Z])/', '$1 $2', $key);
+        $key = str_replace(['_', '-'], ' ', $key);
+
+        return ucwords($key);
     }
 
     /* clean nested values */
@@ -307,16 +351,31 @@ class UserAuditHelper
                 $cleaned = self::cleanNestedValue($item);
 
                 if ($cleaned !== null && $cleaned !== []) {
-                    $result[$key] = $cleaned;
+                    $result[self::getNestedLabel($key)] = $cleaned;
                 }
 
                 continue;
             }
 
-            $result[$key] = $item;
+            if (!self::isEmptyValue($item)) {
+                $result[self::getNestedLabel($key)] = $item;
+            }
         }
 
         return $result;
+    }
+
+    /* get nested label */
+    private static function getNestedLabel(string $key): string
+    {
+        $labels = [
+            'schedulerDate' => 'Scheduler Date',
+            'calibrationDate' => 'Calibration Date',
+            'monthlyCalibration' => 'Monthly Calibration',
+            'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
+        ];
+
+        return $labels[$key] ?? self::formatGridLabel($key);
     }
 
     /* get department name */

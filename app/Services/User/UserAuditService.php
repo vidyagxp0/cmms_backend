@@ -303,7 +303,7 @@ class UserAuditService
         return $result;
     }
 
-    /* render a value for display in the audit table */
+    /* render a value for display */
     private static function auditDisplayValue($value)
     {
         if ($value === null || $value === '') {
@@ -311,22 +311,62 @@ class UserAuditService
         }
 
         if (is_object($value)) {
-            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
+            $value = method_exists($value, 'toArray')
+                ? $value->toArray()
+                : (array) $value;
         }
 
-        if (is_array($value)) {
-            if (isset($value['name'])) {
-                return (string) $value['name'];
-            }
-
-            if (isset($value['value']) && count($value) <= 3) {
-                return self::auditDisplayValue($value['value']);
-            }
-
-            return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (!is_array($value)) {
+            return (string) $value;
         }
 
-        return (string) $value;
+        if (isset($value['name'])) {
+            return (string) $value['name'];
+        }
+
+        if (isset($value['value']) && count($value) <= 3) {
+            return self::auditDisplayValue($value['value']);
+        }
+
+        $lines = [];
+
+        foreach ($value as $key => $item) {
+            if (self::isEmptyValue($item)) {
+                continue;
+            }
+
+            if (is_array($item)) {
+                $nestedLines = [];
+
+                foreach ($item as $nestedKey => $nestedValue) {
+                    if (self::isEmptyValue($nestedValue)) {
+                        continue;
+                    }
+
+                    if (is_array($nestedValue)) {
+                        $nestedValue = self::auditDisplayValue($nestedValue);
+                    }
+
+                    $nestedLines[] = self::formatFieldLabel((string) $nestedKey)
+                        . ' : '
+                        . $nestedValue;
+                }
+
+                if (!empty($nestedLines)) {
+                    $lines[] = $key . ' : ' . implode(', ', $nestedLines);
+                }
+
+                continue;
+            }
+
+            $lines[] = self::formatFieldLabel((string) $key)
+                . ' : '
+                . $item;
+        }
+
+        return empty($lines)
+            ? '-'
+            : implode("\n", $lines);
     }
 
     /* grid record audit - one row per changed grid row */

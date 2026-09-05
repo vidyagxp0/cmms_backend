@@ -14,22 +14,21 @@ class ActivitySeeder extends Seeder
         /* Calibration Planner */
         $this->createActivities(
             'Calibration Planner',
-
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Pending HOD/Designee Review',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
                     'name' => 'Submit',
                 ],
                 [
-                    'from' => 'Pending HOD/Designee Review',
-                    'to' => 'Pending QA Review',
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Reviewed By User Department',
                     'name' => 'HOD Review Complete',
                 ],
                 [
-                    'from' => 'Pending QA Review',
+                    'from' => 'Reviewed By User Department',
                     'to' => 'Pending QA Approval',
-                    'name' => 'QA Review Complete',
+                    'name' => 'User Department Review Complete',
                 ],
                 [
                     'from' => 'Pending QA Approval',
@@ -37,31 +36,28 @@ class ActivitySeeder extends Seeder
                     'name' => 'QA Approval Complete',
                 ],
             ],
-
             [
                 [
-                    'from' => 'Pending HOD/Designee Review',
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Review',
-                    'to' => 'Pending HOD/Designee Review',
+                    'from' => 'Reviewed By User Department',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
                     'name' => 'More Info Required',
                 ],
                 [
                     'from' => 'Pending QA Approval',
-                    'to' => 'Pending QA Review',
+                    'to' => 'Reviewed By User Department',
                     'name' => 'More Info Required',
                 ],
             ]
         );
 
-
         /* Preventive Maintenance Planner */
         $this->createActivities(
             'Preventive Maintenance Planner',
-
             [
                 [
                     'from' => 'Opened',
@@ -84,7 +80,6 @@ class ActivitySeeder extends Seeder
                     'name' => 'Maintenance Execution Complete',
                 ],
             ],
-
             [
                 [
                     'from' => 'Pending Approval',
@@ -104,11 +99,9 @@ class ActivitySeeder extends Seeder
             ]
         );
 
-
         /* Preventive Maintenance */
         $this->createActivities(
             'Preventive Maintenance',
-
             [
                 [
                     'from' => 'Opened',
@@ -131,7 +124,6 @@ class ActivitySeeder extends Seeder
                     'name' => 'QA Approval Complete',
                 ],
             ],
-
             [
                 [
                     'from' => 'Preventive In Progress',
@@ -151,54 +143,40 @@ class ActivitySeeder extends Seeder
             ]
         );
 
-
         /* Calibration Management */
         $this->createActivities(
             'Calibration Management',
-
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Calibration In Progress',
+                    'to' => 'Reviewed By HOD/Designee',
                     'name' => 'Start Calibration',
                 ],
                 [
-                    'from' => 'Calibration In Progress',
-                    'to' => 'Pending Out of Actions',
-                    'name' => 'Submit Calibration',
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Verified By QA',
+                    'name' => 'HOD Review Complete',
                 ],
                 [
-                    'from' => 'Pending Out of Actions',
-                    'to' => 'Pending QA Approval',
-                    'name' => 'Out of Actions Review Complete',
-                ],
-                [
-                    'from' => 'Pending QA Approval',
+                    'from' => 'Verified By QA',
                     'to' => 'Closed - Done',
-                    'name' => 'QA Approval Complete',
+                    'name' => 'QA Verification Complete',
                 ],
             ],
-
             [
                 [
-                    'from' => 'Calibration In Progress',
+                    'from' => 'Reviewed By HOD/Designee',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending Out of Actions',
-                    'to' => 'Calibration In Progress',
-                    'name' => 'More Info Required',
-                ],
-                [
-                    'from' => 'Pending QA Approval',
-                    'to' => 'Pending Out of Actions',
+                    'from' => 'Verified By QA',
+                    'to' => 'Reviewed By HOD/Designee',
                     'name' => 'More Info Required',
                 ],
             ]
         );
     }
-
 
     /* Create Activities */
     private function createActivities(
@@ -206,7 +184,6 @@ class ActivitySeeder extends Seeder
         array $forwardActivities,
         array $backwardActivities
     ): void {
-
         $process = Process::where('name', $processName)->first();
 
         if (!$process) {
@@ -215,7 +192,6 @@ class ActivitySeeder extends Seeder
 
         /* create activity based on the stages */
         foreach ($forwardActivities as $forwardActivity) {
-
             $fromStage = Stage::where('process_id', $process->id)
                 ->where('name', $forwardActivity['from'])
                 ->first();
@@ -237,16 +213,13 @@ class ActivitySeeder extends Seeder
                 'assigned_role' => null,
             ]);
 
-
             /* cancel activity */
             if ($fromStage->name === 'Opened') {
-
                 $cancelledStage = Stage::where('process_id', $process->id)
                     ->where('name', 'Close - Cancelled')
                     ->first();
 
                 if ($cancelledStage) {
-
                     Activity::create([
                         'name' => 'Cancel',
                         'from_stage' => $fromStage->id,
@@ -257,10 +230,8 @@ class ActivitySeeder extends Seeder
                 }
             }
 
-
             /* backward activity */
             foreach ($backwardActivities as $backwardActivity) {
-
                 if ($backwardActivity['from'] !== $forwardActivity['to']) {
                     continue;
                 }
