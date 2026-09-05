@@ -173,7 +173,7 @@ class ProcessRecordService
                 /* Calibration Management - Process ID 5 */
                 5 => [
                     'Opened' => 'Initiator',
-                    'Calibration In Progress' => 'HOD',
+                    'Calibration In Progress' => 'HOD/Designee',
                     'Pending Out of Actions' => 'QA Reviewer',
                     'Pending QA Approval' => 'QA Approver',
                 ],

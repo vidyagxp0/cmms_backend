@@ -12,5 +12,10 @@ class EquipmentMaster extends Model
         'make',
         'model',
         'equipment_type',
+        'checklist_config'
+    ];
+
+    protected $casts = [
+        'checklist_config' => 'array',
     ];
 }
