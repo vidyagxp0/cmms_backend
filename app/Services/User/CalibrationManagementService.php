@@ -46,28 +46,28 @@ class CalibrationManagementService
                 ? $request->process_data
                 : [];
 
-            $recordNumberFound = false;
+            // $recordNumberFound = false;
 
-            foreach ($processData as &$field) {
-                if (
-                    is_array($field) &&
-                    ($field['key'] ?? null) === 'recordNumber'
-                ) {
-                    $field['value'] = $recordNumber;
-                    $recordNumberFound = true;
-                    break;
-                }
-            }
+            // foreach ($processData as &$field) {
+            //     if (
+            //         is_array($field) &&
+            //         ($field['key'] ?? null) === 'recordNumber'
+            //     ) {
+            //         $field['value'] = $recordNumber;
+            //         $recordNumberFound = true;
+            //         break;
+            //     }
+            // }
 
             unset($field);
 
-            if (!$recordNumberFound) {
-                $processData[] = [
-                    'key' => 'recordNumber',
-                    'label' => 'Record Number',
-                    'value' => $recordNumber,
-                ];
-            }
+            // if (!$recordNumberFound) {
+            //     $processData[] = [
+            //         'key' => 'recordNumber',
+            //         'label' => 'Record Number',
+            //         'value' => $recordNumber,
+            //     ];
+            // }
 
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,

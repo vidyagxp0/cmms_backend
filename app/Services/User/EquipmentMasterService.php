@@ -81,6 +81,7 @@ class EquipmentMasterService
                 'make' => $request->make,
                 'model' => $request->model,
                 'equipment_type' => $request->equipment_type,
+                'checklist_config' => $request->checklist_config,
             ]);
 
             /* audit data */
@@ -90,6 +91,7 @@ class EquipmentMasterService
                 'make' => $equipment->make,
                 'model' => $equipment->model,
                 'equipment_type' => $equipment->equipment_type,
+                'checklist_config' => $equipment->checklist_config,
             ];
 
             UserAuditHelper::log(
@@ -174,6 +176,16 @@ class EquipmentMasterService
 
                 $updateData['equipment_type'] = $request->equipment_type;
             }
+
+            /* equipment config */
+            if ($request->has('checklist_config') &&$request->checklist_config != $equipment->checklist_config)
+            {
+                $oldValue['checklist_config'] = $equipment->checklist_config;
+                $newValue['checklist_config'] = $request->checklist_config;
+
+                $updateData['checklist_config'] = $request->checklist_config;
+            }
+
 
             /* update only changed fields */
             if (!empty($updateData)) {
