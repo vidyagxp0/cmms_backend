@@ -114,7 +114,8 @@ class EquipmentMasterService
             DB::rollBack();
 
             return ResponseHelper::error(
-                'Failed to create equipment.',
+                // 'Failed to create equipment.',
+                $e->getMessage(),
                 500
             );
         }
