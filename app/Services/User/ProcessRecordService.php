@@ -7,10 +7,14 @@ use App\Http\Requests\User\ProcessRecordRequest;
 use App\Models\Process;
 use App\Models\ProcessRecord;
 use Auth;
+use File;
 use Illuminate\Http\Request;
+use Str;
 
 class ProcessRecordService
 {
+    /* for uploading the files/attachment */
+    private const UPLOAD_DIRECTORY = 'uploads/recordAttachment';
     /* all process records */
     public static function getEngineeringRecords(Request $request) 
     {
@@ -173,7 +177,7 @@ class ProcessRecordService
                 /* Calibration Management - Process ID 5 */
                 5 => [
                     'Opened' => 'Initiator',
-                    'Reviewed By' => 'HOD/Designee',
+                    'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',
                 ],
             ];
@@ -220,6 +224,130 @@ class ProcessRecordService
         } catch (\Exception $e) {
             return ResponseHelper::error(
                 $e->getMessage(),
+                500
+            );
+        }
+    }
+
+    /* for uploading attachment */
+    public static function uploadAttachments(Request $request, $recordId)
+    {
+        try {
+            $processRecord = ProcessRecord::findOrFail($recordId);
+
+            $files = [];
+
+            /* support single and multiple files */
+            if ($request->hasFile('file')) {
+                $files[] = $request->file('file');
+            }
+
+            if ($request->hasFile('files')) {
+                foreach ($request->file('files') as $file) {
+                    if ($file && $file->isValid()) {
+                        $files[] = $file;
+                    }
+                }
+            }
+
+            if (empty($files)) {
+                return ResponseHelper::error(
+                    'No attachment file was provided.',
+                    422
+                );
+            }
+
+            $uploadDirectory = public_path(self::UPLOAD_DIRECTORY);
+
+            /* create directory if not exists */
+            if (!File::exists($uploadDirectory)) {
+                File::makeDirectory(
+                    $uploadDirectory,
+                    0755,
+                    true
+                );
+            }
+
+            /* existing attachment */
+            $existingAttachments = $processRecord->attachments;
+
+            if (is_string($existingAttachments)) {
+                $decoded = json_decode(
+                    $existingAttachments,
+                    true
+                );
+
+                $existingAttachments = is_array($decoded)
+                    ? $decoded
+                    : [];
+            }
+
+            if (!is_array($existingAttachments)) {
+                $existingAttachments = [];
+            }
+
+            $newAttachments = [];
+
+            foreach ($files as $file) {
+
+                if (!$file->isValid()) {
+                    continue;
+                }
+
+                /* generate unique filename */
+                $originalName = $file->getClientOriginalName();
+
+                $extension = $file->getClientOriginalExtension();
+
+                $fileName = Str::uuid()->toString()
+                    . ($extension ? '.' . $extension : '');
+
+                $file->move(
+                    $uploadDirectory,
+                    $fileName
+                );
+
+                $relativePath =
+                    self::UPLOAD_DIRECTORY . '/' . $fileName;
+
+                $newAttachments[] = [
+                    'name' => $originalName,
+                    'file_name' => $fileName,
+                    'path' => $relativePath,
+                    'url' => asset($relativePath),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                ];
+            }
+
+            if (empty($newAttachments)) {
+                return ResponseHelper::error(
+                    'No valid attachment files were uploaded.',
+                    422
+                );
+            }
+
+            $allAttachments = array_merge(
+                $existingAttachments,
+                $newAttachments
+            );
+
+            $processRecord->update([
+                'attachments' => $allAttachments,
+            ]);
+
+            return ResponseHelper::success(
+                [
+                    'record_id' => $processRecord->id,
+                    'attachments' => $allAttachments,
+                    'new_attachments' => $newAttachments,
+                ],
+                'Attachments uploaded successfully.'
+            );
+
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to upload attachments.',
                 500
             );
         }

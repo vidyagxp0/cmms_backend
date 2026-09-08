@@ -16,12 +16,14 @@ class ProcessRecord extends Model
         'process_data',
         'parent_id',
         'is_child',
+        'attachments'
     ];
 
     protected function casts(): array
     {
         return [
             'process_data' => 'array',
+            'attachments'  => 'array',
         ];
     }
 

@@ -50,4 +50,20 @@ class ProcessRecordController extends Controller
         }
     }
 
+    /* user permission */
+    public function uploadAttachments($request, $recordId) 
+    {
+        try {
+            return ProcessRecordService::uploadAttachments(
+                $request,
+                $recordId
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload attachment.',
+            ], 500);
+        }
+    }
+
 }
