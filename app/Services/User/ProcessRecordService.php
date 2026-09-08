@@ -237,11 +237,12 @@ class ProcessRecordService
 
             $files = [];
 
-            /* support single and multiple files */
+            /* support single file */
             if ($request->hasFile('file')) {
                 $files[] = $request->file('file');
             }
 
+            /* support multiple files */
             if ($request->hasFile('files')) {
                 foreach ($request->file('files') as $file) {
                     if ($file && $file->isValid()) {
@@ -257,7 +258,9 @@ class ProcessRecordService
                 );
             }
 
-            $uploadDirectory = public_path(self::UPLOAD_DIRECTORY);
+            $uploadDirectory = public_path(
+                self::UPLOAD_DIRECTORY
+            );
 
             /* create directory if not exists */
             if (!File::exists($uploadDirectory)) {
@@ -268,7 +271,7 @@ class ProcessRecordService
                 );
             }
 
-            /* existing attachment */
+            /* existing attachments */
             $existingAttachments = $processRecord->attachments;
 
             if (is_string($existingAttachments)) {
@@ -294,10 +297,10 @@ class ProcessRecordService
                     continue;
                 }
 
-                /* generate unique filename */
                 $originalName = $file->getClientOriginalName();
-
                 $extension = $file->getClientOriginalExtension();
+                $mimeType = $file->getClientMimeType();
+                $fileSize = $file->getSize();
 
                 $fileName = Str::uuid()->toString()
                     . ($extension ? '.' . $extension : '');
@@ -315,8 +318,8 @@ class ProcessRecordService
                     'file_name' => $fileName,
                     'path' => $relativePath,
                     'url' => asset($relativePath),
-                    'mime_type' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
+                    'mime_type' => $mimeType,
+                    'size' => $fileSize,
                 ];
             }
 
@@ -347,7 +350,7 @@ class ProcessRecordService
 
         } catch (\Exception $e) {
             return ResponseHelper::error(
-                'Failed to upload attachments.',
+                $e->getMessage(),
                 500
             );
         }

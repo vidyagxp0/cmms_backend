@@ -51,7 +51,7 @@ class ProcessRecordController extends Controller
     }
 
     /* user permission */
-    public function uploadAttachments($request, $recordId) 
+    public function uploadAttachments(Request $request, $recordId) 
     {
         try {
             return ProcessRecordService::uploadAttachments(
