@@ -101,7 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/user-record-permission/{recordId}',[ProcessRecordController::class, 'checkRecordPermission'])->name('user-record-permission');
 
         /* global attachment apis */
-        Route::get('/upload-attachment/{recordId}',[ProcessRecordController::class, 'uploadAttachments'])->name('upload-attachment');
+        Route::post('/upload-attachment/{recordId}',[ProcessRecordController::class, 'uploadAttachments'])->name('upload-attachment');
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
