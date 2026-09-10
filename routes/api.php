@@ -80,7 +80,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/activities-list/{stageId}', [ProcessConfigController::class, 'getStageActivities'])->name('activities-list');        
 
         /* process records listing routes */
-        Route::get('/get-engineering-records', [ProcessRecordController::class, 'getEngineeringRecord'])->name('get-engineering-records');
+        Route::get('/get-calibration-planner-records', [ProcessRecordController::class, 'getCalibrationPlannerRecords'])->name('get-calibration-planner-records');
+        Route::get('/get-calibration-management-records', [ProcessRecordController::class, 'getCalibrationManagementRecords'])->name('get-calibration-management-records');
+        Route::get('/get-preventive-planner-records', [ProcessRecordController::class, 'getPreventiveMaintenancePlannerRecords'])->name('get-preventive-planner-records');
+        Route::get('/get-preventive-maintenance-records', [ProcessRecordController::class, 'getPreventiveMaintenanceRecords'])->name('get-preventive-maintenance-records');
 
         /* calibration planner routes */
         Route::post('/store-calibration-planner-record', [CalibrationPlannerController::class, 'store'])->name('store-calibration-planner-record');

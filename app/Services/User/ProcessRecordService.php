@@ -15,8 +15,42 @@ class ProcessRecordService
 {
     /* for uploading the files/attachment */
     private const UPLOAD_DIRECTORY = 'uploads/recordAttachment';
-    /* all process records */
-    public static function getEngineeringRecords(Request $request) 
+
+    /* get records based on process anme */
+    public static function getCalibrationPlannerRecords(Request $request)
+    {
+        return self::getRecordsByProcessName(
+            $request,
+            'Calibration Planner'
+        );
+    }
+
+    public static function getCalibrationManagementRecords(Request $request)
+    {
+        return self::getRecordsByProcessName(
+            $request,
+            'Calibration Management'
+        );
+    }
+
+    public static function getPreventiveMaintenancePlannerRecords(Request $request)
+    {
+        return self::getRecordsByProcessName(
+            $request,
+            'Preventive Maintenance Planner'
+        );
+    }
+
+    public static function getPreventiveMaintenanceRecords(Request $request)
+    {
+        return self::getRecordsByProcessName(
+            $request,
+            'Preventive Maintenance'
+        );
+    }
+
+    /* get records by process */
+    private static function getRecordsByProcessName(Request $request, string $processName)
     {
         try {
             $records = ProcessRecord::with([
@@ -25,11 +59,8 @@ class ProcessRecordService
                 'initiator',
                 'stage',
             ])
-            ->when($request->process_id, function ($query) use ($request) {
-                $query->where(
-                    'process_id',
-                    $request->process_id
-                );
+            ->whereHas('process', function ($query) use ($processName) {
+                $query->where('name', $processName);
             })
             ->when($request->search, function ($query) use ($request) {
 
@@ -37,20 +68,32 @@ class ProcessRecordService
                 $search = $request->search;
 
                 $query->where(function ($query) use ($search) {
-
-                    $query->where('short_description', 'like', "%{$search}%")
-
-                        ->orWhereHas('process', function ($query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%");
-                        })
-
-                        ->orWhereHas('initiator', function ($query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%");
-                        })
-
-                        ->orWhereHas('department', function ($query) use ($search) {
-                            $query->where('name', 'like', "%{$search}%");
-                        });
+                    $query->where(
+                        'short_description',
+                        'like',
+                        "%{$search}%"
+                    )
+                    ->orWhereHas('process', function ($query) use ($search) {
+                        $query->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        );
+                    })
+                    ->orWhereHas('initiator', function ($query) use ($search) {
+                        $query->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        );
+                    })
+                    ->orWhereHas('department', function ($query) use ($search) {
+                        $query->where(
+                            'name',
+                            'like',
+                            "%{$search}%"
+                        );
+                    });
                 });
             })
 

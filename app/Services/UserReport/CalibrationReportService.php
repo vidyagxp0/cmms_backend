@@ -17,6 +17,7 @@ class CalibrationReportService
                 'stage',
                 'department',
                 'initiator',
+                'gridRecords'
             ])->findOrFail($id);
 
             /* process data */
@@ -66,9 +67,9 @@ class CalibrationReportService
             $calibrationFields = self::getFieldsByKeys(
                 $processFields,
                 [
-                    'hod',
-                    'qa_reviewer',
-                    'qa_approval',
+                    'year',
+                    'block',
+                    'area',
                     'comment',
                     'attachment',
                 ]
@@ -83,12 +84,12 @@ class CalibrationReportService
                 ]
             );
 
-            /* QA review */
+            /* hod review user department */
             $qaReviewFields = self::getFieldsByKeys(
                 $processFields,
                 [
-                    'qa_review_comments',
-                    'qa_review_attachment',
+                    'user_dept_review_comments',
+                    'user_dept_review_attachment',
                 ]
             );
 
@@ -96,8 +97,8 @@ class CalibrationReportService
             $qaApprovalFields = self::getFieldsByKeys(
                 $processFields,
                 [
-                    'qa_approval_comments',
-                    'qa_approval_attachment',
+                    'qa_review_comments',
+                    'qa_review_attachment',
                 ]
             );
 
@@ -172,25 +173,25 @@ class CalibrationReportService
             );
 
             $tabs[] = [
-                'tab_title' => 'HOD/Designee Review',
+                'tab_title' => 'HOD/Designee Review (Engineering Dept)',
                 'sections' => [
                     [
-                        'title' => 'HOD/Designee Review',
+                        'title' => 'HOD/Designee Review (Engineering Dept)',
                         'fields' => $hodReviewFields,
                     ],
                 ],
             ];
 
-            /* QA Reviewer */
+            /* HOD / Designee Review User Department */
             $qaReviewFields = self::prepareReportFields(
                 $qaReviewFields
             );
 
             $tabs[] = [
-                'tab_title' => 'QA Reviewer',
+                'tab_title' => 'User Department Review (User Dept)',
                 'sections' => [
                     [
-                        'title' => 'QA Reviewer',
+                        'title' => 'User Department Review (User Dept)',
                         'fields' => $qaReviewFields,
                     ],
                 ],
@@ -202,10 +203,10 @@ class CalibrationReportService
             );
 
             $tabs[] = [
-                'tab_title' => 'QA Approver',
+                'tab_title' => 'QA Approval Review',
                 'sections' => [
                     [
-                        'title' => 'QA Approval',
+                        'title' => 'QA Approval Review',
                         'fields' => $qaApprovalFields,
                     ],
                 ],

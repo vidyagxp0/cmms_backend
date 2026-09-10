@@ -10,10 +10,46 @@ use Illuminate\Http\Request;
 class ProcessRecordController extends Controller
 {
     /* all process records */
-    public function getEngineeringRecord(Request $request)
+    public function getCalibrationPlannerRecords(Request $request)
     {
         try {
-            return ProcessRecordService::getEngineeringRecords($request);
+            return ProcessRecordService::getCalibrationPlannerRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
+
+    public function getCalibrationManagementRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getCalibrationManagementRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
+
+    public function getPreventiveMaintenancePlannerRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getPreventiveMaintenancePlannerRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
+
+    public function getPreventiveMaintenanceRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getPreventiveMaintenanceRecords($request);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
