@@ -61,39 +61,39 @@ class ActivitySeeder extends Seeder
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Pending Approval',
+                    'to' => 'Pending HOD/Designee Review',
                     'name' => 'Submit',
                 ],
                 [
-                    'from' => 'Pending Approval',
+                    'from' => 'Pending HOD/Designee Review',
+                    'to' => 'Pending QA Review',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Pending QA Review',
                     'to' => 'Pending QA Approval',
-                    'name' => 'Approval Complete',
+                    'name' => 'QA Review Complete',
                 ],
                 [
                     'from' => 'Pending QA Approval',
-                    'to' => 'Pending Preventive Maintenance Execution',
-                    'name' => 'QA Approval Complete',
-                ],
-                [
-                    'from' => 'Pending Preventive Maintenance Execution',
                     'to' => 'Closed - Done',
-                    'name' => 'Maintenance Execution Complete',
+                    'name' => 'QA Approval Complete',
                 ],
             ],
             [
                 [
-                    'from' => 'Pending Approval',
+                    'from' => 'Pending HOD/Designee Review',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
-                    'to' => 'Pending Approval',
+                    'from' => 'Pending QA Review',
+                    'to' => 'Pending HOD/Designee Review',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending Preventive Maintenance Execution',
-                    'to' => 'Pending QA Approval',
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Pending QA Review',
                     'name' => 'More Info Required',
                 ],
             ]

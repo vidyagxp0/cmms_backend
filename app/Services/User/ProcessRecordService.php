@@ -217,6 +217,14 @@ class ProcessRecordService
                     'Pending QA Approval' => 'QA Approver',
                 ],
 
+                /* Preventive Maintenance Planner - Process ID 2 */
+                2 => [
+                    'Opened' => 'Initiator',
+                    'Pending HOD/Designee Review' => 'HOD/Designee',
+                    'Pending QA Review' => 'QA Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
                 /* Calibration Management - Process ID 5 */
                 5 => [
                     'Opened' => 'Initiator',
@@ -278,16 +286,47 @@ class ProcessRecordService
         try {
             $processRecord = ProcessRecord::findOrFail($recordId);
 
-            $files = [];
+            $attachmentField = $request->input('attachment_field');
+            $type = $request->input('Type');
 
-            /* support single file */
-            if ($request->hasFile('file')) {
-                $files[] = $request->file('file');
+            /* validate attachment data */
+            if (!$attachmentField) {
+                return ResponseHelper::error(
+                    'Attachment field is required.',
+                    422
+                );
             }
 
-            /* support multiple files */
-            if ($request->hasFile('files')) {
-                foreach ($request->file('files') as $file) {
+            if (!in_array($type, ['single-file', 'multiple-file'])) {
+                return ResponseHelper::error(
+                    'Invalid attachment type.',
+                    422
+                );
+            }
+
+            $files = [];
+
+            $fileInputs = [
+                'file',
+                'file[]',
+                'files',
+                'files[]',
+            ];
+
+            foreach ($fileInputs as $inputName) {
+
+                if (!$request->hasFile($inputName)) {
+                    continue;
+                }
+
+                $inputFiles = $request->file($inputName);
+
+                if (!is_array($inputFiles)) {
+                    $inputFiles = [$inputFiles];
+                }
+
+                foreach ($inputFiles as $file) {
+
                     if ($file && $file->isValid()) {
                         $files[] = $file;
                     }
@@ -301,11 +340,11 @@ class ProcessRecordService
                 );
             }
 
+            /* create upload directory */
             $uploadDirectory = public_path(
                 self::UPLOAD_DIRECTORY
             );
 
-            /* create directory if not exists */
             if (!File::exists($uploadDirectory)) {
                 File::makeDirectory(
                     $uploadDirectory,
@@ -314,10 +353,11 @@ class ProcessRecordService
                 );
             }
 
-            /* existing attachments */
+            /* get existing attachments */
             $existingAttachments = $processRecord->attachments;
 
             if (is_string($existingAttachments)) {
+
                 $decoded = json_decode(
                     $existingAttachments,
                     true
@@ -332,11 +372,44 @@ class ProcessRecordService
                 $existingAttachments = [];
             }
 
+            $oldAttachmentsToDelete = [];
+
+            /* single file */
+            if ($type === 'single-file') {
+
+                foreach ($existingAttachments as $attachment) {
+
+                    if (
+                        is_array($attachment) &&
+                        ($attachment['attachment_field'] ?? null)
+                        === $attachmentField
+                    ) {
+                        $oldAttachmentsToDelete[] = $attachment;
+                    }
+                }
+
+                $existingAttachments = array_values(
+                    array_filter(
+                        $existingAttachments,
+                        function ($attachment) use ($attachmentField) {
+
+                            return !(
+                                is_array($attachment) &&
+                                ($attachment['attachment_field'] ?? null)
+                                === $attachmentField
+                            );
+                        }
+                    )
+                );
+            }
+
+            /* multiple files */
             $newAttachments = [];
 
+            /* upload every received file */
             foreach ($files as $file) {
 
-                if (!$file->isValid()) {
+                if (!$file || !$file->isValid()) {
                     continue;
                 }
 
@@ -357,6 +430,7 @@ class ProcessRecordService
                     self::UPLOAD_DIRECTORY . '/' . $fileName;
 
                 $newAttachments[] = [
+                    'attachment_field' => $attachmentField,
                     'name' => $originalName,
                     'file_name' => $fileName,
                     'path' => $relativePath,
@@ -378,13 +452,38 @@ class ProcessRecordService
                 $newAttachments
             );
 
+            /* save attachment data */
             $processRecord->update([
                 'attachments' => $allAttachments,
             ]);
 
+            /* delete old files */
+            if ($type === 'single-file') {
+
+                foreach ($oldAttachmentsToDelete as $attachment) {
+
+                    if (empty($attachment['file_name'])) {
+                        continue;
+                    }
+
+                    $oldFilePath =
+                        $uploadDirectory .
+                        DIRECTORY_SEPARATOR .
+                        $attachment['file_name'];
+
+                    if (File::exists($oldFilePath)) {
+                        File::delete($oldFilePath);
+                    }
+                }
+            }
+
             return ResponseHelper::success(
                 [
                     'record_id' => $processRecord->id,
+                    'attachment_field' => $attachmentField,
+                    'type' => $type,
+                    'uploaded_count' => count($newAttachments),
+                    'total_count' => count($allAttachments),
                     'attachments' => $allAttachments,
                     'new_attachments' => $newAttachments,
                 ],
@@ -392,6 +491,7 @@ class ProcessRecordService
             );
 
         } catch (\Exception $e) {
+
             return ResponseHelper::error(
                 $e->getMessage(),
                 500

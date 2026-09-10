@@ -52,6 +52,40 @@ class CalibrationReportService
                 ];
             }
 
+            /* get record attachments */
+            $recordAttachments = $record->attachments;
+
+            if (is_string($recordAttachments)) {
+                $decodedAttachments = json_decode(
+                    $recordAttachments,
+                    true
+                );
+
+                $recordAttachments = is_array($decodedAttachments)
+                    ? $decodedAttachments
+                    : [];
+            }
+
+            if (!is_array($recordAttachments)) {
+                $recordAttachments = [];
+            }
+
+            /* map record attachments to process fields */
+            foreach ($processFields as $key => &$field) {
+
+                if (
+                    $key === 'attachment' ||
+                    str_contains($key, 'attachment')
+                ) {
+                    $field['value'] = self::getAttachmentsByField(
+                        $recordAttachments,
+                        $key
+                    );
+                }
+            }
+
+            unset($field);
+
             /* record fields */
             $recordNumber = self::getProcessFieldValue(
                 $processFields,
@@ -153,6 +187,76 @@ class CalibrationReportService
                 $calibrationFields
             );
 
+            /* prepare grid data */
+            $gridRecords = [];
+
+            foreach ($record->gridRecords ?? [] as $gridRecord) {
+
+                $gridData = $gridRecord->grid_data;
+
+                if (is_string($gridData)) {
+                    $gridData = json_decode($gridData, true);
+                }
+
+                if (!is_array($gridData)) {
+                    continue;
+                }
+
+                foreach ($gridData as $row) {
+
+                    if (!is_array($row)) {
+                        continue;
+                    }
+
+                    $fields = [];
+
+                    foreach ($row as $key => $field) {
+
+                        /*
+                        * monthlyCalibration is stored directly as
+                        * an array of months, not inside "value".
+                        */
+                        if ($key === 'monthlyCalibration') {
+
+                            $fields[$key] = [
+                                'label' => 'Monthly Calibration',
+                                'value' => is_array($field)
+                                    ? $field
+                                    : [],
+                            ];
+
+                            continue;
+                        }
+
+                        /*
+                        * Normal grid fields
+                        */
+                        if (is_array($field)) {
+
+                            $fields[$key] = [
+                                'label' => self::getGridFieldLabel($key),
+                                'value' => $field['value'] ?? null,
+                            ];
+
+                        } else {
+
+                            /*
+                            * Handle direct values if any field is stored
+                            * without label/value structure.
+                            */
+                            $fields[$key] = [
+                                'label' => self::getGridFieldLabel($key),
+                                'value' => $field,
+                            ];
+                        }
+                    }
+
+                    if (!empty($fields)) {
+                        $gridRecords[] = $fields;
+                    }
+                }
+            }
+
             $tabs[] = [
                 'tab_title' => 'General Information',
                 'sections' => [
@@ -237,6 +341,7 @@ class CalibrationReportService
                 ],
 
                 'tabs' => $tabs,
+                'grid_records' => $gridRecords,
 
                 'footer' => [
                     'generated_by' => auth()->user()?->name,
@@ -257,21 +362,81 @@ class CalibrationReportService
             );
 
         } catch (\Exception $e) {
-            \Log::error(
-                'CALIBRATION SINGLE REPORT ERROR',
-                [
-                    'record_id' => $id,
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ]
-            );
-
             return ResponseHelper::error(
                 'Failed to generate process report.',
                 500
             );
         }
+    }
+
+    /* get attachments by field */
+    private static function getAttachmentsByField(
+        $attachments,
+        $attachmentField
+    ) {
+        if (!is_array($attachments)) {
+            return [];
+        }
+
+        $result = [];
+
+        foreach ($attachments as $attachment) {
+
+            if (!is_array($attachment)) {
+                continue;
+            }
+
+            if (
+                ($attachment['attachment_field'] ?? null)
+                !== $attachmentField
+            ) {
+                continue;
+            }
+
+            $result[] = [
+                'attachment_field' => $attachmentField,
+                'name' => $attachment['name']
+                    ?? $attachment['file_name']
+                    ?? 'Attachment',
+                'file_name' => $attachment['file_name']
+                    ?? null,
+                'path' => $attachment['path']
+                    ?? null,
+                'url' => $attachment['url']
+                    ?? null,
+                'mime_type' => $attachment['mime_type']
+                    ?? null,
+                'size' => $attachment['size']
+                    ?? null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /* get grid field label */
+    private static function getGridFieldLabel($key)
+    {
+        $labels = [
+            'equipmentInstrumentName' => 'Equipment / Instrument Name',
+            'equipmentInstrumentId' => 'Equipment / Instrument ID',
+            'department' => 'Department',
+            'location' => 'Location',
+            'make' => 'Make',
+            'model' => 'Model',
+            'instrumentrange' => 'Instrument Range',
+            'operatingrange' => 'Operating Range',
+            'leastCount' => 'Least Count',
+            'accuracy' => 'Accuracy',
+            'calibrationFrequency' => 'Calibration Frequency',
+            'previousCalibrationDate' => 'Previous / Calibration Date',
+            'nextCalibrationDate' => 'Next Calibration Date',
+            'remark' => 'Remark',
+            'monthlyCalibration' => 'Monthly Calibration',
+            'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
+        ];
+
+        return $labels[$key] ?? self::formatFieldLabel($key);
     }
 
     /* get process field value */
@@ -306,17 +471,32 @@ class CalibrationReportService
         $result = [];
 
         foreach ($fields as $field) {
+
             if (!is_array($field)) {
                 continue;
             }
 
             $value = $field['value'] ?? null;
+            $key = $field['key'] ?? '';
 
-            if (is_array($value)) {
+            /* prepare attachment values */
+            if (
+                $key === 'attachment' ||
+                str_contains($key, 'attachment')
+            ) {
+
+                if (!is_array($value) || empty($value)) {
+                    $value = '-';
+                }
+
+            } elseif (is_array($value)) {
+
                 if (isset($value['name'])) {
                     $value = $value['name'];
+
                 } elseif (empty($value)) {
                     $value = '-';
+
                 } else {
                     $value = json_encode(
                         $value,
@@ -331,6 +511,7 @@ class CalibrationReportService
             }
 
             $result[] = [
+                'key' => $key,
                 'label' => $field['label'] ?? '-',
                 'value' => $value,
             ];
