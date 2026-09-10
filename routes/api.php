@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\User\RecordActivityController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -19,6 +18,8 @@ use App\Http\Controllers\User\EquipmentMasterController;
 use App\Http\Controllers\User\CalibrationPlannerController;
 use App\Http\Controllers\User\CalibrationManagementController;
 use App\Http\Controllers\User\UserAuditController;
+use App\Http\Controllers\User\PreventiveRecordController;
+use App\Http\Controllers\User\RecordActivityController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -97,6 +98,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-calibration-management-record/{id}', [CalibrationManagementController::class, 'show'])->name('show-calibration-management-record');
         Route::put('/update-calibration-management-record/{id}', [CalibrationManagementController::class, 'update'])->name('update-calibration-management-record');
         Route::post('/calibrationManagement-record-stage/{id}',[CalibrationManagementController::class, 'moveStage'])->name('calibrationManagement-record-stage');
+
+        /* preventive maintenance planner routes */
+        Route::post('/store-preventive-planner-record', [PreventiveRecordController::class, 'store'])->name('store-preventive-planner-record');
+        Route::get('/show-preventive-planner-record/{id}', [PreventiveRecordController::class, 'show'])->name('show-preventive-planner-record');
+        Route::put('/update-preventive-planner-record/{id}', [PreventiveRecordController::class, 'update'])->name('update-preventive-planner-record');
+        Route::post('/preventive-planner-record-stage/{id}',[PreventiveRecordController::class, 'moveStage'])->name('preventive-planner-record-stage');
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
