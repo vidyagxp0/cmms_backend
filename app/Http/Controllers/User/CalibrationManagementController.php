@@ -3,10 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\CalibrationManagementService;
-use App\Services\UserReport\CalibrationReportService;
+use App\Services\UserReport\CalibrationManagementReportService;
 use Illuminate\Http\Request;
 
 class CalibrationManagementController extends Controller
@@ -70,17 +69,17 @@ class CalibrationManagementController extends Controller
     }
 
     /* calibration single report */
-    // public function calibrationManagementSingleReport($id) 
-    // {
-    //     try {
-    //         return CalibrationReportService::generateCalibrationManagementReport(
-    //             $id
-    //         );
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to load report.',
-    //         ], 500);
-    //     }
-    // }
+    public function calibrationManagementSingleReport($id) 
+    {
+        try {
+            return CalibrationManagementReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
 }
