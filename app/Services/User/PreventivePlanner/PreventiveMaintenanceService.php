@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\User;
+namespace App\Services\User\PreventivePlanner;
 
 use App\Helpers\ResponseHelper;
 use App\Services\User\ProcessRecordService;
@@ -17,10 +17,10 @@ use App\Models\GridRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class PreventiveRecordService
+class PreventiveMaintenanceService
 {
     /* store process record */
-    public static function storePreventivePlannerRecord(Request $request)
+    public static function storePreventiveMaintenanceRecord(Request $request)
     {
         DB::beginTransaction();
 
@@ -60,14 +60,6 @@ class PreventiveRecordService
             }
 
             unset($field);
-
-            if (!$recordNumberFound) {
-                $processData[] = [
-                    'key' => 'recordNumber',
-                    'label' => 'Record Number',
-                    'value' => $recordNumber,
-                ];
-            }
 
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,
@@ -150,8 +142,8 @@ class PreventiveRecordService
         }
     }
 
-    /* get preventive planner record details */
-    public static function getPreventivePlannerRecord($id)
+    /* get preventive Maintenance record details */
+    public static function getPreventiveMaintenanceRecord($id)
     {
         try {
             $processRecord = ProcessRecord::with([
@@ -176,7 +168,7 @@ class PreventiveRecordService
     }
 
     /* update process record */
-    public static function updatePreventivePlannerRecord(
+    public static function updatePreventiveMaintenanceRecord(
         Request $request,
         $id
     ) {
@@ -438,7 +430,7 @@ class PreventiveRecordService
             DB::rollBack();
 
             info(
-                'Error in PreventiveMaintenancePlannerService@updateCalibrationPlannerRecord',
+                'Error in PreventiveMaintenanceMaintenanceService@updateCalibrationMaintenanceRecord',
                 [
                     'error' => $e->getMessage(),
                 ]

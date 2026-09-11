@@ -20,6 +20,7 @@ use App\Http\Controllers\User\CalibrationManagementController;
 use App\Http\Controllers\User\UserAuditController;
 use App\Http\Controllers\User\PreventiveRecordController;
 use App\Http\Controllers\User\RecordActivityController;
+use App\Http\Controllers\User\PreventiveMaintenanceController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -101,11 +102,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/calibration-management-singleReport/{id}', [CalibrationManagementController::class, 'calibrationManagementSingleReport'])->name('calibration-management-singleReport');
         Route::get('/calibration-management-audit/{id}', [CalibrationManagementController::class, 'calibrationManagementAudit'])->name('calibration-management-audit');
 
-        /* preventive maintenance planner routes */
+        /* preventive planner routes */
         Route::post('/store-preventive-planner-record', [PreventiveRecordController::class, 'store'])->name('store-preventive-planner-record');
         Route::get('/show-preventive-planner-record/{id}', [PreventiveRecordController::class, 'show'])->name('show-preventive-planner-record');
         Route::put('/update-preventive-planner-record/{id}', [PreventiveRecordController::class, 'update'])->name('update-preventive-planner-record');
         Route::post('/preventive-planner-record-stage/{id}',[PreventiveRecordController::class, 'moveStage'])->name('preventive-planner-record-stage');
+
+        /* preventive maintenance routes */
+        Route::post('/store-preventive-maintenance-record', [PreventiveMaintenanceController::class, 'store'])->name('store-preventive-maintenance-record');
+        Route::get('/show-preventive-maintenance-record/{id}', [PreventiveMaintenanceController::class, 'show'])->name('show-preventive-maintenance-record');
+        Route::put('/update-preventive-maintenance-record/{id}', [PreventiveMaintenanceController::class, 'update'])->name('update-preventive-maintenance-record');
+        Route::post('/preventive-maintenance-record-stage/{id}',[PreventiveMaintenanceController::class, 'moveStage'])->name('preventive-maintenance-record-stage');
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');

@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Services\User\PreventivePlanner\PreventiveRecordService;
+use App\Services\User\PreventivePlanner\PreventiveMaintenanceService;
 use Illuminate\Http\Request;
 use App\Http\Requests\User\RecordActivityRequest;
 
-class PreventiveRecordController extends Controller
+class PreventiveMaintenanceController extends Controller
 {
      /* store process record */
     public function store(Request $request)
     {
         try {
-            return PreventiveRecordService::storePreventivePlannerRecord($request);
+            return PreventiveMaintenanceService::storePreventiveMaintenanceRecord($request);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -26,7 +26,7 @@ class PreventiveRecordController extends Controller
     public function show($id)
     {
         try {
-            return PreventiveRecordService::getPreventivePlannerRecord($id);
+            return PreventiveMaintenanceService::getPreventiveMaintenanceRecord($id);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -39,7 +39,7 @@ class PreventiveRecordController extends Controller
     public function update(Request $request,$id) 
     {
         try {
-            return PreventiveRecordService::updatePreventivePlannerRecord(
+            return PreventiveMaintenanceService::updatePreventiveMaintenanceRecord(
                 $request,
                 $id
             );
@@ -55,7 +55,7 @@ class PreventiveRecordController extends Controller
     public function moveStage(RecordActivityRequest $request, $id) 
     {
         try {
-            return PreventiveRecordService::moveStage(
+            return PreventiveMaintenanceService::moveStage(
                 $request,
                 $id
             );
