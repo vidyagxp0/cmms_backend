@@ -163,20 +163,6 @@ class CalibrationPlannerService
                 'checklistRecords'
             ])->findOrFail($id);
 
-            /* get data from record activity history for QA verification */
-            $qaVerifiedAt = RecordActivityHistory::where(
-                'process_record_id',
-                $processRecord->id
-            )
-                ->whereHas('activity', function ($query) {
-                    $query->where('name', 'Verified By QA');
-                })
-                ->latest('performed_at')
-                ->value('performed_at');
-
-            /* pass data here */
-            $processRecord->qaVerifiedAt = $qaVerifiedAt;
-
             return ResponseHelper::success(
                 $processRecord,
                 'Process record fetched successfully.'
