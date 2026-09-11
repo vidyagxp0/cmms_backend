@@ -4,7 +4,8 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\RecordActivityRequest;
-use App\Services\User\CalibrationManagementService;
+use App\Services\User\CalibrationPlanner\CalibrationManagementAuditService;
+use App\Services\User\CalibrationPlanner\CalibrationManagementService;
 use App\Services\UserReport\CalibrationManagementReportService;
 use Illuminate\Http\Request;
 
@@ -79,6 +80,23 @@ class CalibrationManagementController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
+
+        /* get calibration management audit data */
+    public function calibrationManagementAudit(Request $request, $id)
+    {
+        try {
+            return CalibrationManagementAuditService::getProcessRecordAudits(
+                $id,
+                $request
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

@@ -49,9 +49,7 @@ class UserAuditHelper
         }
 
         if (is_object($value)) {
-            $value = method_exists($value, 'toArray')
-                ? $value->toArray()
-                : (array) $value;
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
         }
 
         if (!is_array($value)) {
@@ -67,14 +65,7 @@ class UserAuditHelper
         $result = [];
 
         foreach ($data as $key => $value) {
-            if (
-                in_array($key, [
-                    'id',
-                    'created_at',
-                    'updated_at',
-                    'deleted_at',
-                ], true)
-            ) {
+            if (in_array($key, ['id', 'created_at', 'updated_at', 'deleted_at'], true)) {
                 continue;
             }
 
@@ -99,9 +90,7 @@ class UserAuditHelper
             }
 
             if ($key === 'process_data') {
-                $decoded = is_string($value)
-                    ? json_decode($value, true)
-                    : $value;
+                $decoded = is_string($value) ? json_decode($value, true) : $value;
 
                 if (is_array($decoded)) {
                     $result['process_data'] = self::cleanProcessData($decoded);
@@ -111,9 +100,7 @@ class UserAuditHelper
             }
 
             if ($key === 'grid_data') {
-                $decoded = is_string($value)
-                    ? json_decode($value, true)
-                    : $value;
+                $decoded = is_string($value) ? json_decode($value, true) : $value;
 
                 if (is_array($decoded)) {
                     $result['grid_data'] = self::cleanGridData($decoded);
@@ -148,11 +135,7 @@ class UserAuditHelper
                 continue;
             }
 
-            if (
-                array_key_exists('key', $item) &&
-                array_key_exists('label', $item) &&
-                array_key_exists('value', $item)
-            ) {
+            if (array_key_exists('key', $item) && array_key_exists('label', $item) && array_key_exists('value', $item)) {
                 $result[] = [
                     'key' => $item['key'],
                     'label' => $item['label'],
@@ -162,10 +145,7 @@ class UserAuditHelper
                 continue;
             }
 
-            if (
-                array_key_exists('label', $item) &&
-                array_key_exists('value', $item)
-            ) {
+            if (array_key_exists('label', $item) && array_key_exists('value', $item)) {
                 $result[] = [
                     'key' => $item['key'] ?? null,
                     'label' => $item['label'],
@@ -189,9 +169,7 @@ class UserAuditHelper
         }
 
         if (is_object($value)) {
-            $value = method_exists($value, 'toArray')
-                ? $value->toArray()
-                : (array) $value;
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
         }
 
         if (is_array($value)) {
@@ -199,10 +177,7 @@ class UserAuditHelper
                 return $value['name'];
             }
 
-            if (
-                array_key_exists('value', $value) &&
-                count($value) <= 3
-            ) {
+            if (array_key_exists('value', $value) && count($value) <= 3) {
                 return self::extractDisplayValue($value['value']);
             }
 
@@ -227,17 +202,7 @@ class UserAuditHelper
             $cleanRow = [];
 
             foreach ($row as $columnKey => $column) {
-                if (
-                    in_array(strtolower((string) $columnKey), [
-                        'id',
-                        'row_id',
-                        '_rowid',
-                        'grid_record_id',
-                        'process_record_id',
-                        'created_at',
-                        'updated_at',
-                    ], true)
-                ) {
+                if (in_array(strtolower((string) $columnKey), ['id', 'row_id', '_rowid', 'grid_record_id', 'process_record_id', 'created_at', 'updated_at'], true)) {
                     continue;
                 }
 
@@ -251,13 +216,8 @@ class UserAuditHelper
                     continue;
                 }
 
-                $fieldKey = $column['key']
-                    ?? $column['Key']
-                    ?? $columnKey;
-
-                $fieldValue = array_key_exists('value', $column)
-                    ? $column['value']
-                    : ($column['Value'] ?? $column);
+                $fieldKey = $column['key'] ?? $column['Key'] ?? $columnKey;
+                $fieldValue = array_key_exists('value', $column) ? $column['value'] : ($column['Value'] ?? $column);
 
                 if ($fieldKey === 'monthlyCalibration') {
                     $cleanValue = self::cleanNestedValue($fieldValue);
@@ -287,7 +247,6 @@ class UserAuditHelper
 
         return $result;
     }
-
 
     /* get grid field label */
     private static function getGridFieldLabel(string $key): string
@@ -331,9 +290,7 @@ class UserAuditHelper
     private static function cleanNestedValue($value)
     {
         if (is_object($value)) {
-            $value = method_exists($value, 'toArray')
-                ? $value->toArray()
-                : (array) $value;
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
         }
 
         if (!is_array($value)) {
@@ -344,9 +301,7 @@ class UserAuditHelper
 
         foreach ($value as $key => $item) {
             if (is_object($item)) {
-                $item = method_exists($item, 'toArray')
-                    ? $item->toArray()
-                    : (array) $item;
+                $item = method_exists($item, 'toArray') ? $item->toArray() : (array) $item;
             }
 
             if (is_array($item)) {
@@ -383,33 +338,25 @@ class UserAuditHelper
     /* get department name */
     private static function getDepartmentName($id)
     {
-        return $id
-            ? Department::where('id', $id)->value('name')
-            : null;
+        return $id ? Department::where('id', $id)->value('name') : null;
     }
 
     /* get user name */
     private static function getUserName($id)
     {
-        return $id
-            ? User::where('id', $id)->value('name')
-            : null;
+        return $id ? User::where('id', $id)->value('name') : null;
     }
 
     /* get process name */
     private static function getProcessName($id)
     {
-        return $id
-            ? Process::where('id', $id)->value('name')
-            : null;
+        return $id ? Process::where('id', $id)->value('name') : null;
     }
 
     /* get stage name */
     private static function getStageName($id)
     {
-        return $id
-            ? Stage::where('id', $id)->value('name')
-            : null;
+        return $id ? Stage::where('id', $id)->value('name') : null;
     }
 
     /* check empty value */
@@ -428,5 +375,40 @@ class UserAuditHelper
         }
 
         return false;
+    }
+
+    /* format audit field label */
+    public static function formatAuditFieldLabel($key)
+    {
+        $key = str_replace(['_', '-'], ' ', $key);
+        $key = str_replace('/', ' / ', $key);
+
+        return ucwords(strtolower(trim($key)));
+    }
+
+    /* format audit value for display */
+    public static function formatAuditDisplayValue($value)
+    {
+        if ($value === null || $value === '') {
+            return '-';
+        }
+
+        if (is_object($value)) {
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
+        }
+
+        if (is_array($value)) {
+            if (isset($value['name'])) {
+                return (string) $value['name'];
+            }
+
+            if (isset($value['value']) && count($value) <= 3) {
+                return self::formatAuditDisplayValue($value['value']);
+            }
+
+            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return (string) $value;
     }
 }

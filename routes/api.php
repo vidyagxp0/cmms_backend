@@ -99,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-calibration-management-record/{id}', [CalibrationManagementController::class, 'update'])->name('update-calibration-management-record');
         Route::post('/calibrationManagement-record-stage/{id}',[CalibrationManagementController::class, 'moveStage'])->name('calibrationManagement-record-stage');
         Route::get('/calibration-management-singleReport/{id}', [CalibrationManagementController::class, 'calibrationManagementSingleReport'])->name('calibration-management-singleReport');
+        Route::get('/calibration-management-audit/{id}', [CalibrationManagementController::class, 'calibrationManagementAudit'])->name('calibration-management-audit');
 
         /* preventive maintenance planner routes */
         Route::post('/store-preventive-planner-record', [PreventiveRecordController::class, 'store'])->name('store-preventive-planner-record');

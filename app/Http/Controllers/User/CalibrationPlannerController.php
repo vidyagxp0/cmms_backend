@@ -5,7 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
-use App\Services\User\CalibrationPlannerService;
+use App\Services\User\CalibrationPlanner\CalibrationPlannerService;
 use App\Services\UserReport\CalibrationReportService;
 use Illuminate\Http\Request;
 

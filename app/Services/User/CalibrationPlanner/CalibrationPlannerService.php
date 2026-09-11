@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\User;
+namespace App\Services\User\CalibrationPlanner;
 
 use App\Helpers\ResponseHelper;
 use App\Services\User\ProcessRecordService;
@@ -17,10 +17,10 @@ use App\Models\GridRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class CalibrationManagementService
+class CalibrationPlannerService
 {
     /* store process record */
-    public static function storeCalibrationManagementData(Request $request)
+    public static function storeCalibrationProcessData(Request $request)
     {
         DB::beginTransaction();
 
@@ -46,33 +46,31 @@ class CalibrationManagementService
                 ? $request->process_data
                 : [];
 
-            // $recordNumberFound = false;
+            $recordNumberFound = false;
 
-            // foreach ($processData as &$field) {
-            //     if (
-            //         is_array($field) &&
-            //         ($field['key'] ?? null) === 'recordNumber'
-            //     ) {
-            //         $field['value'] = $recordNumber;
-            //         $recordNumberFound = true;
-            //         break;
-            //     }
-            // }
+            foreach ($processData as &$field) {
+                if (
+                    is_array($field) &&
+                    ($field['key'] ?? null) === 'recordNumber'
+                ) {
+                    $field['value'] = $recordNumber;
+                    $recordNumberFound = true;
+                    break;
+                }
+            }
 
             unset($field);
 
-            // if (!$recordNumberFound) {
-            //     $processData[] = [
-            //         'key' => 'recordNumber',
-            //         'label' => 'Record Number',
-            //         'value' => $recordNumber,
-            //     ];
-            // }
+            if (!$recordNumberFound) {
+                $processData[] = [
+                    'key' => 'recordNumber',
+                    'label' => 'Record Number',
+                    'value' => $recordNumber,
+                ];
+            }
 
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,
-                'is_child' => true,
-                'parent_id' => $request->parent_id,
                 'stage_id' => $request->stage_id,
                 'department_id' => $request->department_id,
                 'initiator_id' => $request->initiator_id,
@@ -153,7 +151,7 @@ class CalibrationManagementService
     }
 
     /* get process record details */
-    public static function getCalibrationManagementRecord($id)
+    public static function getCalibrationPlannerRecord($id)
     {
         try {
             $processRecord = ProcessRecord::with([
@@ -178,7 +176,7 @@ class CalibrationManagementService
     }
 
     /* update process record */
-    public static function updateCalibrationManagementRecord(
+    public static function updateCalibrationPlannerRecord(
         Request $request,
         $id
     ) {
@@ -440,7 +438,7 @@ class CalibrationManagementService
             DB::rollBack();
 
             info(
-                'Error in CalibrationManagementService@updateCalibrationManagementRecord',
+                'Error in CalibrationPlannerService@updateCalibrationPlannerRecord',
                 [
                     'error' => $e->getMessage(),
                 ]
