@@ -34,8 +34,7 @@ class StageSeeder extends Seeder
 
             'Preventive Maintenance' => [
                 'Opened',
-                'Preventive In Progress',
-                'Pending Out of Limit',
+                'Engineering Department Review',
                 'Pending QA Approval',
                 'Closed - Done',
                 'Close - Cancelled',

@@ -225,6 +225,13 @@ class ProcessRecordService
                     'Pending QA Approval' => 'QA Approver',
                 ],
 
+                /* Preventive Maintenance - Process ID 4 */
+                4 => [
+                    'Opened' => 'Initiator',
+                    'Engineering Department Review' => 'HOD/Designee',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
                 /* Calibration Management - Process ID 5 */
                 5 => [
                     'Opened' => 'Initiator',

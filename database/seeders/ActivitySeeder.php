@@ -105,18 +105,13 @@ class ActivitySeeder extends Seeder
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Preventive In Progress',
+                    'to' => 'Engineering Department Review',
                     'name' => 'Start Maintenance',
                 ],
                 [
-                    'from' => 'Preventive In Progress',
-                    'to' => 'Pending Out of Limit',
-                    'name' => 'Submit Maintenance',
-                ],
-                [
-                    'from' => 'Pending Out of Limit',
+                    'from' => 'Engineering Department Review',
                     'to' => 'Pending QA Approval',
-                    'name' => 'Out of Limit Review Complete',
+                    'name' => 'Engineering Review Complete',
                 ],
                 [
                     'from' => 'Pending QA Approval',
@@ -126,18 +121,13 @@ class ActivitySeeder extends Seeder
             ],
             [
                 [
-                    'from' => 'Preventive In Progress',
+                    'from' => 'Engineering Department Review',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending Out of Limit',
-                    'to' => 'Preventive In Progress',
-                    'name' => 'More Info Required',
-                ],
-                [
                     'from' => 'Pending QA Approval',
-                    'to' => 'Pending Out of Limit',
+                    'to' => 'Engineering Department Review',
                     'name' => 'More Info Required',
                 ],
             ]
