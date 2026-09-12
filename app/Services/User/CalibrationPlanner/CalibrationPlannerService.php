@@ -19,54 +19,38 @@ use Illuminate\Support\Facades\Hash;
 
 class CalibrationPlannerService
 {
-    /* store process record */
+    /* create a new process record */
     public static function storeCalibrationProcessData(Request $request)
     {
         DB::beginTransaction();
-
         try {
+            /* stage must belong to the chosen process */
             $stageExists = Stage::where('id', $request->stage_id)
-                ->where('process_id', $request->process_id)
-                ->exists();
+                ->where('process_id', $request->process_id)->exists();
 
             if (!$stageExists) {
                 DB::rollBack();
-
-                return ResponseHelper::error(
-                    'Selected stage does not belong to the selected process.',
-                    422
-                );
+                return ResponseHelper::error('Selected stage does not belong to the selected process.', 422);
             }
 
-            $recordNumber = ProcessRecordService::getGeneratedRecordNumber(
-                $request->process_id
-            );
-
-            $processData = is_array($request->process_data)
-                ? $request->process_data
-                : [];
-
+            /* auto generate record number */
+            $recordNumber = ProcessRecordService::getGeneratedRecordNumber($request->process_id);
+            $processData = is_array($request->process_data) ? $request->process_data : [];
             $recordNumberFound = false;
 
+            /* inject record number into existing process_data field if present */
             foreach ($processData as &$field) {
-                if (
-                    is_array($field) &&
-                    ($field['key'] ?? null) === 'recordNumber'
-                ) {
+                if (is_array($field) && ($field['key'] ?? null) === 'recordNumber') {
                     $field['value'] = $recordNumber;
                     $recordNumberFound = true;
                     break;
                 }
             }
-
             unset($field);
 
+            /* otherwise append a new record number field */
             if (!$recordNumberFound) {
-                $processData[] = [
-                    'key' => 'recordNumber',
-                    'label' => 'Record Number',
-                    'value' => $recordNumber,
-                ];
+                $processData[] = ['key' => 'recordNumber', 'label' => 'Record Number', 'value' => $recordNumber];
             }
 
             $processRecord = ProcessRecord::create([
@@ -79,15 +63,11 @@ class CalibrationPlannerService
                 'process_data' => $processData,
             ]);
 
-            /* Store grid data */
-            if (
-                $request->has('gridData') &&
-                is_array($request->gridData) &&
-                !empty($request->gridData)
-            ) {
+            /* store grid rows if provided */
+            if ($request->has('gridData') && is_array($request->gridData) && !empty($request->gridData)) {
+                /* strip temp row identifiers before saving */
                 $gridData = array_map(function ($row) {
                     unset($row['_rowId'], $row['row_id']);
-
                     return $row;
                 }, $request->gridData);
 
@@ -96,61 +76,40 @@ class CalibrationPlannerService
                     'grid_data' => $gridData,
                 ]);
 
-                /* Grid audit */
+                /* audit: grid created */
                 UserAuditHelper::log(
                     'Grid Record',
                     'Created',
                     'Grid data created successfully.',
                     $gridRecord->id,
                     null,
-                    [
-                        'process_record_id' => $gridRecord->process_record_id,
-                        'grid_data' => $gridRecord->grid_data,
-                    ],
+                    ['process_record_id' => $gridRecord->process_record_id, 'grid_data' => $gridRecord->grid_data],
                     GridRecord::class
                 );
             }
 
-            /* Process record audit */
-            $newValue = [
-                'process_data' => $processData,
-            ];
-
+            /* audit: process record created */
             UserAuditHelper::log(
                 'Process Record',
                 'Created',
                 'Process record created successfully.',
                 $processRecord->id,
                 null,
-                $newValue,
+                ['process_data' => $processData],
                 ProcessRecord::class
             );
 
             DB::commit();
+            $processRecord->load(['process', 'stage', 'department', 'initiator']);
 
-            $processRecord->load([
-                'process',
-                'stage',
-                'department',
-                'initiator',
-            ]);
-
-            return ResponseHelper::success(
-                $processRecord,
-                'Process record created successfully.',
-                201
-            );
+            return ResponseHelper::success($processRecord, 'Process record created successfully.', 201);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return ResponseHelper::error(
-                'Failed to create process record.',
-                500
-            );
+            return ResponseHelper::error('Failed to create process record.', 500);
         }
     }
 
-    /* get process record details */
+    /* fetch a single process record with related data */
     public static function getCalibrationPlannerRecord($id)
     {
         try {
@@ -160,22 +119,16 @@ class CalibrationPlannerService
                 'department',
                 'initiator',
                 'gridRecords',
-                'checklistRecords'
+                'checklistRecords',
             ])->findOrFail($id);
 
-            return ResponseHelper::success(
-                $processRecord,
-                'Process record fetched successfully.'
-            );
+            return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
         } catch (\Exception $e) {
-            return ResponseHelper::error(
-                'Process record not found.',
-                404
-            );
+            return ResponseHelper::error('Process record not found.', 404);
         }
     }
 
-    /* update process record */
+    /* update an existing process record and log the diff */
     public static function updateCalibrationPlannerRecord(
         Request $request,
         $id
@@ -349,15 +302,6 @@ class CalibrationPlannerService
                     ? $request->gridData
                     : [];
 
-                $gridData = array_map(function ($row) {
-                    unset(
-                        $row['_rowId'],
-                        $row['row_id']
-                    );
-
-                    return $row;
-                }, $gridData);
-
                 $gridRecord = GridRecord::where(
                     'process_record_id',
                     $processRecord->id
@@ -368,15 +312,35 @@ class CalibrationPlannerService
                         ? $gridRecord->grid_data
                         : [];
 
-                    [$gridOldChanges, $gridNewChanges] =
-                        self::getGridDataChanges(
-                            $oldGridData,
-                            $gridData
-                        );
+                    /*
+                    * Compare rows before removing row identifiers.
+                    * This allows the audit logic to detect the correct row.
+                    */
+                    $gridChanges = self::getGridDataChanges(
+                        $oldGridData,
+                        $gridData
+                    );
 
+                    /* deleted rows */
+                    if (!empty($gridChanges['deleted'])) {
+                        UserAuditHelper::log(
+                            'Grid Record',
+                            'Deleted',
+                            'Grid row deleted successfully.',
+                            $gridRecord->id,
+                            [
+                                'process_record_id' => $processRecord->id,
+                                'grid_data' => $gridChanges['deleted'],
+                            ],
+                            null,
+                            GridRecord::class
+                        );
+                    }
+
+                    /* updated rows */
                     if (
-                        !empty($gridOldChanges) ||
-                        !empty($gridNewChanges)
+                        !empty($gridChanges['updated_old']) ||
+                        !empty($gridChanges['updated_new'])
                     ) {
                         UserAuditHelper::log(
                             'Grid Record',
@@ -385,25 +349,60 @@ class CalibrationPlannerService
                             $gridRecord->id,
                             [
                                 'process_record_id' => $processRecord->id,
-                                'grid_data' => $gridOldChanges,
+                                'grid_data' => $gridChanges['updated_old'],
                             ],
                             [
                                 'process_record_id' => $processRecord->id,
-                                'grid_data' => $gridNewChanges,
+                                'grid_data' => $gridChanges['updated_new'],
                             ],
                             GridRecord::class
                         );
                     }
 
-                    if ($oldGridData != $gridData) {
+                    /* created rows */
+                    if (!empty($gridChanges['created'])) {
+                        UserAuditHelper::log(
+                            'Grid Record',
+                            'Created',
+                            'Grid row created successfully.',
+                            $gridRecord->id,
+                            null,
+                            [
+                                'process_record_id' => $processRecord->id,
+                                'grid_data' => $gridChanges['created'],
+                            ],
+                            GridRecord::class
+                        );
+                    }
+
+                    /* remove technical fields only before saving */
+                    $gridDataForSave = array_map(function ($row) {
+                        unset(
+                            $row['_rowId'],
+                            $row['row_id']
+                        );
+
+                        return $row;
+                    }, $gridData);
+
+                    if ($oldGridData != $gridDataForSave) {
                         $gridRecord->update([
-                            'grid_data' => $gridData,
+                            'grid_data' => $gridDataForSave,
                         ]);
                     }
                 } elseif (!empty($gridData)) {
+                    $gridDataForSave = array_map(function ($row) {
+                        unset(
+                            $row['_rowId'],
+                            $row['row_id']
+                        );
+
+                        return $row;
+                    }, $gridData);
+
                     $gridRecord = GridRecord::create([
                         'process_record_id' => $processRecord->id,
-                        'grid_data' => $gridData,
+                        'grid_data' => $gridDataForSave,
                     ]);
 
                     UserAuditHelper::log(
@@ -414,7 +413,7 @@ class CalibrationPlannerService
                         null,
                         [
                             'process_record_id' => $processRecord->id,
-                            'grid_data' => $gridData,
+                            'grid_data' => $gridDataForSave,
                         ],
                         GridRecord::class
                     );
@@ -451,126 +450,77 @@ class CalibrationPlannerService
         }
     }
 
-    private static function processDataHasKey(
-        array $processData,
-        string $key
-    ): bool {
+    /* check if a process_data key already exists */
+    private static function processDataHasKey(array $processData, string $key): bool
+    {
         foreach ($processData as $field) {
-            if (
-                is_array($field) &&
-                ($field['key'] ?? null) === $key
-            ) {
+            if (is_array($field) && ($field['key'] ?? null) === $key)
                 return true;
-            }
         }
-
         return false;
     }
 
-    /* process data diff */
-    private static function getProcessDataChanges(
-        array $oldData,
-        array $newData
-    ): array {
+    /* build old/new audit pairs for changed process_data fields */
+    private static function getProcessDataChanges(array $oldData, array $newData): array
+    {
         $old = [];
         $new = [];
-
         $oldFields = self::indexProcessData($oldData);
         $newFields = self::indexProcessData($newData);
 
-        foreach (
-            array_unique(
-                array_merge(
-                    array_keys($oldFields),
-                    array_keys($newFields)
-                )
-            ) as $key
-        ) {
+        foreach (array_unique(array_merge(array_keys($oldFields), array_keys($newFields))) as $key) {
             $oldItem = $oldFields[$key] ?? null;
             $newItem = $newFields[$key] ?? null;
+            $oldVal = self::extractProcessFieldValue($oldItem['value'] ?? null);
+            $newVal = self::extractProcessFieldValue($newItem['value'] ?? null);
 
-            $oldVal = self::extractProcessFieldValue(
-                $oldItem['value'] ?? null
-            );
-
-            $newVal = self::extractProcessFieldValue(
-                $newItem['value'] ?? null
-            );
-
-            if (self::processValuesAreSame($oldVal, $newVal)) {
+            if (self::processValuesAreSame($oldVal, $newVal))
                 continue;
-            }
 
-            $old[] = [
-                'key' => $oldItem['key'] ?? $key,
-                'label' => $oldItem['label']
-                    ?? $newItem['label']
-                    ?? $key,
-                'value' => $oldVal,
-            ];
-
-            $new[] = [
-                'key' => $newItem['key'] ?? $key,
-                'label' => $newItem['label']
-                    ?? $oldItem['label']
-                    ?? $key,
-                'value' => $newVal,
-            ];
+            $old[] = ['key' => $oldItem['key'] ?? $key, 'label' => $oldItem['label'] ?? $newItem['label'] ?? $key, 'value' => $oldVal];
+            $new[] = ['key' => $newItem['key'] ?? $key, 'label' => $newItem['label'] ?? $oldItem['label'] ?? $key, 'value' => $newVal];
         }
 
         return [$old, $new];
     }
 
-    /* unwrap process field values */
+    /* pull a plain scalar out of an object/array field value */
     private static function extractProcessFieldValue($value)
     {
         if (is_object($value)) {
-            $value = method_exists($value, 'toArray')
-                ? $value->toArray()
-                : (array) $value;
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
         }
-
-        if (is_array($value) && isset($value['name'])) {
+        if (is_array($value) && isset($value['name']))
             return $value['name'];
-        }
-
-        if (is_array($value) && empty($value)) {
+        if (is_array($value) && empty($value))
             return null;
-        }
 
         return $value;
     }
 
-    /* compare process values */
+    /* treat null/''/[] as equivalent "empty" values when comparing */
     private static function processValuesAreSame($old, $new): bool
     {
         $oldEmpty = $old === null || $old === '' || $old === [];
         $newEmpty = $new === null || $new === '' || $new === [];
 
-        if ($oldEmpty && $newEmpty) {
+        if ($oldEmpty && $newEmpty)
             return true;
-        }
 
         return $old == $new;
     }
 
-    /* index process data by key */
+    /* index process_data rows by their key */
     private static function indexProcessData(array $data): array
     {
         $result = [];
-
         foreach ($data as $item) {
-            if (!is_array($item)) {
+            if (!is_array($item))
                 continue;
-            }
-
             $key = $item['key'] ?? null;
-
-            if ($key) {
+            if ($key)
                 $result[$key] = $item;
-            }
         }
-
         return $result;
     }
 
@@ -579,56 +529,40 @@ class CalibrationPlannerService
         array $oldData,
         array $newData
     ): array {
-        $oldChanges = [];
-        $newChanges = [];
-
         $oldRows = [];
         $newRows = [];
 
         foreach ($oldData as $row) {
-            if (!is_array($row)) {
-                continue;
+            if (is_array($row)) {
+                $oldRows[] = self::removeGridTechnicalFields($row);
             }
-
-            $oldRows[] = self::removeGridTechnicalFields($row);
         }
 
         foreach ($newData as $row) {
-            if (!is_array($row)) {
-                continue;
+            if (is_array($row)) {
+                $newRows[] = self::removeGridTechnicalFields($row);
             }
-
-            $newRows[] = self::removeGridTechnicalFields($row);
         }
 
-        $maxRows = max(
-            count($oldRows),
-            count($newRows)
-        );
+        /* index rows by stable identity */
+        $oldIndexed = self::indexGridRowsForAudit($oldRows);
+        $newIndexed = self::indexGridRowsForAudit($newRows);
 
-        for ($index = 0; $index < $maxRows; $index++) {
-            $rowNumber = $index + 1;
+        $created = [];
+        $updatedOld = [];
+        $updatedNew = [];
+        $deleted = [];
 
-            $oldRow = $oldRows[$index] ?? null;
-            $newRow = $newRows[$index] ?? null;
+        /* check existing and deleted rows */
+        foreach ($oldIndexed as $identity => $oldRowData) {
+            $oldRow = $oldRowData['row'];
+            $oldRowNumber = $oldRowData['row_number'];
 
-            if ($oldRow === null && $newRow !== null) {
-                if (!empty($newRow)) {
-                    $newChanges[] = [
-                        'row' => $rowNumber,
-                        'fields' => self::convertGridRowToAuditFields(
-                            $newRow
-                        ),
-                    ];
-                }
-
-                continue;
-            }
-
-            if ($oldRow !== null && $newRow === null) {
+            /* row deleted */
+            if (!isset($newIndexed[$identity])) {
                 if (!empty($oldRow)) {
-                    $oldChanges[] = [
-                        'row' => $rowNumber,
+                    $deleted[] = [
+                        'row' => $oldRowNumber,
                         'fields' => self::convertGridRowToAuditFields(
                             $oldRow
                         ),
@@ -637,6 +571,9 @@ class CalibrationPlannerService
 
                 continue;
             }
+
+            $newRow = $newIndexed[$identity]['row'];
+            $newRowNumber = $newIndexed[$identity]['row_number'];
 
             $columns = array_unique(
                 array_merge(
@@ -649,6 +586,11 @@ class CalibrationPlannerService
             $newChangedFields = [];
 
             foreach ($columns as $column) {
+                /* never audit this internal calibration field */
+                if (self::isExcludedGridAuditField($column)) {
+                    continue;
+                }
+
                 $oldColumn = self::extractGridColumnValue(
                     $oldRow[$column] ?? null
                 );
@@ -657,10 +599,26 @@ class CalibrationPlannerService
                     $newRow[$column] ?? null
                 );
 
+                /*
+                * Compare dates using normalized format.
+                *
+                * 13/09/2026 == 2026-09-13
+                *
+                * Therefore a date format conversion alone
+                * will not create an audit change.
+                */
+                $oldCompareValue = self::normalizeGridDateValue(
+                    $oldColumn
+                );
+
+                $newCompareValue = self::normalizeGridDateValue(
+                    $newColumn
+                );
+
                 if (
                     self::processValuesAreSame(
-                        $oldColumn,
-                        $newColumn
+                        $oldCompareValue,
+                        $newCompareValue
                     )
                 ) {
                     continue;
@@ -685,189 +643,191 @@ class CalibrationPlannerService
                 ];
             }
 
+            /* row updated */
             if (
                 !empty($oldChangedFields) ||
                 !empty($newChangedFields)
             ) {
-                $oldChanges[] = [
-                    'row' => $rowNumber,
+                $updatedOld[] = [
+                    'row' => $newRowNumber,
                     'fields' => $oldChangedFields,
                 ];
 
-                $newChanges[] = [
-                    'row' => $rowNumber,
+                $updatedNew[] = [
+                    'row' => $newRowNumber,
                     'fields' => $newChangedFields,
                 ];
             }
         }
 
-        return [$oldChanges, $newChanges];
-    }
-
-    private static function convertGridRowToAuditFields(
-        array $row
-    ): array {
-        $fields = [];
-
-        foreach ($row as $key => $column) {
-            $value = self::extractGridColumnValue($column);
-
-            if (self::processValuesAreSame(null, $value)) {
+        /* check newly created rows */
+        foreach ($newIndexed as $identity => $newRowData) {
+            if (isset($oldIndexed[$identity])) {
                 continue;
             }
 
-            $fields[] = [
-                'key' => $key,
-                'label' => self::getGridColumnLabel(
-                    $column,
-                    null,
-                    $key
-                ),
-                'value' => $value,
-            ];
+            $newRow = $newRowData['row'];
+            $newRowNumber = $newRowData['row_number'];
+
+            if (!empty($newRow)) {
+                $created[] = [
+                    'row' => $newRowNumber,
+                    'fields' => self::convertGridRowToAuditFields(
+                        $newRow
+                    ),
+                ];
+            }
         }
 
-        return $fields;
-    }
-
-    private static function getGridColumnLabel(
-        $oldColumn,
-        $newColumn,
-        $fallback
-    ): string {
-        if (
-            is_array($newColumn) &&
-            isset($newColumn['label'])
-        ) {
-            return $newColumn['label'];
-        }
-
-        if (
-            is_array($oldColumn) &&
-            isset($oldColumn['label'])
-        ) {
-            return $oldColumn['label'];
-        }
-
-        return self::formatFieldLabel($fallback);
+        return [
+            'created' => $created,
+            'updated_old' => $updatedOld,
+            'updated_new' => $updatedNew,
+            'deleted' => $deleted,
+        ];
     }
 
 
-    /* unwrap grid column value */
-    private static function extractGridColumnValue($value)
+    /* normalize grid date value for comparison */
+    private static function normalizeGridDateValue($value)
     {
-        if (
-            is_array($value) &&
-            array_key_exists('value', $value) &&
-            array_key_exists('label', $value)
-        ) {
-            return $value['value'];
+        if (!is_string($value)) {
+            return $value;
         }
 
-        if (is_array($value) && isset($value['name'])) {
-            return $value['name'];
+        $value = trim($value);
+
+        /* dd/mm/yyyy -> yyyy-mm-dd */
+        if (
+            preg_match(
+                '/^\d{2}\/\d{2}\/\d{4}$/',
+                $value
+            )
+        ) {
+            $date = \DateTime::createFromFormat(
+                'd/m/Y',
+                $value
+            );
+
+            if ($date) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        /* yyyy-mm-dd remains yyyy-mm-dd */
+        if (
+            preg_match(
+                '/^\d{4}-\d{2}-\d{2}$/',
+                $value
+            )
+        ) {
+            return $value;
         }
 
         return $value;
     }
 
-    private static function removeGridTechnicalFields(array $row): array
-    {
-        foreach (
-            [
-                'id',
-                '_rowId',
-                'row_id',
-                'grid_record_id',
-                'process_record_id',
-                'created_at',
-                'updated_at',
-            ] as $field
-        ) {
-            unset($row[$field]);
-        }
 
-        return $row;
-    }
-
-    private static function formatFieldLabel($key)
-    {
-        $key = str_replace(
-            ['_', '-'],
-            ' ',
-            (string) $key
-        );
-
-        $key = str_replace(
-            '/',
-            ' / ',
-            $key
-        );
-
-        return ucwords(
-            strtolower(
-                trim($key)
-            )
-        );
-    }
-
-    /* compare grid values */
-    private static function gridValuesAreSame($old, $new): bool
-    {
-        if (is_object($old)) {
-            $old = method_exists($old, 'toArray')
-                ? $old->toArray()
-                : (array) $old;
-        }
-
-        if (is_object($new)) {
-            $new = method_exists($new, 'toArray')
-                ? $new->toArray()
-                : (array) $new;
-        }
-
-        return $old === $new || $old == $new;
-    }
-
-    private static function indexGridRow(array $row): array
+    /* build identity => row map for audit comparison */
+    private static function indexGridRowsForAudit(array $rows): array
     {
         $result = [];
-
-        foreach ($row as $key => $column) {
-            if (!is_array($column)) {
-                continue;
-            }
-
-            if (!isset($column['label'])) {
-                continue;
-            }
-
-            $result[$key] = $column;
+        foreach ($rows as $index => $row) {
+            $identity = self::getGridRowIdentity($row) ?? 'row_' . ($index + 1);
+            $result[$identity] = ['row' => $row, 'row_number' => $index + 1];
         }
-
         return $result;
     }
 
-    /* move process record stage */
-    public static function moveStage(
-        RecordActivityRequest $request,
-        $id
-    ) {
+    /* prefer equipment id or row id as a stable row identity, else null */
+    private static function getGridRowIdentity(array $row): ?string
+    {
+        if (isset($row['equipmentInstrumentId'])) {
+            $value = self::extractGridColumnValue($row['equipmentInstrumentId']);
+            if ($value !== null && $value !== '')
+                return 'equipment_' . (string) $value;
+        }
+        if (isset($row['row_id']))
+            return 'row_' . (string) $row['row_id'];
+        if (isset($row['_rowId']))
+            return 'row_' . (string) $row['_rowId'];
+
+        return null;
+    }
+
+    /* fields skipped from grid audit logs */
+    private static function isExcludedGridAuditField($key): bool
+    {
+        return in_array($key, ['calibrationFrequencyStartDate'], true);
+    }
+
+    /* turn a full grid row into audit-log field entries */
+    private static function convertGridRowToAuditFields(array $row): array
+    {
+        $fields = [];
+        foreach ($row as $key => $column) {
+            if (self::isExcludedGridAuditField($key))
+                continue;
+
+            $value = self::extractGridColumnValue($column);
+            if (self::processValuesAreSame(null, $value))
+                continue;
+
+            $fields[] = ['key' => $key, 'label' => self::getGridColumnLabel($column, null, $key), 'value' => $value];
+        }
+        return $fields;
+    }
+
+    /* pick a human label for a grid column, falling back to a formatted key */
+    private static function getGridColumnLabel($oldColumn, $newColumn, $fallback): string
+    {
+        if (is_array($newColumn) && isset($newColumn['label']))
+            return $newColumn['label'];
+        if (is_array($oldColumn) && isset($oldColumn['label']))
+            return $oldColumn['label'];
+
+        return self::formatFieldLabel($fallback);
+    }
+
+    /* pull a plain scalar out of a grid column value */
+    private static function extractGridColumnValue($value)
+    {
+        if (is_array($value) && array_key_exists('value', $value) && array_key_exists('label', $value)) {
+            return $value['value'];
+        }
+        if (is_array($value) && isset($value['name']))
+            return $value['name'];
+
+        return $value;
+    }
+
+    /* strip internal/db fields before diffing or saving a grid row */
+    private static function removeGridTechnicalFields(array $row): array
+    {
+        foreach (['id', '_rowId', 'row_id', 'grid_record_id', 'process_record_id', 'created_at', 'updated_at'] as $field) {
+            unset($row[$field]);
+        }
+        return $row;
+    }
+
+    /* turn a raw key like "some_field" into "Some Field" */
+    private static function formatFieldLabel($key)
+    {
+        $key = str_replace(['_', '-'], ' ', (string) $key);
+        $key = str_replace('/', ' / ', $key);
+
+        return ucwords(strtolower(trim($key)));
+    }
+
+    /* move a process record from its current stage to the next via an activity */
+    public static function moveStage(RecordActivityRequest $request, $id)
+    {
         DB::beginTransaction();
-
         try {
-            $processRecord = ProcessRecord::with([
-                'process',
-                'stage',
-                'department',
-                'initiator',
-            ])->findOrFail($id);
+            $processRecord = ProcessRecord::with(['process', 'stage', 'department', 'initiator'])->findOrFail($id);
 
-            /* get activity details */
-            $activity = Activity::with([
-                'fromStage',
-                'toStage',
-            ])
+            /* activity must be active and valid for the record's current stage */
+            $activity = Activity::with(['fromStage', 'toStage'])
                 ->where('id', $request->activity_id)
                 ->where('is_active', true)
                 ->where('from_stage', $processRecord->stage_id)
@@ -875,64 +835,32 @@ class CalibrationPlannerService
 
             if (!$activity) {
                 DB::rollBack();
-
-                return ResponseHelper::error(
-                    'Selected activity is not available for the current stage.',
-                    422
-                );
+                return ResponseHelper::error('Selected activity is not available for the current stage.', 422);
             }
 
-            /* make sure activity belongs to current process */
-            if (
-                !$activity->fromStage ||
-                $activity->fromStage->process_id !=
-                $processRecord->process_id
-            ) {
+            /* activity's source stage must belong to this process */
+            if (!$activity->fromStage || $activity->fromStage->process_id != $processRecord->process_id) {
                 DB::rollBack();
-
-                return ResponseHelper::error(
-                    'Selected activity does not belong to this process.',
-                    422
-                );
+                return ResponseHelper::error('Selected activity does not belong to this process.', 422);
             }
 
-            /* make sure stage belongs to current process */
-            if (
-                !$activity->toStage ||
-                $activity->toStage->process_id !=
-                $processRecord->process_id
-            ) {
+            /* activity's target stage must belong to this process */
+            if (!$activity->toStage || $activity->toStage->process_id != $processRecord->process_id) {
                 DB::rollBack();
-
-                return ResponseHelper::error(
-                    'Invalid target stage for this process.',
-                    422
-                );
+                return ResponseHelper::error('Invalid target stage for this process.', 422);
             }
 
             $currentStage = $processRecord->stage;
             $targetStage = $activity->toStage;
-
-            /* verify activity user */
             $user = User::find($request->user_id);
 
-            if (
-                !$user ||
-                $user->email !== $request->email ||
-                !Hash::check(
-                    $request->password,
-                    $user->password
-                )
-            ) {
+            /* re-verify the acting user's credentials before moving stage */
+            if (!$user || $user->email !== $request->email || !Hash::check($request->password, $user->password)) {
                 DB::rollBack();
-
-                return ResponseHelper::error(
-                    'Invalid email or password.',
-                    422
-                );
+                return ResponseHelper::error('Invalid email or password.', 422);
             }
 
-            /* record activity code */
+            /* record the activity performed */
             RecordActivityHistory::create([
                 'process_record_id' => $processRecord->id,
                 'activity_id' => $activity->id,
@@ -943,62 +871,37 @@ class CalibrationPlannerService
                 'performed_at' => now(),
             ]);
 
-            /* update current stage */
             $processRecord->stage_id = $targetStage->id;
             $processRecord->save();
 
-            /* audit code */
-            $oldValue = [
-                'stage' => $currentStage?->name,
-            ];
+            $description = $request->filled('comment') ? $request->comment : 'Process record stage updated successfully.';
 
-            $newValue = [
-                'stage' => $targetStage?->name,
-            ];
-
-            $description = $request->filled('comment')
-                ? $request->comment
-                : 'Process record stage updated successfully.';
-
+            /* audit: stage change */
             UserAuditHelper::log(
                 'Process Record',
                 'Activity Performed',
                 $description,
                 $processRecord->id,
-                $oldValue,
-                $newValue,
+                ['stage' => $currentStage?->name],
+                ['stage' => $targetStage?->name],
                 ProcessRecord::class
             );
 
             DB::commit();
+            $processRecord->load(['process', 'stage', 'department', 'initiator']);
 
-            /* load latest data */
-            $processRecord->load([
-                'process',
-                'stage',
-                'department',
-                'initiator',
-            ]);
-
-            return ResponseHelper::success(
-                [
-                    'record' => $processRecord,
-                    'activity' => [
-                        'id' => $activity->id,
-                        'name' => $activity->name,
-                        'from_stage' => $currentStage->name,
-                        'to_stage' => $targetStage->name,
-                    ],
+            return ResponseHelper::success([
+                'record' => $processRecord,
+                'activity' => [
+                    'id' => $activity->id,
+                    'name' => $activity->name,
+                    'from_stage' => $currentStage->name,
+                    'to_stage' => $targetStage->name,
                 ],
-                'Process record stage updated successfully.'
-            );
+            ], 'Process record stage updated successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return ResponseHelper::error(
-                $e->getMessage(),
-                500
-            );
+            return ResponseHelper::error($e->getMessage(), 500);
         }
     }
 }
