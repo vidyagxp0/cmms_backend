@@ -49,11 +49,11 @@ class UserAuditService
                 $checklistAuditQuery->where('created_at', '<=', $to);
             }
 
-            /* merge and sort all audits newest first */
+            /* merge all audits, newest id first (id is the source of truth for ordering) */
             $audits = $processAuditQuery->get()
                 ->concat($gridAuditQuery->get())
                 ->concat($checklistAuditQuery->get())
-                ->sortByDesc(fn($audit) => $audit->created_at ? Carbon::parse($audit->created_at)->timestamp : 0)
+                ->sortByDesc(fn($audit) => (int) $audit->id)
                 ->values();
 
             $auditRows = [];
@@ -95,11 +95,8 @@ class UserAuditService
                 }));
             }
 
-            usort($auditRows, function ($a, $b) {
-                $dateA = !empty($a['created_at']) ? Carbon::parse($a['created_at'])->timestamp : 0;
-                $dateB = !empty($b['created_at']) ? Carbon::parse($b['created_at'])->timestamp : 0;
-                return $dateB <=> $dateA;
-            });
+            /* preserve audit-id order across the rows produced from each audit */
+            usort($auditRows, fn($a, $b) => (int) ($b['id'] ?? 0) <=> (int) ($a['id'] ?? 0));
 
             /* manual pagination over the flattened row list */
             $total = count($auditRows);
@@ -180,10 +177,42 @@ class UserAuditService
             if (self::valuesAreSame($old, $new)) continue;
             if (self::isEmptyValue($old) && self::isEmptyValue($new)) continue;
 
+            /* attachments need their own name/url shape instead of raw display */
+            if ($field === 'attachments') {
+                $old = self::formatAttachmentAuditValue($old);
+                $new = self::formatAttachmentAuditValue($new);
+            }
+
             $rows[] = self::makeAuditRow($audit, FieldLabelHelper::getLabel('Process Record', $field), $old, $new);
         }
 
         return $rows;
+    }
+
+    /* reduce an attachments payload down to [name, url] entries for audit display */
+    private static function formatAttachmentAuditValue($attachments)
+    {
+        if ($attachments === null || $attachments === '') return null;
+
+        if (is_string($attachments)) {
+            $decoded = json_decode($attachments, true);
+            $attachments = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($attachments)) return null;
+
+        $result = [];
+
+        foreach ($attachments as $attachment) {
+            if (!is_array($attachment)) continue;
+
+            $name = $attachment['name'] ?? $attachment['Name'] ?? null;
+            if (!$name) continue;
+
+            $result[] = ['name' => $name, 'url' => $attachment['url'] ?? $attachment['Url'] ?? null];
+        }
+
+        return empty($result) ? null : $result;
     }
 
     /* flatten process_data into label => value pairs */

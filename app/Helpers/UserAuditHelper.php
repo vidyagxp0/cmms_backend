@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Auth;
 
 class UserAuditHelper
 {
+    /* known foreign-id fields resolved to a display name in cleanArray() */
+    private const ID_FIELDS = [
+        'department_id' => ['label' => 'Department', 'model' => Department::class],
+        'initiator_id' => ['label' => 'Initiator', 'model' => User::class],
+        'process_id' => ['label' => 'Process', 'model' => Process::class],
+        'stage_id' => ['label' => 'Stage', 'model' => Stage::class],
+    ];
+
     /* create an audit log entry */
     public static function log(
         string $module,
@@ -64,20 +72,9 @@ class UserAuditHelper
             /* never expose calibration frequency start date in audits */
             if ($key === 'calibrationFrequencyStartDate') continue;
 
-            if ($key === 'department_id') {
-                $result['Department'] = self::getDepartmentName($value);
-                continue;
-            }
-            if ($key === 'initiator_id') {
-                $result['Initiator'] = self::getUserName($value);
-                continue;
-            }
-            if ($key === 'process_id') {
-                $result['Process'] = self::getProcessName($value);
-                continue;
-            }
-            if ($key === 'stage_id') {
-                $result['Stage'] = self::getStageName($value);
+            if (isset(self::ID_FIELDS[$key])) {
+                $meta = self::ID_FIELDS[$key];
+                $result[$meta['label']] = self::resolveName($value, $meta['model']);
                 continue;
             }
 
@@ -392,24 +389,10 @@ class UserAuditHelper
         return $value;
     }
 
-    private static function getDepartmentName($id)
+    /* resolve a foreign id to its model's "name" column */
+    private static function resolveName($id, string $modelClass): ?string
     {
-        return $id ? Department::where('id', $id)->value('name') : null;
-    }
-
-    private static function getUserName($id)
-    {
-        return $id ? User::where('id', $id)->value('name') : null;
-    }
-
-    private static function getProcessName($id)
-    {
-        return $id ? Process::where('id', $id)->value('name') : null;
-    }
-
-    private static function getStageName($id)
-    {
-        return $id ? Stage::where('id', $id)->value('name') : null;
+        return $id ? $modelClass::where('id', $id)->value('name') : null;
     }
 
     /* check for null / blank string / empty array */
