@@ -107,6 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-preventive-planner-record/{id}', [PreventiveRecordController::class, 'show'])->name('show-preventive-planner-record');
         Route::put('/update-preventive-planner-record/{id}', [PreventiveRecordController::class, 'update'])->name('update-preventive-planner-record');
         Route::post('/preventive-planner-record-stage/{id}',[PreventiveRecordController::class, 'moveStage'])->name('preventive-planner-record-stage');
+        Route::get('/preventive-planner-singleReport/{id}', [PreventiveRecordController::class, 'preventivePlannerSingleReport'])->name('preventive-planner-singleReport');
 
         /* preventive maintenance routes */
         Route::post('/store-preventive-maintenance-record', [PreventiveMaintenanceController::class, 'store'])->name('store-preventive-maintenance-record');
