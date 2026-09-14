@@ -398,9 +398,9 @@
                     @endif
 
                     {{-- master instruments details --}}
-                    @if(isset($grids['testResults']))
+                    @if(isset($grids['masterInstrumentsDetails']))
                         @php
-                            $grid = $grids['testResults'];
+                            $grid = $grids['masterInstrumentsDetails'];
                             $rows = $grid['rows'] ?? [];
                         @endphp
 

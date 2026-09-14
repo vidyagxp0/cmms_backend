@@ -46,28 +46,7 @@ class CalibrationManagementService
                 ? $request->process_data
                 : [];
 
-            // $recordNumberFound = false;
-
-            // foreach ($processData as &$field) {
-            //     if (
-            //         is_array($field) &&
-            //         ($field['key'] ?? null) === 'recordNumber'
-            //     ) {
-            //         $field['value'] = $recordNumber;
-            //         $recordNumberFound = true;
-            //         break;
-            //     }
-            // }
-
             unset($field);
-
-            // if (!$recordNumberFound) {
-            //     $processData[] = [
-            //         'key' => 'recordNumber',
-            //         'label' => 'Record Number',
-            //         'value' => $recordNumber,
-            //     ];
-            // }
 
             $processRecord = ProcessRecord::create([
                 'process_id' => $request->process_id,
@@ -87,30 +66,32 @@ class CalibrationManagementService
                 is_array($request->gridData) &&
                 !empty($request->gridData)
             ) {
-                $gridData = array_map(function ($row) {
-                    unset($row['_rowId'], $row['row_id']);
-
-                    return $row;
-                }, $request->gridData);
+                $gridData = self::cleanGridDataPayload(
+                    $request->gridData
+                );
 
                 $gridRecord = GridRecord::create([
                     'process_record_id' => $processRecord->id,
                     'grid_data' => $gridData,
                 ]);
 
-                /* Grid audit */
-                UserAuditHelper::log(
-                    'Grid Record',
-                    'Created',
-                    'Grid data created successfully.',
-                    $gridRecord->id,
-                    null,
-                    [
-                        'process_record_id' => $gridRecord->process_record_id,
-                        'grid_data' => $gridRecord->grid_data,
-                    ],
-                    GridRecord::class
-                );
+                /* Grid audit - only rows containing actual values */
+                $gridAuditData = self::getGridAuditData($gridData);
+
+                if (!empty($gridAuditData)) {
+                    UserAuditHelper::log(
+                        'Grid Record',
+                        'Created',
+                        'Grid data created successfully.',
+                        $gridRecord->id,
+                        null,
+                        [
+                            'process_record_id' => $gridRecord->process_record_id,
+                            'grid_data' => $gridAuditData,
+                        ],
+                        GridRecord::class
+                    );
+                }
             }
 
             /* Process record audit */
@@ -365,14 +346,7 @@ class CalibrationManagementService
                     ? $request->gridData
                     : [];
 
-                $gridData = array_map(function ($row) {
-                    unset(
-                        $row['_rowId'],
-                        $row['row_id']
-                    );
-
-                    return $row;
-                }, $gridData);
+                $gridData = self::cleanGridDataPayload($gridData);
 
                 $gridRecord = GridRecord::where(
                     'process_record_id',
@@ -422,18 +396,25 @@ class CalibrationManagementService
                         'grid_data' => $gridData,
                     ]);
 
-                    UserAuditHelper::log(
-                        'Grid Record',
-                        'Created',
-                        'Grid data created successfully.',
-                        $gridRecord->id,
-                        null,
-                        [
-                            'process_record_id' => $processRecord->id,
-                            'grid_data' => $gridData,
-                        ],
-                        GridRecord::class
-                    );
+                    /* store only meaningful grid rows in the audit.
+                     * Grid name, row count and empty rows are handled before logging.
+                     */
+                    $gridAuditData = self::getGridAuditData($gridData);
+
+                    if (!empty($gridAuditData)) {
+                        UserAuditHelper::log(
+                            'Grid Record',
+                            'Created',
+                            'Grid data created successfully.',
+                            $gridRecord->id,
+                            null,
+                            [
+                                'process_record_id' => $processRecord->id,
+                                'grid_data' => $gridAuditData,
+                            ],
+                            GridRecord::class
+                        );
+                    }
                 }
             }
 
@@ -590,7 +571,180 @@ class CalibrationManagementService
         return $result;
     }
 
-    /* grid data diff */
+    /* clean grid payload and remove rows without actual values */
+    private static function cleanGridDataPayload(array $gridData): array
+    {
+        $cleanedGrids = [];
+
+        foreach ($gridData as $grid) {
+            if (!is_array($grid)) {
+                continue;
+            }
+
+            unset(
+                $grid['_rowId'],
+                $grid['row_id']
+            );
+
+            if (
+                isset($grid['rows']) &&
+                is_array($grid['rows'])
+            ) {
+                $cleanRows = [];
+
+                foreach ($grid['rows'] as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+
+                    unset(
+                        $row['_rowId'],
+                        $row['row_id']
+                    );
+
+                    $hasValue = false;
+
+                    foreach ($row as $key => $value) {
+                        if (
+                            in_array(
+                                $key,
+                                [
+                                    'id',
+                                    'grid_record_id',
+                                    'process_record_id',
+                                    'created_at',
+                                    'updated_at',
+                                ]
+                            )
+                        ) {
+                            continue;
+                        }
+
+                        if (is_array($value)) {
+                            if (
+                                isset($value['value']) &&
+                                !self::processValuesAreSame(
+                                    null,
+                                    $value['value']
+                                )
+                            ) {
+                                $hasValue = true;
+                                break;
+                            }
+
+                            continue;
+                        }
+
+                        if (!self::processValuesAreSame(null, $value)) {
+                            $hasValue = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasValue) {
+                        $cleanRows[] = $row;
+                    }
+                }
+
+                $grid['rows'] = $cleanRows;
+            }
+
+            $cleanedGrids[] = $grid;
+        }
+
+        return $cleanedGrids;
+    }
+
+    /* prepare only meaningful grid rows for audit */
+    private static function getGridAuditData(array $gridData): array
+    {
+        $auditData = [];
+
+        foreach ($gridData as $grid) {
+            if (!is_array($grid)) {
+                continue;
+            }
+
+            $gridName = $grid['name'] ?? null;
+            $gridLabel = self::formatGridTitle(
+                $gridName,
+                $grid['label']
+                    ?? $grid['grid_label']
+                    ?? null
+            );
+
+            $rows = isset($grid['rows']) && is_array($grid['rows'])
+                ? $grid['rows']
+                : [];
+
+            foreach ($rows as $index => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $fields = self::convertGridRowToAuditFields($row);
+
+                if (empty($fields)) {
+                    continue;
+                }
+
+                $rowNumber = $index + 1;
+
+                $auditData[] = [
+                    'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                    'row' => $rowNumber,
+                    'fields' => $fields,
+                ];
+            }
+        }
+
+        return $auditData;
+    }
+
+    /* Formats grid name to title (e.g. masterInstrumentsDetails -> Master Instruments Details) */
+    public static function formatGridTitle(?string $name, ?string $label = null): string
+    {
+        if (!empty($label) && !is_numeric($label)) {
+            return trim($label);
+        }
+
+        if (empty($name)) {
+            return 'Grid';
+        }
+
+        $known = [
+            'calibrationResults'       => 'Calibration Results',
+            'masterInstrumentsDetails' => 'Master Instruments Details',
+            'masterInstruments'        => 'Master Instruments Details',
+            'instrumentDetails'        => 'Instrument Details',
+            'testResults'              => 'Test Results',
+        ];
+
+        if (isset($known[$name])) {
+            return $known[$name];
+        }
+
+        $text = preg_replace('/(?<!^)[A-Z]/', ' $0', $name);
+        $text = str_replace(['_', '-'], ' ', $text);
+
+        return ucwords(strtolower(trim($text)));
+    }
+
+    /* Index grids by name or index */
+    private static function indexGridsByName(array $data): array
+    {
+        $indexed = [];
+        foreach ($data as $index => $grid) {
+            if (!is_array($grid)) continue;
+            $key = isset($grid['name']) && is_string($grid['name']) && trim($grid['name']) !== ''
+                ? trim($grid['name'])
+                : (string) $index;
+            $indexed[$key] = $grid;
+        }
+        return $indexed;
+    }
+
+    /* grid data diff across named grids and row items */
     private static function getGridDataChanges(
         array $oldData,
         array $newData
@@ -598,134 +752,242 @@ class CalibrationManagementService
         $oldChanges = [];
         $newChanges = [];
 
-        $oldRows = [];
-        $newRows = [];
+        $isMultiGrid = false;
 
-        foreach ($oldData as $row) {
-            if (!is_array($row)) {
-                continue;
+        foreach (array_merge($oldData, $newData) as $item) {
+            if (
+                is_array($item) &&
+                (
+                    isset($item['name']) ||
+                    isset($item['rows'])
+                )
+            ) {
+                $isMultiGrid = true;
+                break;
             }
-
-            $oldRows[] = self::removeGridTechnicalFields($row);
         }
 
-        foreach ($newData as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-
-            $newRows[] = self::removeGridTechnicalFields($row);
-        }
-
-        $maxRows = max(
-            count($oldRows),
-            count($newRows)
+        $oldGrids = self::indexGridsByName(
+            $isMultiGrid
+                ? $oldData
+                : [['name' => null, 'rows' => $oldData]]
         );
 
-        for ($index = 0; $index < $maxRows; $index++) {
-            $rowNumber = $index + 1;
+        $newGrids = self::indexGridsByName(
+            $isMultiGrid
+                ? $newData
+                : [['name' => null, 'rows' => $newData]]
+        );
 
-            $oldRow = $oldRows[$index] ?? null;
-            $newRow = $newRows[$index] ?? null;
+        $allGridKeys = array_unique(
+            array_merge(
+                array_keys($oldGrids),
+                array_keys($newGrids)
+            )
+        );
 
-            if ($oldRow === null && $newRow !== null) {
-                if (!empty($newRow)) {
-                    $newChanges[] = [
-                        'row' => $rowNumber,
-                        'fields' => self::convertGridRowToAuditFields(
-                            $newRow
-                        ),
-                    ];
-                }
+        foreach ($allGridKeys as $gridKey) {
+            $oldGrid = $oldGrids[$gridKey] ?? null;
+            $newGrid = $newGrids[$gridKey] ?? null;
 
-                continue;
-            }
+            $gridName =
+                $newGrid['name']
+                ?? $oldGrid['name']
+                ?? (
+                    is_numeric($gridKey)
+                        ? null
+                        : $gridKey
+                );
 
-            if ($oldRow !== null && $newRow === null) {
-                if (!empty($oldRow)) {
-                    $oldChanges[] = [
-                        'row' => $rowNumber,
-                        'fields' => self::convertGridRowToAuditFields(
-                            $oldRow
-                        ),
-                    ];
-                }
-
-                continue;
-            }
-
-            $columns = array_unique(
-                array_merge(
-                    array_keys($oldRow),
-                    array_keys($newRow)
-                )
+            $gridLabel = self::formatGridTitle(
+                $gridName,
+                $newGrid['label']
+                    ?? $oldGrid['label']
+                    ?? null
             );
 
-            $oldChangedFields = [];
-            $newChangedFields = [];
+            $oldRows =
+                isset($oldGrid['rows']) &&
+                is_array($oldGrid['rows'])
+                    ? array_values($oldGrid['rows'])
+                    : [];
 
-            foreach ($columns as $column) {
-                $oldColumn = self::extractGridColumnValue(
-                    $oldRow[$column] ?? null
+            $newRows =
+                isset($newGrid['rows']) &&
+                is_array($newGrid['rows'])
+                    ? array_values($newGrid['rows'])
+                    : [];
+
+            $maxRows = max(
+                count($oldRows),
+                count($newRows)
+            );
+
+            for ($index = 0; $index < $maxRows; $index++) {
+                $rowNumber = $index + 1;
+
+                $oldRow = $oldRows[$index] ?? null;
+                $newRow = $newRows[$index] ?? null;
+
+                $oldRow = is_array($oldRow)
+                    ? self::removeGridTechnicalFields($oldRow)
+                    : null;
+
+                $newRow = is_array($newRow)
+                    ? self::removeGridTechnicalFields($newRow)
+                    : null;
+
+                /* row added */
+                if ($oldRow === null && $newRow !== null) {
+                    $fields = self::convertGridRowToAuditFields(
+                        $newRow
+                    );
+
+                    if (!empty($fields)) {
+                        $newChanges[] = [
+                            'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                            'row' => $rowNumber,
+                            'fields' => $fields,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                /* row deleted */
+                if ($oldRow !== null && $newRow === null) {
+                    $fields = self::convertGridRowToAuditFields(
+                        $oldRow
+                    );
+
+                    if (!empty($fields)) {
+                        $oldChanges[] = [
+                            'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                            'row' => $rowNumber,
+                            'fields' => $fields,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                /* existing row */
+                $oldFieldsMap = self::mapRowFields($oldRow);
+                $newFieldsMap = self::mapRowFields($newRow);
+
+                $changedOld = [];
+                $changedNew = [];
+
+                $allCols = array_unique(
+                    array_merge(
+                        array_keys($oldFieldsMap),
+                        array_keys($newFieldsMap)
+                    )
                 );
 
-                $newColumn = self::extractGridColumnValue(
-                    $newRow[$column] ?? null
-                );
+                foreach ($allCols as $col) {
+                    $oldCol = $oldFieldsMap[$col] ?? null;
+                    $newCol = $newFieldsMap[$col] ?? null;
+
+                    $oldVal = self::extractGridColumnValue(
+                        $oldCol
+                    );
+
+                    $newVal = self::extractGridColumnValue(
+                        $newCol
+                    );
+
+                    if (
+                        self::processValuesAreSame(
+                            $oldVal,
+                            $newVal
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    $label = self::getGridColumnLabel(
+                        $oldCol,
+                        $newCol,
+                        $col
+                    );
+
+                    if (!self::isEmptyValue($oldVal)) {
+                        $changedOld[] = [
+                            'key' => $col,
+                            'label' => $label,
+                            'value' => $oldVal,
+                        ];
+                    }
+
+                    if (!self::isEmptyValue($newVal)) {
+                        $changedNew[] = [
+                            'key' => $col,
+                            'label' => $label,
+                            'value' => $newVal,
+                        ];
+                    }
+                }
 
                 if (
-                    self::processValuesAreSame(
-                        $oldColumn,
-                        $newColumn
-                    )
+                    empty($changedOld) &&
+                    empty($changedNew)
                 ) {
                     continue;
                 }
 
-                $label = self::getGridColumnLabel(
-                    $oldRow[$column] ?? null,
-                    $newRow[$column] ?? null,
-                    $column
-                );
+                if (!empty($changedOld)) {
+                    $oldChanges[] = [
+                        'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                        'row' => $rowNumber,
+                        'fields' => $changedOld,
+                    ];
+                }
 
-                $oldChangedFields[] = [
-                    'key' => $column,
-                    'label' => $label,
-                    'value' => $oldColumn,
-                ];
-
-                $newChangedFields[] = [
-                    'key' => $column,
-                    'label' => $label,
-                    'value' => $newColumn,
-                ];
-            }
-
-            if (
-                !empty($oldChangedFields) ||
-                !empty($newChangedFields)
-            ) {
-                $oldChanges[] = [
-                    'row' => $rowNumber,
-                    'fields' => $oldChangedFields,
-                ];
-
-                $newChanges[] = [
-                    'row' => $rowNumber,
-                    'fields' => $newChangedFields,
-                ];
+                if (!empty($changedNew)) {
+                    $newChanges[] = [
+                        'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                        'row' => $rowNumber,
+                        'fields' => $changedNew,
+                    ];
+                }
             }
         }
 
-        return [$oldChanges, $newChanges];
+        return [
+            $oldChanges,
+            $newChanges,
+        ];
     }
 
-    private static function convertGridRowToAuditFields(
-        array $row
-    ): array {
-        $fields = [];
+    private static function mapRowFields(?array $row): array
+    {
+        if (!$row) return [];
+        $map = [];
 
-        foreach ($row as $key => $column) {
+        if (isset($row[0]) && is_array($row[0]) && isset($row[0]['key'])) {
+            foreach ($row as $item) {
+                if (!is_array($item)) continue;
+                $k = $item['key'] ?? null;
+                if ($k) $map[$k] = $item;
+            }
+            return $map;
+        }
+
+        foreach ($row as $k => $v) {
+            if (in_array($k, ['_rowId', 'row_id', 'id', 'rows'])) continue;
+            $map[$k] = $v;
+        }
+
+        return $map;
+    }
+
+    private static function convertGridRowToAuditFields(array $row): array
+    {
+        $fields = [];
+        $fieldMap = self::mapRowFields($row);
+
+        foreach ($fieldMap as $key => $column) {
             $value = self::extractGridColumnValue($column);
 
             if (self::processValuesAreSame(null, $value)) {
@@ -733,17 +995,40 @@ class CalibrationManagementService
             }
 
             $fields[] = [
-                'key' => $key,
-                'label' => self::getGridColumnLabel(
-                    $column,
-                    null,
-                    $key
-                ),
+                'key'   => $key,
+                'label' => self::getGridColumnLabel($column, null, $key),
                 'value' => $value,
             ];
         }
 
         return $fields;
+    }
+
+    private static function removeGridTechnicalFields(array $row): array
+    {
+        foreach ([
+            'id',
+            '_rowId',
+            'row_id',
+            'grid_record_id',
+            'process_record_id',
+            'created_at',
+            'updated_at',
+            'rows',
+        ] as $field) {
+            unset($row[$field]);
+        }
+
+        return $row;
+    }
+
+    private static function isEmptyValue($value): bool
+    {
+        if ($value === null) return true;
+        if (is_string($value)) return trim($value) === '';
+        if (is_array($value)) return empty($value);
+
+        return false;
     }
 
     private static function getGridColumnLabel(
@@ -787,25 +1072,6 @@ class CalibrationManagementService
         return $value;
     }
 
-    private static function removeGridTechnicalFields(array $row): array
-    {
-        foreach (
-            [
-                'id',
-                '_rowId',
-                'row_id',
-                'grid_record_id',
-                'process_record_id',
-                'created_at',
-                'updated_at',
-            ] as $field
-        ) {
-            unset($row[$field]);
-        }
-
-        return $row;
-    }
-
     private static function formatFieldLabel($key)
     {
         $key = str_replace(
@@ -825,43 +1091,6 @@ class CalibrationManagementService
                 trim($key)
             )
         );
-    }
-
-    /* compare grid values */
-    private static function gridValuesAreSame($old, $new): bool
-    {
-        if (is_object($old)) {
-            $old = method_exists($old, 'toArray')
-                ? $old->toArray()
-                : (array) $old;
-        }
-
-        if (is_object($new)) {
-            $new = method_exists($new, 'toArray')
-                ? $new->toArray()
-                : (array) $new;
-        }
-
-        return $old === $new || $old == $new;
-    }
-
-    private static function indexGridRow(array $row): array
-    {
-        $result = [];
-
-        foreach ($row as $key => $column) {
-            if (!is_array($column)) {
-                continue;
-            }
-
-            if (!isset($column['label'])) {
-                continue;
-            }
-
-            $result[$key] = $column;
-        }
-
-        return $result;
     }
 
     /* move process record stage */

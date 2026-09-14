@@ -264,7 +264,7 @@ class CalibrationManagementReportService
                 }
 
                 /* special preparation for master instrument details */
-                if ($gridName === 'testResults') {
+                if ($gridName === 'masterInstrumentsDetails') {
                     $preparedRows = self::prepareTestResultRows($preparedRows);
                 }
 
@@ -366,7 +366,7 @@ class CalibrationManagementReportService
 
                 $preparedRow[$key] = [
                     'key' => $key,
-                    'label' => self::formatGridColumnLabel($key, 'testResults'),
+                    'label' => self::formatGridColumnLabel($key, 'masterInstrumentsDetails'),
                     'value' => $fieldValue,
                 ];
             }
@@ -384,7 +384,7 @@ class CalibrationManagementReportService
     {
         $titles = [
             'calibrationResults' => 'Calibration Results',
-            'testResults' => 'Master Instruments Details',
+            'masterInstrumentsDetails' => 'Master Instruments Details',
         ];
 
         return $titles[$gridName] ?? self::formatFieldLabel($gridName);
@@ -407,7 +407,7 @@ class CalibrationManagementReportService
         }
 
         /* master instruments details */
-        if ($gridName === 'testResults') {
+        if ($gridName === 'masterInstrumentsDetails') {
             $labels = [
                 'parameter' => 'Parameter',
                 'result' => 'Result',
