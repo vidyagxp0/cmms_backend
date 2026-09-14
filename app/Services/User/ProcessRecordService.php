@@ -265,27 +265,47 @@ class ProcessRecordService
     }
 
     /* move uploaded files into the upload directory and build their attachment records */
-    private static function storeUploadedFiles(array $files, string $attachmentField, string $uploadDirectory): array
-    {
+    private static function storeUploadedFiles(
+        array $files,
+        string $attachmentField,
+        string $uploadDirectory
+    ): array {
         $newAttachments = [];
 
         foreach ($files as $file) {
-            if (!$file || !$file->isValid()) continue;
 
+            if (!$file || !$file->isValid()) {
+                continue;
+            }
+
+            /*
+            * Read all file information BEFORE moving the uploaded file.
+            * After move(), the temporary uploaded file path no longer exists.
+            */
+            $originalName = $file->getClientOriginalName();
             $extension = $file->getClientOriginalExtension();
-            $fileName = Str::uuid()->toString() . ($extension ? '.' . $extension : '');
-            $file->move($uploadDirectory, $fileName);
+            $mimeType = $file->getClientMimeType();
+            $fileSize = $file->getSize();
 
-            $relativePath = self::UPLOAD_DIRECTORY . '/' . $fileName;
+            $fileName = Str::uuid()->toString()
+                . ($extension ? '.' . $extension : '');
+
+            $file->move(
+                $uploadDirectory,
+                $fileName
+            );
+
+            $relativePath =
+                self::UPLOAD_DIRECTORY . '/' . $fileName;
 
             $newAttachments[] = [
                 'attachment_field' => $attachmentField,
-                'name' => $file->getClientOriginalName(),
+                'name' => $originalName,
                 'file_name' => $fileName,
                 'path' => $relativePath,
                 'url' => asset($relativePath),
-                'mime_type' => $file->getClientMimeType(),
-                'size' => $file->getSize(),
+                'mime_type' => $mimeType,
+                'size' => $fileSize,
             ];
         }
 
