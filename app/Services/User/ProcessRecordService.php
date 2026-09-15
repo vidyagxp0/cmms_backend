@@ -18,10 +18,11 @@ class ProcessRecordService
     /* attachment field keys mapped to their audit-friendly names */
     private const ATTACHMENT_FIELD_NAMES = [
         'attachment' => 'Attachment',
+        'implementorAttachment' => 'HOD / Designee Review Attachment',
         'hod_review_attachment' => 'HOD Review Comment',
-        'user_dept_review_attachment' => 'User Department Review',
-        'qa_review_attachment' => 'QA Review',
-        'cancellation_attachment' => 'Cancellation',
+        'user_dept_review_attachment' => 'User Department Review Attachment',
+        'qa_review_attachment' => 'QA Review Attachment',
+        'cancellation_attachment' => 'Cancellation Attachment',
     ];
 
     public static function getCalibrationPlannerRecords(Request $request)

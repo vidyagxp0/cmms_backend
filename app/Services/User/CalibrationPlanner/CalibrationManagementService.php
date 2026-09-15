@@ -297,7 +297,15 @@ class CalibrationManagementService
                     ? $processRecord->process_data
                     : [];
 
-                $newProcessData = $requestProcessData;
+                /*
+                 * Attachment fields are managed by the attachment endpoint.
+                 * Do not clear an existing attachment when another stage sends
+                 * process data with an empty attachment value.
+                 */
+                $newProcessData = self::preserveExistingAttachmentValues(
+                    $oldProcessData,
+                    $requestProcessData
+                );
 
                 [$processOldChanges, $processNewChanges] =
                     self::getProcessDataChanges(
@@ -396,9 +404,7 @@ class CalibrationManagementService
                         'grid_data' => $gridData,
                     ]);
 
-                    /* store only meaningful grid rows in the audit.
-                     * Grid name, row count and empty rows are handled before logging.
-                     */
+                    /* Audit only real rows, never the technical grid definition. */
                     $gridAuditData = self::getGridAuditData($gridData);
 
                     if (!empty($gridAuditData)) {
@@ -462,6 +468,65 @@ class CalibrationManagementService
         }
 
         return false;
+    }
+
+    /*
+     * Preserve attachment values already stored on the record.
+     * Attachment upload/delete is handled separately from process_data.
+     */
+    private static function preserveExistingAttachmentValues(
+        array $oldData,
+        array $newData
+    ): array {
+        $oldFields = self::indexProcessData($oldData);
+        $newFields = self::indexProcessData($newData);
+
+        foreach ($oldFields as $key => $oldItem) {
+            if (!self::isAttachmentField($key)) {
+                continue;
+            }
+
+            if (!isset($newFields[$key])) {
+                $newData[] = $oldItem;
+                continue;
+            }
+
+            $newValue = $newFields[$key]['value'] ?? null;
+
+            if (
+                $newValue === null ||
+                $newValue === '' ||
+                $newValue === []
+            ) {
+                foreach ($newData as &$newItem) {
+                    if (
+                        is_array($newItem) &&
+                        ($newItem['key'] ?? null) === $key
+                    ) {
+                        $newItem['value'] = $oldItem['value'] ?? null;
+
+                        if (empty($newItem['label'])) {
+                            $newItem['label'] =
+                                $oldItem['label'] ?? $key;
+                        }
+
+                        break;
+                    }
+                }
+
+                unset($newItem);
+            }
+        }
+
+        return $newData;
+    }
+
+    private static function isAttachmentField($key): bool
+    {
+        return str_contains(
+            strtolower((string) $key),
+            'attachment'
+        );
     }
 
     /* process data diff */
@@ -668,9 +733,7 @@ class CalibrationManagementService
             $gridName = $grid['name'] ?? null;
             $gridLabel = self::formatGridTitle(
                 $gridName,
-                $grid['label']
-                    ?? $grid['grid_label']
-                    ?? null
+                $grid['label'] ?? null
             );
 
             $rows = isset($grid['rows']) && is_array($grid['rows'])
@@ -684,15 +747,18 @@ class CalibrationManagementService
 
                 $fields = self::convertGridRowToAuditFields($row);
 
+                /* A row without any actual value is not an audit entry. */
                 if (empty($fields)) {
                     continue;
                 }
 
-                $rowNumber = $index + 1;
-
+                /*
+                 * Store only displayable grid information in the audit.
+                 * Do not store technical grid name or row-count data.
+                 */
                 $auditData[] = [
-                    'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
-                    'row' => $rowNumber,
+                    'grid_label' => $gridLabel,
+                    'row' => $index + 1,
                     'fields' => $fields,
                 ];
             }
@@ -734,13 +800,19 @@ class CalibrationManagementService
     private static function indexGridsByName(array $data): array
     {
         $indexed = [];
+
         foreach ($data as $index => $grid) {
-            if (!is_array($grid)) continue;
+            if (!is_array($grid)) {
+                continue;
+            }
+
             $key = isset($grid['name']) && is_string($grid['name']) && trim($grid['name']) !== ''
                 ? trim($grid['name'])
                 : (string) $index;
+
             $indexed[$key] = $grid;
         }
+
         return $indexed;
     }
 
@@ -845,7 +917,7 @@ class CalibrationManagementService
 
                     if (!empty($fields)) {
                         $newChanges[] = [
-                            'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                            'grid_label' => $gridLabel,
                             'row' => $rowNumber,
                             'fields' => $fields,
                         ];
@@ -862,7 +934,7 @@ class CalibrationManagementService
 
                     if (!empty($fields)) {
                         $oldChanges[] = [
-                            'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                            'grid_label' => $gridLabel,
                             'row' => $rowNumber,
                             'fields' => $fields,
                         ];
@@ -938,7 +1010,7 @@ class CalibrationManagementService
 
                 if (!empty($changedOld)) {
                     $oldChanges[] = [
-                        'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                        'grid_label' => $gridLabel,
                         'row' => $rowNumber,
                         'fields' => $changedOld,
                     ];
@@ -946,7 +1018,7 @@ class CalibrationManagementService
 
                 if (!empty($changedNew)) {
                     $newChanges[] = [
-                        'module' => $gridLabel . ' (Row ' . $rowNumber . ')',
+                        'grid_label' => $gridLabel,
                         'row' => $rowNumber,
                         'fields' => $changedNew,
                     ];
@@ -958,50 +1030,6 @@ class CalibrationManagementService
             $oldChanges,
             $newChanges,
         ];
-    }
-
-    private static function mapRowFields(?array $row): array
-    {
-        if (!$row) return [];
-        $map = [];
-
-        if (isset($row[0]) && is_array($row[0]) && isset($row[0]['key'])) {
-            foreach ($row as $item) {
-                if (!is_array($item)) continue;
-                $k = $item['key'] ?? null;
-                if ($k) $map[$k] = $item;
-            }
-            return $map;
-        }
-
-        foreach ($row as $k => $v) {
-            if (in_array($k, ['_rowId', 'row_id', 'id', 'rows'])) continue;
-            $map[$k] = $v;
-        }
-
-        return $map;
-    }
-
-    private static function convertGridRowToAuditFields(array $row): array
-    {
-        $fields = [];
-        $fieldMap = self::mapRowFields($row);
-
-        foreach ($fieldMap as $key => $column) {
-            $value = self::extractGridColumnValue($column);
-
-            if (self::processValuesAreSame(null, $value)) {
-                continue;
-            }
-
-            $fields[] = [
-                'key'   => $key,
-                'label' => self::getGridColumnLabel($column, null, $key),
-                'value' => $value,
-            ];
-        }
-
-        return $fields;
     }
 
     private static function removeGridTechnicalFields(array $row): array
@@ -1029,6 +1057,116 @@ class CalibrationManagementService
         if (is_array($value)) return empty($value);
 
         return false;
+    }
+
+    /* normalize a grid row into key => field metadata */
+    private static function mapRowFields(?array $row): array
+    {
+        if (!is_array($row) || empty($row)) {
+            return [];
+        }
+
+        $map = [];
+
+        /* Row represented as a list of {key,label,value} objects. */
+        if (isset($row[0]) && is_array($row[0])) {
+            foreach ($row as $field) {
+                if (!is_array($field)) {
+                    continue;
+                }
+
+                $key = $field['key'] ?? $field['Key'] ?? null;
+
+                if ($key === null || $key === '') {
+                    continue;
+                }
+
+                $map[(string) $key] = [
+                    'key' => (string) $key,
+                    'label' => $field['label']
+                        ?? $field['Label']
+                        ?? self::formatFieldLabel($key),
+                    'value' => array_key_exists('value', $field)
+                        ? $field['value']
+                        : ($field['Value'] ?? null),
+                ];
+            }
+
+            return $map;
+        }
+
+        /* Row represented as label => {Key,Label,Value}. */
+        foreach ($row as $fieldKey => $field) {
+            if (in_array($fieldKey, [
+                'id',
+                '_rowId',
+                'row_id',
+                'grid_record_id',
+                'process_record_id',
+                'created_at',
+                'updated_at',
+                'rows',
+            ], true)) {
+                continue;
+            }
+
+            if (is_array($field)) {
+                $key = $field['key']
+                    ?? $field['Key']
+                    ?? (is_string($fieldKey) ? $fieldKey : null);
+
+                if ($key === null || $key === '') {
+                    continue;
+                }
+
+                $map[(string) $key] = [
+                    'key' => (string) $key,
+                    'label' => $field['label']
+                        ?? $field['Label']
+                        ?? (is_string($fieldKey)
+                            ? self::formatFieldLabel($fieldKey)
+                            : self::formatFieldLabel($key)),
+                    'value' => array_key_exists('value', $field)
+                        ? $field['value']
+                        : ($field['Value'] ?? null),
+                ];
+
+                continue;
+            }
+
+            if (is_string($fieldKey) || is_int($fieldKey)) {
+                $map[(string) $fieldKey] = [
+                    'key' => (string) $fieldKey,
+                    'label' => self::formatFieldLabel($fieldKey),
+                    'value' => $field,
+                ];
+            }
+        }
+
+        return $map;
+    }
+
+    /* convert one stored grid row into audit-safe fields */
+    private static function convertGridRowToAuditFields(?array $row): array
+    {
+        $fields = [];
+
+        foreach (self::mapRowFields($row) as $key => $field) {
+            $value = $field['value'] ?? null;
+
+            if (self::isEmptyValue($value)) {
+                continue;
+            }
+
+            $fields[] = [
+                'key' => $field['key'] ?? $key,
+                'label' => $field['label']
+                    ?? self::formatFieldLabel($key),
+                'value' => $value,
+            ];
+        }
+
+        return $fields;
     }
 
     private static function getGridColumnLabel(
@@ -1194,10 +1332,12 @@ class CalibrationManagementService
 
             /* audit code */
             $oldValue = [
+                'activity' => $activity->name,
                 'stage' => $currentStage?->name,
             ];
 
             $newValue = [
+                'activity' => $activity->name,
                 'stage' => $targetStage?->name,
             ];
 
