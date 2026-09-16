@@ -12,14 +12,6 @@ use Illuminate\Support\Facades\Auth;
 
 class UserAuditHelper
 {
-    /* known foreign-id fields resolved to a display name in cleanArray() */
-    private const ID_FIELDS = [
-        'department_id' => ['label' => 'Department', 'model' => Department::class],
-        'initiator_id' => ['label' => 'Initiator', 'model' => User::class],
-        'process_id' => ['label' => 'Process', 'model' => Process::class],
-        'stage_id' => ['label' => 'Stage', 'model' => Stage::class],
-    ];
-
     /* create an audit log entry */
     public static function log(
         string $module,
@@ -72,9 +64,20 @@ class UserAuditHelper
             /* never expose calibration frequency start date in audits */
             if ($key === 'calibrationFrequencyStartDate') continue;
 
-            if (isset(self::ID_FIELDS[$key])) {
-                $meta = self::ID_FIELDS[$key];
-                $result[$meta['label']] = self::resolveName($value, $meta['model']);
+            if ($key === 'department_id') {
+                $result['Department'] = self::getDepartmentName($value);
+                continue;
+            }
+            if ($key === 'initiator_id') {
+                $result['Initiator'] = self::getUserName($value);
+                continue;
+            }
+            if ($key === 'process_id') {
+                $result['Process'] = self::getProcessName($value);
+                continue;
+            }
+            if ($key === 'stage_id') {
+                $result['Stage'] = self::getStageName($value);
                 continue;
             }
 
@@ -160,53 +163,252 @@ class UserAuditHelper
         return self::formatDateValue($value, $fieldKey);
     }
 
-    /* clean grid rows: strip technical columns, relabel calibration field by frequency */
+    /* clean grid rows and preserve multiple named grids */
     private static function cleanGridData(array $data): array
     {
         $result = [];
-        $skip = ['id', 'row_id', '_rowid', 'grid_record_id', 'process_record_id', 'created_at', 'updated_at', 'calibrationfrequencystartdate'];
+        $skip = [
+            'id',
+            'row_id',
+            '_rowid',
+            'grid_record_id',
+            'process_record_id',
+            'created_at',
+            'updated_at',
+            'calibrationfrequencystartdate',
+        ];
 
-        foreach ($data as $row) {
-            if (!is_array($row)) continue;
+        $isMultiGrid = false;
 
-            /* resolve calibration frequency first so monthlyCalibration can be relabeled (Monthly / Quarterly / etc.) */
-            $calibrationLabel = self::getCalibrationLabel(self::getCalibrationFrequency($row));
-            $cleanRow = [];
+        foreach ($data as $item) {
+            if (
+                is_array($item) &&
+                isset($item['name']) &&
+                isset($item['rows']) &&
+                is_array($item['rows'])
+            ) {
+                $isMultiGrid = true;
+                break;
+            }
+        }
 
-            foreach ($row as $columnKey => $column) {
-                if (in_array(strtolower((string) $columnKey), $skip, true)) continue;
-
-                if (!is_array($column)) {
-                    $cleanRow[] = [
-                        'key' => $columnKey,
-                        'label' => self::getGridFieldLabel($columnKey),
-                        'value' => self::extractDisplayValue($column, $columnKey),
-                    ];
+        if ($isMultiGrid) {
+            foreach ($data as $grid) {
+                if (!is_array($grid)) {
                     continue;
                 }
 
-                $fieldKey = $column['key'] ?? $column['Key'] ?? $columnKey;
-                if (strtolower((string) $fieldKey) === 'calibrationfrequencystartdate') continue;
+                $gridName = isset($grid['name'])
+                    ? trim((string) $grid['name'])
+                    : null;
 
-                $fieldValue = array_key_exists('value', $column) ? $column['value'] : ($column['Value'] ?? $column);
+                $gridLabel = isset($grid['label']) && !is_numeric($grid['label'])
+                    ? trim((string) $grid['label'])
+                    : $gridName;
 
-                /* calibration schedule field keeps its internal key but its label follows the frequency */
-                if ($fieldKey === 'monthlyCalibration') {
-                    $cleanValue = self::cleanNestedValue($fieldValue, 'monthlyCalibration');
-                    if ($cleanValue !== null && $cleanValue !== []) {
-                        $cleanRow[] = ['key' => 'monthlyCalibration', 'label' => $calibrationLabel, 'value' => $cleanValue];
+                $rows = isset($grid['rows']) && is_array($grid['rows'])
+                    ? array_values($grid['rows'])
+                    : [];
+
+                $cleanRows = [];
+
+                foreach ($rows as $row) {
+                    if (!is_array($row)) {
+                        continue;
                     }
+
+                    $calibrationLabel = self::getCalibrationLabel(
+                        self::getCalibrationFrequency($row)
+                    );
+
+                    $cleanRow = [];
+
+                    foreach ($row as $columnKey => $column) {
+                        if (
+                            in_array(
+                                strtolower((string) $columnKey),
+                                $skip,
+                                true
+                            )
+                        ) {
+                            continue;
+                        }
+
+                        if (!is_array($column)) {
+                            $value = self::extractDisplayValue(
+                                $column,
+                                (string) $columnKey
+                            );
+
+                            if ($value === null || $value === '') {
+                                continue;
+                            }
+
+                            $cleanRow[] = [
+                                'key' => $columnKey,
+                                'label' => self::getGridFieldLabel($columnKey),
+                                'value' => $value,
+                            ];
+
+                            continue;
+                        }
+
+                        $fieldKey = $column['key']
+                            ?? $column['Key']
+                            ?? $columnKey;
+
+                        if (
+                            strtolower((string) $fieldKey) ===
+                            'calibrationfrequencystartdate'
+                        ) {
+                            continue;
+                        }
+
+                        $fieldValue = array_key_exists('value', $column)
+                            ? $column['value']
+                            : ($column['Value'] ?? $column);
+
+                        $cleanValue = self::extractDisplayValue(
+                            $fieldValue,
+                            $fieldKey
+                        );
+
+                        if ($fieldKey === 'monthlyCalibration') {
+                            if (
+                                $cleanValue !== null &&
+                                $cleanValue !== []
+                            ) {
+                                $cleanRow[] = [
+                                    'key' => 'monthlyCalibration',
+                                    'label' => $calibrationLabel,
+                                    'value' => $cleanValue,
+                                ];
+                            }
+
+                            continue;
+                        }
+
+                        if ($cleanValue === null || $cleanValue === '') {
+                            continue;
+                        }
+
+                        $cleanRow[] = [
+                            'key' => $fieldKey,
+                            'label' => self::getGridFieldLabel($fieldKey),
+                            'value' => $cleanValue,
+                        ];
+                    }
+
+                    if (!empty($cleanRow)) {
+                        $cleanRows[] = $cleanRow;
+                    }
+                }
+
+                if (!empty($cleanRows)) {
+                    $result[] = [
+                        'name' => $gridName,
+                        'label' => $gridLabel,
+                        'rows' => $cleanRows,
+                    ];
+                }
+            }
+
+            return $result;
+        }
+
+        /* legacy single-grid row format */
+        foreach ($data as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $calibrationLabel = self::getCalibrationLabel(
+                self::getCalibrationFrequency($row)
+            );
+
+            $cleanRow = [];
+
+            foreach ($row as $columnKey => $column) {
+                if (
+                    in_array(
+                        strtolower((string) $columnKey),
+                        $skip,
+                        true
+                    )
+                ) {
+                    continue;
+                }
+
+                if (!is_array($column)) {
+                    $value = self::extractDisplayValue(
+                        $column,
+                        (string) $columnKey
+                    );
+
+                    if ($value === null || $value === '') {
+                        continue;
+                    }
+
+                    $cleanRow[] = [
+                        'key' => $columnKey,
+                        'label' => self::getGridFieldLabel($columnKey),
+                        'value' => $value,
+                    ];
+
+                    continue;
+                }
+
+                $fieldKey = $column['key']
+                    ?? $column['Key']
+                    ?? $columnKey;
+
+                if (
+                    strtolower((string) $fieldKey) ===
+                    'calibrationfrequencystartdate'
+                ) {
+                    continue;
+                }
+
+                $fieldValue = array_key_exists('value', $column)
+                    ? $column['value']
+                    : ($column['Value'] ?? $column);
+
+                if ($fieldKey === 'monthlyCalibration') {
+                    $cleanValue = self::cleanNestedValue(
+                        $fieldValue,
+                        'monthlyCalibration'
+                    );
+
+                    if ($cleanValue !== null && $cleanValue !== []) {
+                        $cleanRow[] = [
+                            'key' => 'monthlyCalibration',
+                            'label' => $calibrationLabel,
+                            'value' => $cleanValue,
+                        ];
+                    }
+
+                    continue;
+                }
+
+                $cleanValue = self::extractDisplayValue(
+                    $fieldValue,
+                    $fieldKey
+                );
+
+                if ($cleanValue === null || $cleanValue === '') {
                     continue;
                 }
 
                 $cleanRow[] = [
                     'key' => $fieldKey,
                     'label' => self::getGridFieldLabel($fieldKey),
-                    'value' => self::extractDisplayValue($fieldValue, $fieldKey),
+                    'value' => $cleanValue,
                 ];
             }
 
-            if (!empty($cleanRow)) $result[] = $cleanRow;
+            if (!empty($cleanRow)) {
+                $result[] = $cleanRow;
+            }
         }
 
         return $result;
@@ -278,14 +480,25 @@ class UserAuditHelper
         $labels = [
             'equipmentInstrumentName' => 'Equipment / Instrument Name',
             'equipmentInstrumentId' => 'Equipment / Instrument ID',
-            'category' => 'Category',
+            'IdNo' => 'ID No.',
+            'idNo' => 'ID No.',
+            'idno' => 'ID No.',
+            'masterInstrumentReadings' => 'Master Instrument Readings in',
+            'unitUnderCalibrationReading' => 'Unit Under Calibration Readings in',
+            'masterinstrumentreadings' => 'Master Instrument Readings in',
+            'unitundercalibrationreading' => 'Unit Under Calibration Readings in',
+            'department' => 'Department',
             'location' => 'Location',
             'makeModel' => 'Make & Model',
             'instrumentrange' => 'Instrument Range',
             'operatingrange' => 'Operating Range',
             'range' => 'Range',
+            'range1' => 'Range 1',
+            'range2' => 'Range 2',
             'leastCount' => 'Least Count',
             'accuracy' => 'Accuracy',
+            'accuracy1' => 'Accuracy 1',
+            'accuracy2' => 'Accuracy 2',
             'cNc' => 'C / NC',
             'calibrationFrequency' => 'Calibration Frequency',
             'previousCalibrationDate' => 'Previous / Calibration Date',
@@ -294,6 +507,16 @@ class UserAuditHelper
             'remark' => 'Remark',
             'monthlyCalibration' => 'Calibration',
             'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
+            'masterInstrumentReadings1' => 'Master Instrument Reading 1',
+            'masterInstrumentReadings2' => 'Master Instrument Reading 2',
+            'unitUnderCalibrationReading1' => 'Unit Under Calibration Reading 1',
+            'unitUnderCalibrationReading2' => 'Unit Under Calibration Reading 2',
+            'masterinstrumentreadings1' => 'Master Instrument Reading 1',
+            'masterinstrumentreadings2' => 'Master Instrument Reading 2',
+            'unitundercalibrationreading1' => 'Unit Under Calibration Reading 1',
+            'unitundercalibrationreading2' => 'Unit Under Calibration Reading 2',
+            'errorIn' => 'Error in',
+            'errorin' => 'Error in',
             'schedulerDate' => 'Scheduler Date',
             'calibrationDate' => 'Calibration Date',
         ];
@@ -347,6 +570,16 @@ class UserAuditHelper
     private static function getNestedLabel(string $key): string
     {
         $labels = [
+            'masterInstrumentReadings1' => 'Master Instrument Reading 1',
+            'masterInstrumentReadings2' => 'Master Instrument Reading 2',
+            'unitUnderCalibrationReading1' => 'Unit Under Calibration Reading 1',
+            'unitUnderCalibrationReading2' => 'Unit Under Calibration Reading 2',
+            'masterinstrumentreadings1' => 'Master Instrument Reading 1',
+            'masterinstrumentreadings2' => 'Master Instrument Reading 2',
+            'unitundercalibrationreading1' => 'Unit Under Calibration Reading 1',
+            'unitundercalibrationreading2' => 'Unit Under Calibration Reading 2',
+            'errorIn' => 'Error in',
+            'errorin' => 'Error in',
             'schedulerDate' => 'Scheduler Date',
             'calibrationDate' => 'Calibration Date',
             'monthlyCalibration' => 'Calibration',
@@ -389,10 +622,24 @@ class UserAuditHelper
         return $value;
     }
 
-    /* resolve a foreign id to its model's "name" column */
-    private static function resolveName($id, string $modelClass): ?string
+    private static function getDepartmentName($id)
     {
-        return $id ? $modelClass::where('id', $id)->value('name') : null;
+        return $id ? Department::where('id', $id)->value('name') : null;
+    }
+
+    private static function getUserName($id)
+    {
+        return $id ? User::where('id', $id)->value('name') : null;
+    }
+
+    private static function getProcessName($id)
+    {
+        return $id ? Process::where('id', $id)->value('name') : null;
+    }
+
+    private static function getStageName($id)
+    {
+        return $id ? Stage::where('id', $id)->value('name') : null;
     }
 
     /* check for null / blank string / empty array */

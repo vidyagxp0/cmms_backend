@@ -23,6 +23,7 @@ class ProcessRecordService
         'user_dept_review_attachment' => 'User Department Review Attachment',
         'qa_review_attachment' => 'QA Review Attachment',
         'cancellation_attachment' => 'Cancellation Attachment',
+        'qaReviewAttachment' => 'QA Review Attachment',
     ];
 
     public static function getCalibrationPlannerRecords(Request $request)

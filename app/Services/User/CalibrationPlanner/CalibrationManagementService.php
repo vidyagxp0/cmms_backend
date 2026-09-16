@@ -96,7 +96,7 @@ class CalibrationManagementService
 
             /* Process record audit */
             $newValue = [
-                'process_data' => $processData,
+                'process_data' => self::getAuditProcessData($processData),
             ];
 
             UserAuditHelper::log(
@@ -529,6 +529,40 @@ class CalibrationManagementService
         );
     }
 
+    /* remove attachments from audit data */
+    private static function getAuditProcessData(array $data): array
+    {
+        $auditData = [];
+
+        foreach ($data as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $key = $item['key'] ?? null;
+
+            if (!$key || self::isAttachmentField($key)) {
+                continue;
+            }
+
+            $value = self::extractProcessFieldValue(
+                $item['value'] ?? null
+            );
+
+            if (self::processValuesAreSame(null, $value)) {
+                continue;
+            }
+
+            $auditData[] = [
+                'key' => $key,
+                'label' => $item['label'] ?? $key,
+                'value' => $value,
+            ];
+        }
+
+        return $auditData;
+    }
+
     /* process data diff */
     private static function getProcessDataChanges(
         array $oldData,
@@ -548,6 +582,10 @@ class CalibrationManagementService
                 )
             ) as $key
         ) {
+            if (self::isAttachmentField($key)) {
+                continue;
+            }
+
             $oldItem = $oldFields[$key] ?? null;
             $newItem = $newFields[$key] ?? null;
 
@@ -851,25 +889,18 @@ class CalibrationManagementService
                 : [['name' => null, 'rows' => $newData]]
         );
 
-        $allGridKeys = array_unique(
-            array_merge(
-                array_keys($oldGrids),
-                array_keys($newGrids)
-            )
-        );
+        $allGridKeys = array_values(array_unique(array_merge(
+            array_keys($oldGrids),
+            array_keys($newGrids)
+        )));
 
         foreach ($allGridKeys as $gridKey) {
-            $oldGrid = $oldGrids[$gridKey] ?? null;
-            $newGrid = $newGrids[$gridKey] ?? null;
+            $oldGrid = $oldGrids[$gridKey] ?? [];
+            $newGrid = $newGrids[$gridKey] ?? [];
 
-            $gridName =
-                $newGrid['name']
+            $gridName = $newGrid['name']
                 ?? $oldGrid['name']
-                ?? (
-                    is_numeric($gridKey)
-                        ? null
-                        : $gridKey
-                );
+                ?? (is_numeric($gridKey) ? null : $gridKey);
 
             $gridLabel = self::formatGridTitle(
                 $gridName,
@@ -878,42 +909,63 @@ class CalibrationManagementService
                     ?? null
             );
 
-            $oldRows =
-                isset($oldGrid['rows']) &&
-                is_array($oldGrid['rows'])
-                    ? array_values($oldGrid['rows'])
-                    : [];
+            $oldRows = isset($oldGrid['rows']) && is_array($oldGrid['rows'])
+                ? array_values($oldGrid['rows'])
+                : [];
 
-            $newRows =
-                isset($newGrid['rows']) &&
-                is_array($newGrid['rows'])
-                    ? array_values($newGrid['rows'])
-                    : [];
+            $newRows = isset($newGrid['rows']) && is_array($newGrid['rows'])
+                ? array_values($newGrid['rows'])
+                : [];
 
-            $maxRows = max(
-                count($oldRows),
-                count($newRows)
-            );
+            /*
+             * Row identity is scoped to the grid.
+             * Calibration Results Row 1 and Master Instruments Details Row 1
+             * are two different audit records.
+             */
+            $oldRowsByKey = [];
+            foreach ($oldRows as $index => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
 
-            for ($index = 0; $index < $maxRows; $index++) {
                 $rowNumber = $index + 1;
+                $oldRowsByKey[$gridKey . '|' . $rowNumber] = [
+                    'number' => $rowNumber,
+                    'row' => self::removeGridTechnicalFields($row),
+                ];
+            }
 
-                $oldRow = $oldRows[$index] ?? null;
-                $newRow = $newRows[$index] ?? null;
+            $newRowsByKey = [];
+            foreach ($newRows as $index => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
 
-                $oldRow = is_array($oldRow)
-                    ? self::removeGridTechnicalFields($oldRow)
-                    : null;
+                $rowNumber = $index + 1;
+                $newRowsByKey[$gridKey . '|' . $rowNumber] = [
+                    'number' => $rowNumber,
+                    'row' => self::removeGridTechnicalFields($row),
+                ];
+            }
 
-                $newRow = is_array($newRow)
-                    ? self::removeGridTechnicalFields($newRow)
-                    : null;
+            $rowKeys = array_values(array_unique(array_merge(
+                array_keys($oldRowsByKey),
+                array_keys($newRowsByKey)
+            )));
 
-                /* row added */
+            foreach ($rowKeys as $rowKey) {
+                $oldItem = $oldRowsByKey[$rowKey] ?? null;
+                $newItem = $newRowsByKey[$rowKey] ?? null;
+
+                $rowNumber = $newItem['number']
+                    ?? $oldItem['number']
+                    ?? 1;
+
+                $oldRow = $oldItem['row'] ?? null;
+                $newRow = $newItem['row'] ?? null;
+
                 if ($oldRow === null && $newRow !== null) {
-                    $fields = self::convertGridRowToAuditFields(
-                        $newRow
-                    );
+                    $fields = self::convertGridRowToAuditFields($newRow);
 
                     if (!empty($fields)) {
                         $newChanges[] = [
@@ -926,11 +978,8 @@ class CalibrationManagementService
                     continue;
                 }
 
-                /* row deleted */
                 if ($oldRow !== null && $newRow === null) {
-                    $fields = self::convertGridRowToAuditFields(
-                        $oldRow
-                    );
+                    $fields = self::convertGridRowToAuditFields($oldRow);
 
                     if (!empty($fields)) {
                         $oldChanges[] = [
@@ -943,38 +992,29 @@ class CalibrationManagementService
                     continue;
                 }
 
-                /* existing row */
+                if ($oldRow === null || $newRow === null) {
+                    continue;
+                }
+
                 $oldFieldsMap = self::mapRowFields($oldRow);
                 $newFieldsMap = self::mapRowFields($newRow);
 
                 $changedOld = [];
                 $changedNew = [];
 
-                $allCols = array_unique(
-                    array_merge(
-                        array_keys($oldFieldsMap),
-                        array_keys($newFieldsMap)
-                    )
-                );
+                $allCols = array_values(array_unique(array_merge(
+                    array_keys($oldFieldsMap),
+                    array_keys($newFieldsMap)
+                )));
 
                 foreach ($allCols as $col) {
                     $oldCol = $oldFieldsMap[$col] ?? null;
                     $newCol = $newFieldsMap[$col] ?? null;
 
-                    $oldVal = self::extractGridColumnValue(
-                        $oldCol
-                    );
+                    $oldVal = self::extractGridColumnValue($oldCol);
+                    $newVal = self::extractGridColumnValue($newCol);
 
-                    $newVal = self::extractGridColumnValue(
-                        $newCol
-                    );
-
-                    if (
-                        self::processValuesAreSame(
-                            $oldVal,
-                            $newVal
-                        )
-                    ) {
+                    if (self::processValuesAreSame($oldVal, $newVal)) {
                         continue;
                     }
 
@@ -1001,10 +1041,7 @@ class CalibrationManagementService
                     }
                 }
 
-                if (
-                    empty($changedOld) &&
-                    empty($changedNew)
-                ) {
+                if (empty($changedOld) && empty($changedNew)) {
                     continue;
                 }
 
@@ -1026,10 +1063,7 @@ class CalibrationManagementService
             }
         }
 
-        return [
-            $oldChanges,
-            $newChanges,
-        ];
+        return [$oldChanges, $newChanges];
     }
 
     private static function removeGridTechnicalFields(array $row): array
