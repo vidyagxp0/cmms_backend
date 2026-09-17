@@ -402,11 +402,42 @@
                                 </div>
                             @endforeach
 
-                            {{-- Monthly Calibration --}}
-                            @php $monthlyData = $row['monthlyCalibration']['value'] ?? []; @endphp
+                            {{-- Calibration Schedule --}}
+                            @php
+                                $frequency = strtolower(
+                                    trim($row['calibrationFrequency']['value'] ?? '')
+                                );
 
-                            @if(is_array($monthlyData) && !empty($monthlyData))
-                                <div class="monthly-title">Monthly Calibration</div>
+                                $frequencyTitle = match ($frequency) {
+                                    'half-yearly' => 'Half-Yearly Calibration',
+                                    'yearly' => 'Yearly Calibration',
+                                    'two-yearly' => 'Two-Yearly Calibration',
+                                    default => 'Calibration Schedule',
+                                };
+
+                                $monthlyData = $row['monthlyCalibration']['value'] ?? [];
+                                $scheduleData = [];
+
+                                /* Show only months having a scheduler or calibration date. */
+                                if (is_array($monthlyData)) {
+                                    foreach ($monthlyData as $month => $monthData) {
+                                        if (
+                                            !is_array($monthData) ||
+                                            (
+                                                empty($monthData['schedulerDate']) &&
+                                                empty($monthData['calibrationDate'])
+                                            )
+                                        ) {
+                                            continue;
+                                        }
+
+                                        $scheduleData[$month] = $monthData;
+                                    }
+                                }
+                            @endphp
+
+                            @if(!empty($scheduleData))
+                                <div class="monthly-title">{{ $frequencyTitle }}</div>
 
                                 <table class="monthly-table">
                                     <thead>
@@ -417,7 +448,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($monthlyData as $month => $monthData)
+                                        @foreach($scheduleData as $month => $monthData)
                                             <tr>
                                                 <td>{{ $month }}</td>
                                                 <td>{{ !empty($monthData['schedulerDate']) ? $monthData['schedulerDate'] : '-' }}</td>
