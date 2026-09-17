@@ -253,7 +253,15 @@ class CalibrationPlannerService
                     ? $processRecord->process_data
                     : [];
 
-                $newProcessData = $requestProcessData;
+                /*
+                 * Attachment fields are managed by the attachment endpoint.
+                 * Do not clear an existing attachment when another stage sends
+                 * process data with an empty attachment value.
+                 */
+                $newProcessData = self::preserveExistingAttachmentValues(
+                    $oldProcessData,
+                    $requestProcessData
+                );
 
                 [$processOldChanges, $processNewChanges] =
                     self::getProcessDataChanges(
@@ -460,6 +468,44 @@ class CalibrationPlannerService
         return false;
     }
 
+    /* preserve attachment values already stored on the record */
+    private static function preserveExistingAttachmentValues(array $oldData, array $newData): array
+    {
+        $oldFields = self::indexProcessData($oldData);
+        $newFields = self::indexProcessData($newData);
+
+        foreach ($oldFields as $key => $oldItem) {
+            if (!self::isAttachmentField($key))
+                continue;
+
+            if (!isset($newFields[$key])) {
+                $newData[] = $oldItem;
+                continue;
+            }
+
+            $newValue = $newFields[$key]['value'] ?? null;
+
+            if ($newValue === null || $newValue === '' || $newValue === []) {
+                foreach ($newData as &$newItem) {
+                    if (is_array($newItem) && ($newItem['key'] ?? null) === $key) {
+                        $newItem['value'] = $oldItem['value'] ?? null;
+                        if (empty($newItem['label']))
+                            $newItem['label'] = $oldItem['label'] ?? $key;
+                        break;
+                    }
+                }
+                unset($newItem);
+            }
+        }
+
+        return $newData;
+    }
+
+    private static function isAttachmentField($key): bool
+    {
+        return str_contains(strtolower((string) $key), 'attachment');
+    }
+
     /* build old/new audit pairs for changed process_data fields */
     private static function getProcessDataChanges(array $oldData, array $newData): array
     {
@@ -469,6 +515,10 @@ class CalibrationPlannerService
         $newFields = self::indexProcessData($newData);
 
         foreach (array_unique(array_merge(array_keys($oldFields), array_keys($newFields))) as $key) {
+            /* attachments are managed separately and never enter process_data audit */
+            if (self::isAttachmentField($key))
+                continue;
+
             $oldItem = $oldFields[$key] ?? null;
             $newItem = $newFields[$key] ?? null;
             $oldVal = self::extractProcessFieldValue($oldItem['value'] ?? null);

@@ -679,4 +679,321 @@ class UserAuditHelper
 
         return (string) $value;
     }
+
+    /* prepare audit history values for display */
+    public static function prepareAuditHistoryValue($value)
+    {
+        if ($value === null) return null;
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) $value = $decoded;
+        }
+
+        if (is_object($value)) $value = $value->toArray();
+        if (!is_array($value)) return self::isAuditEmptyValue($value) ? null : $value;
+
+        return self::removeEmptyAuditValues($value);
+    }
+
+    /* recursively remove empty audit values */
+    public static function removeEmptyAuditValues($value)
+    {
+        if (!is_array($value)) return self::isAuditEmptyValue($value) ? null : $value;
+
+        $result = [];
+
+        foreach ($value as $key => $item) {
+            if (self::isAuditEmptyValue($item)) continue;
+
+            if (is_string($item)) {
+                $decoded = json_decode($item, true);
+                if (json_last_error() === JSON_ERROR_NONE) $item = $decoded;
+            }
+
+            if (is_array($item)) {
+                $cleaned = self::removeEmptyAuditValues($item);
+                if (!empty($cleaned)) $result[$key] = $cleaned;
+                continue;
+            }
+
+            if (!self::isAuditEmptyValue($item)) $result[$key] = $item;
+        }
+
+        return $result;
+    }
+
+    /* check for null / blank string / empty array */
+    public static function isAuditEmptyValue($value)
+    {
+        if ($value === null) return true;
+        if (is_string($value)) return trim($value) === '';
+        if (is_array($value)) return empty($value);
+
+        return false;
+    }
+
+    /* compare two audit values */
+    public static function auditValuesAreSame($old, $new)
+    {
+        if (self::isAuditEmptyValue($old) && self::isAuditEmptyValue($new)) return true;
+
+        if (is_array($old) || is_array($new)) {
+            if (!is_array($old) || !is_array($new)) return false;
+            return $old == $new;
+        }
+
+        if (is_object($old) || is_object($new)) {
+            $old = is_object($old) ? $old->toArray() : $old;
+            $new = is_object($new) ? $new->toArray() : $new;
+            return self::auditValuesAreSame($old, $new);
+        }
+
+        return $old === $new;
+    }
+
+    /* render a nested audit value */
+    public static function formatAuditNestedValue($value)
+    {
+        if ($value === null || $value === '') return '-';
+
+        if (is_object($value)) {
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
+        }
+
+        if (!is_array($value)) return (string) $value;
+        if (isset($value['name'])) return (string) $value['name'];
+        if (isset($value['value']) && count($value) <= 3) return self::formatAuditNestedValue($value['value']);
+
+        $lines = [];
+
+        foreach ($value as $key => $item) {
+            if (self::isAuditEmptyValue($item)) continue;
+
+            if (is_array($item)) {
+                $nestedLines = [];
+
+                foreach ($item as $nestedKey => $nestedValue) {
+                    if (self::isAuditEmptyValue($nestedValue)) continue;
+                    if (is_array($nestedValue)) $nestedValue = self::formatAuditNestedValue($nestedValue);
+
+                    $nestedLines[] = self::formatAuditFieldLabel((string) $nestedKey) . ' : ' . $nestedValue;
+                }
+
+                if (!empty($nestedLines)) $lines[] = $key . ' : ' . implode(', ', $nestedLines);
+                continue;
+            }
+
+            $lines[] = self::formatAuditFieldLabel((string) $key) . ' : ' . $item;
+        }
+
+        return empty($lines) ? '-' : implode("\n", $lines);
+    }
+
+    /* format a value for the final audit row */
+    public static function formatAuditHistoryDisplayValue($value)
+    {
+        if ($value === null || $value === '') return null;
+        if (is_string($value)) return $value;
+
+        if (is_object($value)) {
+            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
+        }
+
+        if (is_array($value)) {
+            if (isset($value[0]) && is_array($value[0]) && array_key_exists('label', $value[0]) && array_key_exists('value', $value[0])) {
+                return self::formatGridFieldListForAudit($value);
+            }
+
+            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return (string) $value;
+    }
+
+    /* format an audit date */
+    public static function formatAuditDate($date, $format = 'd/m/Y H:i:s')
+    {
+        if ($date === null || $date === '') return null;
+        if ($date instanceof \DateTimeInterface) return $date->format($format);
+
+        try {
+            return Carbon::parse($date)->format($format);
+        } catch (\Exception $e) {
+            return (string) $date;
+        }
+    }
+
+    /* flatten process_data into label => value pairs */
+    public static function getProcessDataValues($data)
+    {
+        if (!is_array($data)) return [];
+
+        $result = [];
+
+        foreach ($data as $key => $item) {
+            if (is_array($item)) {
+                if (array_key_exists('label', $item) && array_key_exists('value', $item)) {
+                    if ($item['label']) $result[$item['label']] = $item['value'] ?? null;
+                    continue;
+                }
+
+                if (isset($item['key']) && array_key_exists('value', $item)) {
+                    $result[$item['key']] = $item['value'] ?? null;
+                    continue;
+                }
+            }
+
+            if (is_string($key)) $result[$key] = $item;
+        }
+
+        return $result;
+    }
+
+    /* reduce attachment data to name/url entries */
+    public static function formatAttachmentAuditValue($attachments)
+    {
+        if ($attachments === null || $attachments === '') return null;
+
+        if (is_string($attachments)) {
+            $decoded = json_decode($attachments, true);
+            $attachments = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($attachments)) return null;
+
+        $result = [];
+
+        foreach ($attachments as $attachment) {
+            if (!is_array($attachment)) continue;
+
+            $name = $attachment['name'] ?? $attachment['Name'] ?? null;
+            if (!$name) continue;
+
+            $result[] = [
+                'name' => $name,
+                'url' => $attachment['url'] ?? $attachment['Url'] ?? null,
+            ];
+        }
+
+        return empty($result) ? null : $result;
+    }
+
+    /* build one display-ready audit row */
+    public static function makeAuditRow($audit, $module, $oldValue, $newValue, $action = null)
+    {
+        return [
+            'id' => $audit->id,
+            'action' => $action ?? $audit->action,
+            'module' => $module,
+            'old_value' => self::isAuditEmptyValue($oldValue) ? null : self::formatAuditHistoryDisplayValue($oldValue),
+            'new_value' => self::isAuditEmptyValue($newValue) ? null : self::formatAuditHistoryDisplayValue($newValue),
+            'comment' => null,
+            'responsible_person' => $audit->user?->name ?? '-',
+            'user_id' => $audit->user_id,
+            'record_id' => $audit->record_id,
+            'model' => $audit->model,
+            'created_at' => self::formatAuditDate($audit->created_at, 'd-m-Y H:i:s'),
+        ];
+    }
+
+    /* activity audit row */
+    public static function prepareActivityAudit($audit, $oldValue, $newValue)
+    {
+        $oldValue = is_array($oldValue) ? $oldValue : [];
+        $newValue = is_array($newValue) ? $newValue : [];
+
+        $activityName = $newValue['activity'] ?? $oldValue['activity'] ?? $audit->module ?? 'Activity';
+        $oldStage = $oldValue['stage'] ?? null;
+        $newStage = $newValue['stage'] ?? null;
+        $comment = $newValue['comment'] ?? null;
+
+        if (self::isAuditEmptyValue($comment)) $comment = $audit->description ?? null;
+
+        if (self::isAuditEmptyValue($oldStage) && self::isAuditEmptyValue($newStage) && self::isAuditEmptyValue($comment)) {
+            return null;
+        }
+
+        return [
+            'id' => $audit->id,
+            'action' => 'Activity Performed',
+            'module' => $activityName,
+            'old_value' => self::isAuditEmptyValue($oldStage) ? null : self::formatAuditHistoryDisplayValue($oldStage),
+            'new_value' => self::isAuditEmptyValue($newStage) ? null : self::formatAuditHistoryDisplayValue($newStage),
+            'comment' => self::isAuditEmptyValue($comment) ? null : self::formatAuditHistoryDisplayValue($comment),
+            'responsible_person' => $audit->user?->name ?? '-',
+            'user_id' => $audit->user_id,
+            'record_id' => $audit->record_id,
+            'model' => $audit->model,
+            'created_at' => self::formatAuditDate($audit->created_at, 'd/m/Y H:i:s'),
+        ];
+    }
+
+    /* pull raw grid rows from either supported audit key */
+    public static function extractGridRows($value)
+    {
+        if (!is_array($value)) return [];
+        if (isset($value['grid_data']) && is_array($value['grid_data'])) return array_values($value['grid_data']);
+        if (isset($value['gridData']) && is_array($value['gridData'])) return array_values($value['gridData']);
+        if (isset($value[0]) && is_array($value[0])) return array_values($value);
+
+        return [];
+    }
+
+    /* format every non-empty grid field */
+    public static function formatGridFieldsForAudit($fields)
+    {
+        if (!is_array($fields)) return null;
+
+        $lines = [];
+
+        foreach ($fields as $key => $field) {
+            if (is_array($field) && (array_key_exists('label', $field) || array_key_exists('value', $field))) {
+                $label = $field['label'] ?? self::formatAuditFieldLabel($key);
+                $value = $field['value'] ?? null;
+            } elseif (!is_array($field)) {
+                $label = self::formatAuditFieldLabel($key);
+                $value = $field;
+            } else {
+                continue;
+            }
+
+            if (self::isAuditEmptyValue($value) || self::isAuditEmptyValue($label)) continue;
+
+            $lines[] = $label . ' : ' . self::formatAuditNestedValue($value);
+        }
+
+        return empty($lines) ? null : implode("\n", $lines);
+    }
+
+    /* format only changed grid fields */
+    public static function formatGridFieldListForAudit($fields)
+    {
+        if (!is_array($fields) || empty($fields)) return null;
+
+        $lines = [];
+
+        foreach ($fields as $field) {
+            if (!is_array($field)) continue;
+
+            $label = $field['label'] ?? null;
+            $value = $field['value'] ?? null;
+            if (self::isAuditEmptyValue($label) || self::isAuditEmptyValue($value)) continue;
+
+            $lines[] = $label . ' : ' . self::formatAuditNestedValue($value);
+        }
+
+        return empty($lines) ? null : implode("\n", $lines);
+    }
+
+    /* pull raw checklist rows from either supported audit key */
+    public static function extractChecklistRows($value)
+    {
+        if (!is_array($value)) return [];
+        if (isset($value['checklist_data']) && is_array($value['checklist_data'])) return array_values($value['checklist_data']);
+        if (isset($value[0]) && is_array($value[0])) return array_values($value);
+
+        return [];
+    }
+
 }

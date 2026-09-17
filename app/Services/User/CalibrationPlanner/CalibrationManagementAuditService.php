@@ -87,11 +87,11 @@ class CalibrationManagementAuditService
 
             /* convert each raw audit into one or more display rows, by type */
             foreach ($audits as $audit) {
-                $oldValue = self::prepareValue($audit->old_value);
-                $newValue = self::prepareValue($audit->new_value);
+                $oldValue = UserAuditHelper::prepareAuditHistoryValue($audit->old_value);
+                $newValue = UserAuditHelper::prepareAuditHistoryValue($audit->new_value);
 
                 if (strtolower(trim($audit->action)) === 'activity performed') {
-                    $activityRow = self::prepareActivityAudit($audit, $oldValue, $newValue);
+                    $activityRow = UserAuditHelper::prepareActivityAudit($audit, $oldValue, $newValue);
                     if ($activityRow) $auditRows[] = $activityRow;
                     continue;
                 }
@@ -149,7 +149,7 @@ class CalibrationManagementAuditService
                     'stage' => $processRecord->stage?->name,
                     'department' => $processRecord->department?->name,
                     'initiator' => $processRecord->initiator?->name,
-                    'initiation_date' => self::formatDate($processRecord->initiation_date, 'd/m/Y H:i:s'),
+                    'initiation_date' => UserAuditHelper::formatAuditDate($processRecord->initiation_date, 'd/m/Y H:i:s'),
                 ],
                 'audits' => $paginator->items(),
                 'pagination' => [
@@ -288,7 +288,7 @@ class CalibrationManagementAuditService
             return (string) $column['label'];
         }
 
-        return self::formatFieldLabel($fallbackKey);
+        return UserAuditHelper::formatAuditFieldLabel($fallbackKey);
     }
 
     private static function normalizeRowFields($row): array
@@ -331,7 +331,7 @@ class CalibrationManagementAuditService
                 ? $field['value']
                 : ($field['Value'] ?? null);
 
-            if (self::isEmptyValue($value)) {
+            if (UserAuditHelper::isAuditEmptyValue($value)) {
                 continue;
             }
 
@@ -344,7 +344,7 @@ class CalibrationManagementAuditService
             if (empty($label)) {
                 $label = $field['label']
                     ?? $field['Label']
-                    ?? self::formatFieldLabel($key);
+                    ?? UserAuditHelper::formatAuditFieldLabel($key);
             }
 
             $fields[$key] = [
@@ -364,7 +364,7 @@ class CalibrationManagementAuditService
 
         $val = self::extractColumnValue($v);
 
-        if (self::isEmptyValue($val)) {
+        if (UserAuditHelper::isAuditEmptyValue($val)) {
             continue;
         }
 
@@ -382,179 +382,6 @@ class CalibrationManagementAuditService
 
     return $fields;
 }
-
-    /* Normalize grid audit data */
-    private static function normalizeAuditGrids($value): array
-    {
-        if (empty($value)) {
-            return [];
-        }
-
-        $data = $value;
-
-        if (is_array($value) && isset($value['grid_data'])) {
-            $data = $value['grid_data'];
-        }
-
-        if (is_string($data)) {
-            $decoded = json_decode($data, true);
-
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $data = $decoded;
-            }
-        }
-
-        if (!is_array($data) || empty($data)) {
-            return [];
-        }
-
-        $normalized = [];
-
-        foreach ($data as $idx => $item) {
-
-            if (!is_array($item)) {
-                continue;
-            }
-
-            /* unwrap key/value structure */
-            if (
-                isset($item[0]) &&
-                is_array($item[0]) &&
-                isset($item[0]['key'])
-            ) {
-                $unwrapped = [];
-
-                foreach ($item as $prop) {
-
-                    if (
-                        is_array($prop) &&
-                        isset($prop['key'])
-                    ) {
-                        $unwrapped[$prop['key']] =
-                            $prop['value'] ?? null;
-                    }
-                }
-
-                $item = $unwrapped;
-            }
-
-            /* already normalized row format */
-            if (
-                isset($item['row']) &&
-                isset($item['fields'])
-            ) {
-                $gridName = $item['grid_name'] ?? null;
-
-                $gridLabel = $item['grid_label']
-                    ?? self::formatGridTitle($gridName);
-
-                $rowNum = (int) $item['row'];
-
-                $gridKey = $gridName ?: 'default';
-
-                $fields = self::normalizeRowFields(
-                    $item['fields']
-                );
-
-                if (empty($fields)) {
-                    continue;
-                }
-
-                $normalized[$gridKey]['grid_name'] =
-                    $gridName;
-
-                $normalized[$gridKey]['grid_label'] =
-                    $gridLabel;
-
-                $normalized[$gridKey]['rows'][$rowNum] = [
-                    'row_number' => $rowNum,
-                    'fields' => $fields,
-                ];
-
-                continue;
-            }
-
-            /*
-            * Normal grid structure:
-            *
-            * [
-            *     'name' => 'calibrationResults',
-            *     'rows' => [...]
-            * ]
-            */
-            $gridName = isset($item['name'])
-                ? trim((string) $item['name'])
-                : null;
-
-            $rows = isset($item['rows']) &&
-                is_array($item['rows'])
-                ? array_values($item['rows'])
-                : [];
-
-            /*
-            * IMPORTANT:
-            * A grid definition with no rows is not an
-            * audit entry.
-            */
-            if (empty($rows)) {
-                continue;
-            }
-
-            $gridLabel = self::formatGridTitle(
-                $gridName,
-                $item['label'] ?? null
-            );
-
-            $gridKey = $gridName
-                ?: ('grid_' . $idx);
-
-            foreach ($rows as $rIdx => $row) {
-
-                if (!is_array($row)) {
-                    continue;
-                }
-
-                $rowNum = $rIdx + 1;
-
-                $fields = self::normalizeRowFields($row);
-
-                /*
-                * If the row contains only technical data
-                * or the grid name, don't create an audit row.
-                */
-                if (empty($fields)) {
-                    continue;
-                }
-
-                $normalized[$gridKey]['grid_name'] =
-                    $gridName;
-
-                $normalized[$gridKey]['grid_label'] =
-                    $gridLabel;
-
-                $normalized[$gridKey]['rows'][$rowNum] = [
-                    'row_number' => $rowNum,
-                    'fields' => $fields,
-                ];
-            }
-        }
-
-        /*
-        * Remove grids that ended up with no real rows.
-        */
-        foreach ($normalized as $gridKey => $grid) {
-
-            if (
-                empty($grid['rows']) ||
-                !is_array($grid['rows'])
-            ) {
-                unset($normalized[$gridKey]);
-            }
-        }
-
-        return $normalized;
-    }
-
     /* normalize grouped grid data into grid_name => rows */
     private static function normalizeGridRows($rows)
     {
@@ -699,46 +526,15 @@ class CalibrationManagementAuditService
     }
 
 /* pull grouped grid data out of an audit value */
-private static function extractGridRows($value)
-{
-    if (!is_array($value)) {
-        return [];
-    }
-
-    if (
-        isset($value['grid_data']) &&
-        is_array($value['grid_data'])
-    ) {
-        return array_values($value['grid_data']);
-    }
-
-    if (
-        isset($value['gridData']) &&
-        is_array($value['gridData'])
-    ) {
-        return array_values($value['gridData']);
-    }
-
-    if (
-        isset($value[0]) &&
-        is_array($value[0])
-    ) {
-        return array_values($value);
-    }
-
-    return [];
-}
-
-
     /* grid record audit - one row per changed grid row */
     private static function prepareGridAudit($audit, $oldValue, $newValue)
     {
         $oldGrid = self::normalizeGridRows(
-            self::extractGridRows($oldValue)
+            UserAuditHelper::extractGridRows($oldValue)
         );
 
         $newGrid = self::normalizeGridRows(
-            self::extractGridRows($newValue)
+            UserAuditHelper::extractGridRows($newValue)
         );
 
         $gridKeys = array_unique(
@@ -758,7 +554,7 @@ private static function extractGridRows($value)
             $gridLabel =
                 $newGrid[$gridKey]['grid_label']
                 ?? $oldGrid[$gridKey]['grid_label']
-                ?? self::formatFieldLabel($gridKey);
+                ?? UserAuditHelper::formatAuditFieldLabel($gridKey);
 
             $rowNumbers = array_unique(
                 array_merge(
@@ -780,7 +576,7 @@ private static function extractGridRows($value)
                 /* row deleted */
                 if ($oldRow !== null && $newRow === null) {
 
-                    $oldDisplay = self::formatGridFieldsForAudit(
+                    $oldDisplay = UserAuditHelper::formatGridFieldsForAudit(
                         $oldFields
                     );
 
@@ -788,7 +584,7 @@ private static function extractGridRows($value)
                         continue;
                     }
 
-                    $rows[] = self::makeAuditRow(
+                    $rows[] = UserAuditHelper::makeAuditRow(
                         $audit,
                         $gridLabel . ' (Row ' . $rowNumber . ')',
                         $oldDisplay,
@@ -802,7 +598,7 @@ private static function extractGridRows($value)
                 /* row created */
                 if ($oldRow === null && $newRow !== null) {
 
-                    $newDisplay = self::formatGridFieldsForAudit(
+                    $newDisplay = UserAuditHelper::formatGridFieldsForAudit(
                         $newFields
                     );
 
@@ -810,7 +606,7 @@ private static function extractGridRows($value)
                         continue;
                     }
 
-                    $rows[] = self::makeAuditRow(
+                    $rows[] = UserAuditHelper::makeAuditRow(
                         $audit,
                         $gridLabel . ' (Row ' . $rowNumber . ')',
                         null,
@@ -841,14 +637,14 @@ private static function extractGridRows($value)
                     $newFieldValue = $newField['value'] ?? null;
 
                     if (
-                        self::isEmptyValue($oldFieldValue) &&
-                        self::isEmptyValue($newFieldValue)
+                        UserAuditHelper::isAuditEmptyValue($oldFieldValue) &&
+                        UserAuditHelper::isAuditEmptyValue($newFieldValue)
                     ) {
                         continue;
                     }
 
                     if (
-                        self::valuesAreSame(
+                        UserAuditHelper::auditValuesAreSame(
                             $oldFieldValue,
                             $newFieldValue
                         )
@@ -859,16 +655,16 @@ private static function extractGridRows($value)
                     $label =
                         $newField['label']
                         ?? $oldField['label']
-                        ?? self::formatFieldLabel($fieldKey);
+                        ?? UserAuditHelper::formatAuditFieldLabel($fieldKey);
 
-                    if (!self::isEmptyValue($oldFieldValue)) {
+                    if (!UserAuditHelper::isAuditEmptyValue($oldFieldValue)) {
                         $changedOldFields[] = [
                             'label' => $label,
                             'value' => $oldFieldValue,
                         ];
                     }
 
-                    if (!self::isEmptyValue($newFieldValue)) {
+                    if (!UserAuditHelper::isAuditEmptyValue($newFieldValue)) {
                         $changedNewFields[] = [
                             'label' => $label,
                             'value' => $newFieldValue,
@@ -883,13 +679,13 @@ private static function extractGridRows($value)
                     continue;
                 }
 
-                $rows[] = self::makeAuditRow(
+                $rows[] = UserAuditHelper::makeAuditRow(
                     $audit,
                     $gridLabel . ' (Row ' . $rowNumber . ')',
-                    self::formatGridFieldListForAudit(
+                    UserAuditHelper::formatGridFieldListForAudit(
                         $changedOldFields
                     ),
-                    self::formatGridFieldListForAudit(
+                    UserAuditHelper::formatGridFieldListForAudit(
                         $changedNewFields
                     ),
                     'Updated'
@@ -905,11 +701,11 @@ private static function extractGridRows($value)
         $oldValue = is_array($oldValue) ? $oldValue : [];
         $newValue = is_array($newValue) ? $newValue : [];
 
-        $oldData = self::getProcessDataValues(
+        $oldData = UserAuditHelper::getProcessDataValues(
             $oldValue['process_data'] ?? []
         );
 
-        $newData = self::getProcessDataValues(
+        $newData = UserAuditHelper::getProcessDataValues(
             $newValue['process_data'] ?? []
         );
 
@@ -926,18 +722,18 @@ private static function extractGridRows($value)
             $old = $oldData[$label] ?? null;
             $new = $newData[$label] ?? null;
 
-            if (self::valuesAreSame($old, $new)) {
+            if (UserAuditHelper::auditValuesAreSame($old, $new)) {
                 continue;
             }
 
             if (
-                self::isEmptyValue($old) &&
-                self::isEmptyValue($new)
+                UserAuditHelper::isAuditEmptyValue($old) &&
+                UserAuditHelper::isAuditEmptyValue($new)
             ) {
                 continue;
             }
 
-            $rows[] = self::makeAuditRow(
+            $rows[] = UserAuditHelper::makeAuditRow(
                 $audit,
                 $label,
                 $old,
@@ -965,13 +761,13 @@ private static function extractGridRows($value)
             $old = $oldValue[$field] ?? null;
             $new = $newValue[$field] ?? null;
 
-            if (self::valuesAreSame($old, $new)) {
+            if (UserAuditHelper::auditValuesAreSame($old, $new)) {
                 continue;
             }
 
             if (
-                self::isEmptyValue($old) &&
-                self::isEmptyValue($new)
+                UserAuditHelper::isAuditEmptyValue($old) &&
+                UserAuditHelper::isAuditEmptyValue($new)
             ) {
                 continue;
             }
@@ -994,7 +790,7 @@ private static function extractGridRows($value)
                 continue;
             }
 
-            $rows[] = self::makeAuditRow(
+            $rows[] = UserAuditHelper::makeAuditRow(
                 $audit,
                 FieldLabelHelper::getLabel(
                     'Process Record',
@@ -1049,17 +845,17 @@ private static function extractGridRows($value)
                 continue;
             }
 
-            $oldDisplay = self::formatAttachmentAuditValue($old);
-            $newDisplay = self::formatAttachmentAuditValue($new);
+            $oldDisplay = UserAuditHelper::formatAttachmentAuditValue($old);
+            $newDisplay = UserAuditHelper::formatAttachmentAuditValue($new);
 
             if (
-                self::isEmptyValue($oldDisplay) &&
-                self::isEmptyValue($newDisplay)
+                UserAuditHelper::isAuditEmptyValue($oldDisplay) &&
+                UserAuditHelper::isAuditEmptyValue($newDisplay)
             ) {
                 continue;
             }
 
-            $rows[] = self::makeAuditRow(
+            $rows[] = UserAuditHelper::makeAuditRow(
                 $audit,
                 self::getAttachmentFieldLabel($field),
                 $oldDisplay,
@@ -1147,99 +943,12 @@ private static function extractGridRows($value)
             return $labels[$field];
         }
 
-        return self::formatFieldLabel($field);
+        return UserAuditHelper::formatAuditFieldLabel($field);
     }
-
-    private static function formatAttachmentAuditValue($attachments)
-    {
-        if ($attachments === null || $attachments === '') return null;
-
-        if (is_string($attachments)) {
-            $decoded = json_decode($attachments, true);
-            $attachments = is_array($decoded) ? $decoded : [];
-        }
-
-        if (!is_array($attachments)) return null;
-
-        $result = [];
-
-        foreach ($attachments as $attachment) {
-            if (!is_array($attachment)) continue;
-
-            $name = $attachment['name'] ?? $attachment['Name'] ?? null;
-            if (!$name) continue;
-
-            $result[] = ['name' => $name, 'url' => $attachment['url'] ?? $attachment['Url'] ?? null];
-        }
-
-        return empty($result) ? null : $result;
-    }
-
-    private static function getProcessDataValues($data)
-    {
-        if (!is_array($data)) return [];
-
-        $result = [];
-
-        foreach ($data as $key => $item) {
-            if (is_array($item)) {
-                if (array_key_exists('label', $item) && array_key_exists('value', $item)) {
-                    if ($item['label']) $result[$item['label']] = $item['value'] ?? null;
-                    continue;
-                }
-                if (isset($item['key']) && array_key_exists('value', $item)) {
-                    $result[$item['key']] = $item['value'] ?? null;
-                    continue;
-                }
-            }
-
-            if (is_string($key)) $result[$key] = $item;
-        }
-
-        return $result;
-    }
-
-    private static function auditDisplayValue($value)
-    {
-        if ($value === null || $value === '') return '-';
-
-        if (is_object($value)) {
-            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
-        }
-
-        if (!is_array($value)) return (string) $value;
-        if (isset($value['name'])) return (string) $value['name'];
-        if (isset($value['value']) && count($value) <= 3) return self::auditDisplayValue($value['value']);
-
-        $lines = [];
-
-        foreach ($value as $key => $item) {
-            if (self::isEmptyValue($item)) continue;
-
-            if (is_array($item)) {
-                $nestedLines = [];
-
-                foreach ($item as $nestedKey => $nestedValue) {
-                    if (self::isEmptyValue($nestedValue)) continue;
-                    if (is_array($nestedValue)) $nestedValue = self::auditDisplayValue($nestedValue);
-
-                    $nestedLines[] = self::formatFieldLabel((string) $nestedKey) . ' : ' . $nestedValue;
-                }
-
-                if (!empty($nestedLines)) $lines[] = $key . ' : ' . implode(', ', $nestedLines);
-                continue;
-            }
-
-            $lines[] = self::formatFieldLabel((string) $key) . ' : ' . $item;
-        }
-
-        return empty($lines) ? '-' : implode("\n", $lines);
-    }
-
     private static function prepareChecklistAudit($audit, $oldValue, $newValue)
     {
-        $oldRow = (self::extractChecklistRows($oldValue) ?: [[]])[0];
-        $newRow = (self::extractChecklistRows($newValue) ?: [[]])[0];
+        $oldRow = (UserAuditHelper::extractChecklistRows($oldValue) ?: [[]])[0];
+        $newRow = (UserAuditHelper::extractChecklistRows($newValue) ?: [[]])[0];
 
         $rows = [];
         $skip = ['id', 'row_id', 'checklist_record_id', 'process_record_id', 'created_at', 'updated_at'];
@@ -1250,224 +959,14 @@ private static function extractGridRows($value)
             $old = $oldRow[$key] ?? null;
             $new = $newRow[$key] ?? null;
 
-            if (self::isEmptyValue($old) && self::isEmptyValue($new)) continue;
-            if (self::valuesAreSame($old, $new)) continue;
+            if (UserAuditHelper::isAuditEmptyValue($old) && UserAuditHelper::isAuditEmptyValue($new)) continue;
+            if (UserAuditHelper::auditValuesAreSame($old, $new)) continue;
 
-            $rows[] = self::makeAuditRow($audit, self::formatFieldLabel($key), $old, $new);
+            $rows[] = UserAuditHelper::makeAuditRow($audit, UserAuditHelper::formatAuditFieldLabel($key), $old, $new);
         }
 
         return $rows;
     }
-
-    private static function prepareActivityAudit($audit, $oldValue, $newValue)
-    {
-        $oldValue = is_array($oldValue) ? $oldValue : [];
-        $newValue = is_array($newValue) ? $newValue : [];
-
-        $activityName = $newValue['activity'] ?? $oldValue['activity'] ?? $audit->module ?? 'Activity';
-        $oldStage = $oldValue['stage'] ?? null;
-        $newStage = $newValue['stage'] ?? null;
-        $comment = $newValue['comment'] ?? null;
-
-        if (self::isEmptyValue($comment)) $comment = $audit->description ?? null;
-
-        if (self::isEmptyValue($oldStage) && self::isEmptyValue($newStage) && self::isEmptyValue($comment)) {
-            return null;
-        }
-
-        return [
-            'id' => $audit->id,
-            'action' => 'Activity Performed',
-            'module' => $activityName,
-            'old_value' => self::isEmptyValue($oldStage) ? null : self::formatDisplayValue($oldStage),
-            'new_value' => self::isEmptyValue($newStage) ? null : self::formatDisplayValue($newStage),
-            'comment' => self::isEmptyValue($comment) ? null : self::formatDisplayValue($comment),
-            'responsible_person' => $audit->user?->name ?? '-',
-            'user_id' => $audit->user_id,
-            'record_id' => $audit->record_id,
-            'model' => $audit->model,
-            'created_at' => self::formatDate($audit->created_at, 'd/m/Y H:i:s'),
-        ];
-    }
-
-    private static function makeAuditRow($audit, $module, $oldValue, $newValue, $action = null)
-    {
-        return [
-            'id' => $audit->id,
-            'action' => $action ?? $audit->action,
-            'module' => $module,
-            'old_value' => self::isEmptyValue($oldValue) ? null : self::formatDisplayValue($oldValue),
-            'new_value' => self::isEmptyValue($newValue) ? null : self::formatDisplayValue($newValue),
-            'comment' => null,
-            'responsible_person' => $audit->user?->name ?? '-',
-            'user_id' => $audit->user_id,
-            'record_id' => $audit->record_id,
-            'model' => $audit->model,
-            'created_at' => self::formatDate($audit->created_at, 'd-m-Y H:i:s'),
-        ];
-    }
-
-    private static function formatGridFieldsForAudit($fields)
-    {
-        if (!is_array($fields)) return null;
-
-        $lines = [];
-
-        foreach ($fields as $key => $field) {
-            if (is_array($field) && (array_key_exists('label', $field) || array_key_exists('value', $field))) {
-                $label = $field['label'] ?? self::formatFieldLabel($key);
-                $value = $field['value'] ?? null;
-            } elseif (!is_array($field)) {
-                $label = self::formatFieldLabel($key);
-                $value = $field;
-            } else {
-                continue;
-            }
-
-            if (self::isEmptyValue($value) || self::isEmptyValue($label)) continue;
-
-            $lines[] = $label . ' : ' . self::auditDisplayValue($value);
-        }
-
-        return empty($lines) ? null : implode("\n", $lines);
-    }
-
-    private static function formatGridFieldListForAudit($fields)
-    {
-        if (!is_array($fields) || empty($fields)) return null;
-
-        $lines = [];
-
-        foreach ($fields as $field) {
-            if (!is_array($field)) continue;
-
-            $label = $field['label'] ?? null;
-            $value = $field['value'] ?? null;
-            if (self::isEmptyValue($label) || self::isEmptyValue($value)) continue;
-
-            $lines[] = $label . ' : ' . self::auditDisplayValue($value);
-        }
-
-        return empty($lines) ? null : implode("\n", $lines);
-    }
-
-    private static function extractChecklistRows($value)
-    {
-        if (!is_array($value)) return [];
-        if (isset($value['checklist_data']) && is_array($value['checklist_data'])) return array_values($value['checklist_data']);
-        if (isset($value[0]) && is_array($value[0])) return array_values($value);
-
-        return [];
-    }
-
-    private static function prepareValue($value)
-    {
-        if ($value === null) return null;
-
-        if (is_string($value)) {
-            $decoded = json_decode($value, true);
-            if (json_last_error() === JSON_ERROR_NONE) $value = $decoded;
-        }
-
-        if (is_object($value)) $value = $value->toArray();
-        if (!is_array($value)) return self::isEmptyValue($value) ? null : $value;
-
-        return self::removeEmptyValues($value);
-    }
-
-    private static function removeEmptyValues($value)
-    {
-        if (!is_array($value)) return self::isEmptyValue($value) ? null : $value;
-
-        $result = [];
-
-        foreach ($value as $key => $item) {
-            if (self::isEmptyValue($item)) continue;
-
-            if (is_string($item)) {
-                $decoded = json_decode($item, true);
-                if (json_last_error() === JSON_ERROR_NONE) $item = $decoded;
-            }
-
-            if (is_array($item)) {
-                $cleaned = self::removeEmptyValues($item);
-                if (!empty($cleaned)) $result[$key] = $cleaned;
-                continue;
-            }
-
-            if (!self::isEmptyValue($item)) $result[$key] = $item;
-        }
-
-        return $result;
-    }
-
-    private static function isEmptyValue($value)
-    {
-        if ($value === null) return true;
-        if (is_string($value)) return trim($value) === '';
-        if (is_array($value)) return empty($value);
-
-        return false;
-    }
-
-    private static function valuesAreSame($old, $new)
-    {
-        if (self::isEmptyValue($old) && self::isEmptyValue($new)) return true;
-
-        if (is_array($old) || is_array($new)) {
-            if (!is_array($old) || !is_array($new)) return false;
-            return $old == $new;
-        }
-
-        if (is_object($old) || is_object($new)) {
-            $old = is_object($old) ? $old->toArray() : $old;
-            $new = is_object($new) ? $new->toArray() : $new;
-            return self::valuesAreSame($old, $new);
-        }
-
-        return $old === $new;
-    }
-
-    private static function formatDisplayValue($value)
-    {
-        if ($value === null || $value === '') return null;
-        if (is_string($value)) return $value;
-
-        if (is_object($value)) {
-            $value = method_exists($value, 'toArray') ? $value->toArray() : (array) $value;
-        }
-
-        if (is_array($value)) {
-            if (isset($value[0]) && is_array($value[0]) && array_key_exists('label', $value[0]) && array_key_exists('value', $value[0])) {
-                return self::formatGridFieldListForAudit($value);
-            }
-
-            return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-
-        return (string) $value;
-    }
-
-    private static function formatFieldLabel($key)
-    {
-        $key = str_replace(['_', '-'], ' ', (string) $key);
-        $key = str_replace('/', ' / ', $key);
-
-        return ucwords(strtolower(trim($key)));
-    }
-
-    private static function formatDate($date, $format = 'd/m/Y H:i:s')
-    {
-        if ($date === null || $date === '') return null;
-        if ($date instanceof \DateTimeInterface) return $date->format($format);
-
-        try {
-            return Carbon::parse($date)->format($format);
-        } catch (\Exception $e) {
-            return (string) $date;
-        }
-    }
-
     public static function getEquipmentMasterAudit($recordId)
     {
         try {
@@ -1486,9 +985,9 @@ private static function extractGridRows($value)
                 'action' => $audit->action,
                 'description' => $audit->description,
                 'record_id' => $audit->record_id,
-                'old_value' => self::prepareValue($audit->old_value),
-                'new_value' => self::prepareValue($audit->new_value),
-                'created_at' => self::formatDate($audit->created_at, 'd/m/Y H:i:s'),
+                'old_value' => UserAuditHelper::prepareAuditHistoryValue($audit->old_value),
+                'new_value' => UserAuditHelper::prepareAuditHistoryValue($audit->new_value),
+                'created_at' => UserAuditHelper::formatAuditDate($audit->created_at, 'd/m/Y H:i:s'),
             ]);
 
             return ResponseHelper::success($audits, 'Equipment Master audits fetched successfully.');

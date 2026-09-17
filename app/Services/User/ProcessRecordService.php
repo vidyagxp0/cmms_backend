@@ -19,7 +19,7 @@ class ProcessRecordService
     private const ATTACHMENT_FIELD_NAMES = [
         'attachment' => 'Attachment',
         'implementorAttachment' => 'HOD / Designee Review Attachment',
-        'hod_review_attachment' => 'HOD Review Comment',
+        'hod_review_attachment' => 'HOD / Designee Review Attachment',
         'user_dept_review_attachment' => 'User Department Review Attachment',
         'qa_review_attachment' => 'QA Review Attachment',
         'cancellation_attachment' => 'Cancellation Attachment',
