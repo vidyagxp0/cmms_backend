@@ -4,6 +4,7 @@ namespace App\Services\User\CalibrationPlanner;
 
 use App\Helpers\FieldLabelHelper;
 use App\Helpers\UserAuditHelper;
+use App\Models\EquipmentMaster;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseHelper;
 use App\Models\Audit;
@@ -628,10 +629,21 @@ class CalibrationManagementAuditService
             $old = $oldData[$label] ?? null;
             $new = $newData[$label] ?? null;
 
+            /* resolve equipment instrument name ids to the actual equipment name */
+            if (self::isEquipmentInstrumentNameField($label)) {
+                $old = self::resolveEquipmentInstrumentName($old);
+                $new = self::resolveEquipmentInstrumentName($new);
+            }
+
             if (UserAuditHelper::auditValuesAreSame($old, $new)) continue;
             if (UserAuditHelper::isAuditEmptyValue($old) && UserAuditHelper::isAuditEmptyValue($new)) continue;
 
-            $rows[] = UserAuditHelper::makeAuditRow($audit, $label, $old, $new);
+            $rows[] = UserAuditHelper::makeAuditRow(
+                $audit,
+                self::formatProcessAuditFieldLabel($label),
+                $old,
+                $new
+            );
         }
 
         /* diff remaining top-level fields */
@@ -657,6 +669,71 @@ class CalibrationManagementAuditService
         }
 
         return $rows;
+    }
+
+    /* identify equipment instrument name fields */
+    private static function isEquipmentInstrumentNameField($label): bool
+    {
+        $normalized = strtolower(
+            preg_replace('/[^a-z0-9]/', '', (string) $label)
+        );
+
+        return in_array($normalized, [
+            'equipmentinstrumentname',
+            'instrumentname',
+        ], true);
+    }
+
+    /* resolve equipment instrument id to its actual name */
+    private static function resolveEquipmentInstrumentName($value)
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        if (is_array($value)) {
+            if (isset($value['value'])) {
+                $value = $value['value'];
+            } elseif (isset($value['id'])) {
+                $value = $value['id'];
+            } elseif (isset($value['name'])) {
+                return $value['name'];
+            }
+        }
+
+        if (is_object($value)) {
+            if (isset($value->value)) {
+                $value = $value->value;
+            } elseif (isset($value->id)) {
+                $value = $value->id;
+            } elseif (isset($value->name)) {
+                return $value->name;
+            }
+        }
+
+        if (!is_numeric($value)) {
+            return $value;
+        }
+
+        return EquipmentMaster::where('id', $value)->value('name') ?? $value;
+    }
+
+    /* use the configured display label for process audit fields */
+    private static function formatProcessAuditFieldLabel($label): string
+    {
+        $normalized = strtolower(
+            preg_replace('/[^a-z0-9]/', '', (string) $label)
+        );
+
+        if ($normalized === 'equipmentinstrumentname') {
+            return 'Equipment / Instrument Name';
+        }
+
+        if ($normalized === 'equipmentinstrumentid') {
+            return 'Equipment / Instrument ID';
+        }
+
+        return (string) $label;
     }
 
     /* one audit row per attachment field */
