@@ -15,7 +15,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserAuditService
 {
-    /* get paginated, filtered audit trail for a process record (process + grid + checklist + activity) */
+    /* get paginated, filtered audit trail for a process record */
     public static function getProcessRecordAudits($id, Request $request)
     {
         try {
@@ -35,7 +35,7 @@ class UserAuditService
             $gridAuditQuery = Audit::with('user')->where('model', GridRecord::class)->whereIn('record_id', $gridRecordIds);
             $checklistAuditQuery = Audit::with('user')->where('model', ChecklistRecord::class)->whereIn('record_id', $checklistRecordIds);
 
-            /* apply shared date range filter to all three queries */
+            /* apply shared date range filter */
             if (!empty($fromDate)) {
                 $from = Carbon::parse($fromDate)->startOfDay();
                 $processAuditQuery->where('created_at', '>=', $from);
@@ -49,7 +49,7 @@ class UserAuditService
                 $checklistAuditQuery->where('created_at', '<=', $to);
             }
 
-            /* merge all audits, newest id first (id is the source of truth for ordering) */
+            /* merge all audits, newest id first */
             $audits = $processAuditQuery->get()
                 ->concat($gridAuditQuery->get())
                 ->concat($checklistAuditQuery->get())
@@ -58,7 +58,7 @@ class UserAuditService
 
             $auditRows = [];
 
-            /* convert each raw audit into one or more display rows, by type */
+            /* convert each raw audit into display rows */
             foreach ($audits as $audit) {
                 $oldValue = UserAuditHelper::prepareAuditHistoryValue($audit->old_value);
                 $newValue = UserAuditHelper::prepareAuditHistoryValue($audit->new_value);
@@ -95,7 +95,7 @@ class UserAuditService
                 }));
             }
 
-            /* preserve audit-id order across the rows produced from each audit */
+            /* newest audit id first */
             usort($auditRows, fn($a, $b) => (int) ($b['id'] ?? 0) <=> (int) ($a['id'] ?? 0));
 
             /* manual pagination over the flattened row list */
@@ -145,7 +145,7 @@ class UserAuditService
         }
     }
 
-    /* build audit rows for a process-record change (process_data fields + top-level scalar fields) */
+    /* process record audit - process_data fields + top-level scalar fields */
     private static function prepareProcessAudit($audit, $oldValue, $newValue)
     {
         $oldValue = is_array($oldValue) ? $oldValue : [];
@@ -167,7 +167,7 @@ class UserAuditService
             $rows[] = UserAuditHelper::makeAuditRow($audit, $label, $old, $new);
         }
 
-        /* diff remaining top-level fields (skip ones already covered above) */
+        /* diff remaining top-level fields */
         foreach (array_unique(array_merge(array_keys($oldValue), array_keys($newValue))) as $field) {
             if (in_array($field, ['process_data', 'record_number', 'short_description'])) continue;
 
@@ -177,7 +177,6 @@ class UserAuditService
             if (UserAuditHelper::auditValuesAreSame($old, $new)) continue;
             if (UserAuditHelper::isAuditEmptyValue($old) && UserAuditHelper::isAuditEmptyValue($new)) continue;
 
-            /* show the actual attachment field name instead of generic attachments */
             if ($field === 'attachments') {
                 foreach (self::prepareAttachmentAuditRows($audit, $old, $new) as $attachmentRow) {
                     $rows[] = $attachmentRow;
@@ -192,8 +191,7 @@ class UserAuditService
         return $rows;
     }
 
-    /* reduce an attachments payload down to [name, url] entries for audit display */
-    /* create one audit row per actual attachment field */
+    /* one audit row per attachment field */
     private static function prepareAttachmentAuditRows($audit, $oldAttachments, $newAttachments): array
     {
         $oldAttachments = self::normalizeAttachmentList($oldAttachments);
@@ -265,7 +263,7 @@ class UserAuditService
         return array_values(array_filter($attachments, 'is_array'));
     }
 
-    /* group attachments using their actual field name */
+    /* group attachments by their field name */
     private static function groupAttachmentsByField(array $attachments): array
     {
         $grouped = [];
@@ -284,7 +282,7 @@ class UserAuditService
         return $grouped;
     }
 
-    /* return the display label for an attachment field */
+    /* display label for an attachment field */
     private static function getAttachmentFieldLabel($field): string
     {
         $labels = [
@@ -301,7 +299,7 @@ class UserAuditService
         return UserAuditHelper::formatAuditFieldLabel($field);
     }
 
-    /* keep only attachment name and url in the audit value */
+    /* keep only name and url for attachment audit display */
     private static function formatAttachmentAuditValue($attachments)
     {
         if ($attachments === null || $attachments === '') {
@@ -339,8 +337,6 @@ class UserAuditService
         return empty($result) ? null : $result;
     }
 
-    /* flatten process_data into label => value pairs */
-    /* render a value (scalar, name-object, or nested array) for display */
     /* grid record audit - one row per created/updated/deleted grid row */
     private static function prepareGridAudit($audit, $oldValue, $newValue)
     {
@@ -376,7 +372,7 @@ class UserAuditService
                 continue;
             }
 
-            /* existing row - collect all changed fields into a single row */
+            /* existing row - collect changed fields only */
             $changedOldFields = [];
             $changedNewFields = [];
 
@@ -409,7 +405,7 @@ class UserAuditService
         return $rows;
     }
 
-    /* checklist record audit - single row per changed field */
+    /* checklist record audit - one row per changed field */
     private static function prepareChecklistAudit($audit, $oldValue, $newValue)
     {
         $oldRow = (UserAuditHelper::extractChecklistRows($oldValue) ?: [[]])[0];
@@ -433,10 +429,7 @@ class UserAuditService
         return $rows;
     }
 
-    /* activity (stage move) audit */
-    /* build a single display-ready audit row */
-    /* pull the raw grid row array out of an audit value */
-    /* normalize grid rows into row_number => fields structure, regenerating labels from keys for consistency */
+    /* normalize grid rows into row_number => fields, regenerating labels from keys */
     private static function normalizeGridRows($rows)
     {
         $result = [];
@@ -476,7 +469,7 @@ class UserAuditService
                     continue;
                 }
 
-                /* fallback for flat grid structure */
+                /* flat grid structure fallback */
                 if ($key) {
                     $fields[$key] = ['label' => UserAuditHelper::getGridFieldLabel($key), 'value' => $value];
                 }
@@ -488,16 +481,6 @@ class UserAuditService
         return $result;
     }
 
-    /* format every non-empty field of a grid row */
-    /* format only the changed fields of a grid row */
-    /* pull the raw checklist row array out of an audit value */
-    /* decode (if JSON string) and strip empty values from a raw audit value */
-    /* recursively strip empty values, decoding nested JSON strings along the way */
-    /* check for null / blank string / empty array */
-    /* compare two audit values for equality (arrays, objects, or scalars) */
-    /* format a value for the final audit row display */
-    /* turn a raw key like "some_field" into "Some Field" */
-    /* format a date value, tolerating Carbon instances, strings, or bad input */
     /* equipment master audit trail */
     public static function getEquipmentMasterAudit($recordId)
     {
