@@ -160,27 +160,39 @@ class ProcessRecordService
         }
     }
 
-    /* upload one or more attachments for a record, replacing the old file for single-file fields */
+    /* upload attachments and sync the same files into process_data */
     public static function uploadAttachments(Request $request, $recordId)
     {
         try {
             $processRecord = ProcessRecord::findOrFail($recordId);
+
             $attachmentField = $request->input('attachment_field');
             $type = $request->input('Type');
 
-            if (!$attachmentField) return ResponseHelper::error('Attachment field is required.', 422);
-            if (!in_array($type, ['single-file', 'multiple-file'])) return ResponseHelper::error('Invalid attachment type.', 422);
+            if (!$attachmentField) {
+                return ResponseHelper::error('Attachment field is required.', 422);
+            }
+
+            if (!in_array($type, ['single-file', 'multiple-file'])) {
+                return ResponseHelper::error('Invalid attachment type.', 422);
+            }
 
             $files = self::collectUploadedFiles($request);
-            if (empty($files)) return ResponseHelper::error('No attachment file was provided.', 422);
+
+            if (empty($files)) {
+                return ResponseHelper::error('No attachment file was provided.', 422);
+            }
 
             $uploadDirectory = public_path(self::UPLOAD_DIRECTORY);
-            if (!File::exists($uploadDirectory)) File::makeDirectory($uploadDirectory, 0755, true);
+
+            if (!File::exists($uploadDirectory)) {
+                File::makeDirectory($uploadDirectory, 0755, true);
+            }
 
             $existingAttachments = self::decodeAttachments($processRecord->attachments);
             $oldAttachmentsToDelete = [];
 
-            /* single-file fields replace whatever was previously stored under that field */
+            /* single-file fields replace whatever was previously stored */
             if ($type === 'single-file') {
                 $oldAttachmentsToDelete = array_values(array_filter(
                     $existingAttachments,
@@ -193,32 +205,93 @@ class ProcessRecordService
                 ));
             }
 
-            $newAttachments = self::storeUploadedFiles($files, $attachmentField, $uploadDirectory);
-            if (empty($newAttachments)) return ResponseHelper::error('No valid attachment files were uploaded.', 422);
+            $newAttachments = self::storeUploadedFiles(
+                $files,
+                $attachmentField,
+                $uploadDirectory
+            );
+
+            if (empty($newAttachments)) {
+                return ResponseHelper::error('No valid attachment files were uploaded.', 422);
+            }
 
             $allAttachments = array_merge($existingAttachments, $newAttachments);
-            $processRecord->update(['attachments' => $allAttachments]);
 
+            /* update process_data for the matching attachment field */
+            $processData = $processRecord->process_data;
+
+            if (is_string($processData)) {
+                $decodedProcessData = json_decode($processData, true);
+                $processData = is_array($decodedProcessData) ? $decodedProcessData : [];
+            }
+
+            if (!is_array($processData)) {
+                $processData = [];
+            }
+
+            foreach ($processData as &$field) {
+                if (($field['key'] ?? null) !== $attachmentField) {
+                    continue;
+                }
+
+                $existingValue = $field['value'] ?? [];
+
+                if (!is_array($existingValue)) {
+                    $existingValue = [];
+                }
+
+                /* single-file replaces, multiple-file appends */
+                $field['value'] = $type === 'single-file'
+                    ? $newAttachments
+                    : array_merge($existingValue, $newAttachments);
+
+                break;
+            }
+
+            unset($field);
+
+            $processRecord->update([
+                'attachments' => $allAttachments,
+                'process_data' => $processData,
+            ]);
+
+            /* existing attachment audit remains unchanged */
             if (!empty($oldAttachmentsToDelete)) {
                 UserAuditHelper::log(
-                    'Process Record', 'Deleted', 'Attachment deleted successfully.', $processRecord->id,
-                    ['attachments' => self::formatAuditAttachments($oldAttachmentsToDelete)], null, ProcessRecord::class
+                    'Process Record',
+                    'Deleted',
+                    'Attachment deleted successfully.',
+                    $processRecord->id,
+                    ['attachments' => self::formatAuditAttachments($oldAttachmentsToDelete)],
+                    null,
+                    ProcessRecord::class
                 );
             }
 
             if (!empty($newAttachments)) {
                 UserAuditHelper::log(
-                    'Process Record', 'Created', 'Attachment uploaded successfully.', $processRecord->id,
-                    null, ['attachments' => self::formatAuditAttachments($newAttachments)], ProcessRecord::class
+                    'Process Record',
+                    'Created',
+                    'Attachment uploaded successfully.',
+                    $processRecord->id,
+                    null,
+                    ['attachments' => self::formatAuditAttachments($newAttachments)],
+                    ProcessRecord::class
                 );
             }
 
+            /* delete replaced physical files */
             if ($type === 'single-file') {
                 foreach ($oldAttachmentsToDelete as $attachment) {
-                    if (empty($attachment['file_name'])) continue;
+                    if (empty($attachment['file_name'])) {
+                        continue;
+                    }
 
                     $oldFilePath = $uploadDirectory . DIRECTORY_SEPARATOR . $attachment['file_name'];
-                    if (File::exists($oldFilePath)) File::delete($oldFilePath);
+
+                    if (File::exists($oldFilePath)) {
+                        File::delete($oldFilePath);
+                    }
                 }
             }
 
@@ -231,6 +304,7 @@ class ProcessRecordService
                 'attachments' => $allAttachments,
                 'new_attachments' => $newAttachments,
             ], 'Attachments uploaded successfully.');
+
         } catch (\Exception $e) {
             return ResponseHelper::error($e->getMessage(), 500);
         }
