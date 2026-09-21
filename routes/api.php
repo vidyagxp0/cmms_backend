@@ -133,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/store-equipment-master',[EquipmentMasterController::class, 'store'])->name('store-equipment-master');
         Route::get('/equipment-master-detail/{id}',[EquipmentMasterController::class, 'show'])->name('equipment-master-detail');
         Route::put('/update-master-equipment/{id}',[EquipmentMasterController::class, 'update'])->name('update-master-equipment');
+        Route::get('/equipment-master-checklist/{equipmentId}/{frequency}', [EquipmentMasterController::class, 'getChecklistByFrequency'])->name('equipment-master-checklist');
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
     });
 });

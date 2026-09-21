@@ -75,4 +75,17 @@ class EquipmentMasterController extends Controller
             ], 500);
         }
     }
+
+    /* equipment checklist function */
+    public function getChecklistByFrequency($equipmentId, $frequency)
+    {
+        try {
+            return EquipmentMasterService::getChecklistByFrequency($equipmentId, $frequency);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve equipment checklist.',
+            ], 500);
+        }
+    }
 }

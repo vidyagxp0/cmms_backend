@@ -236,4 +236,63 @@ class EquipmentMasterService
             );
         }
     }
+
+    /* get equipment master checklist */
+    public static function getChecklistByFrequency($equipmentId, $frequency)
+    {
+        try {
+            $equipment = EquipmentMaster::find($equipmentId);
+
+            if (!$equipment) {
+                return ResponseHelper::error('Equipment not found.', 404);
+            }
+
+            $allowedFrequencies = [
+                'quarterly' => ['quarterly'],
+                'half yearly' => ['quarterly', 'half yearly'],
+                'yearly' => ['quarterly', 'half yearly', 'yearly'],
+            ];
+
+            $selectedFrequency = strtolower(trim($frequency));
+
+            if (!isset($allowedFrequencies[$selectedFrequency])) {
+                return ResponseHelper::error(
+                    'Invalid frequency. Allowed values are Quarterly, Half Yearly and Yearly.',
+                    422
+                );
+            }
+
+            $checklistConfig = $equipment->checklist_config;
+
+            if (is_string($checklistConfig)) {
+                $checklistConfig = json_decode($checklistConfig, true);
+            }
+
+            if (!is_array($checklistConfig)) {
+                return ResponseHelper::error('Checklist configuration not found.', 404);
+            }
+
+            $frequencies = $allowedFrequencies[$selectedFrequency];
+
+            $questions = array_values(array_filter(
+                $checklistConfig['questions'] ?? [],
+                function ($question) use ($frequencies) {
+                    $questionFrequency = strtolower(
+                        trim($question['frequency'] ?? '')
+                    );
+
+                    return in_array($questionFrequency, $frequencies, true);
+                }
+            ));
+
+            $checklistConfig['questions'] = $questions;
+
+            return ResponseHelper::success(
+                $checklistConfig,
+                'Checklist fetched successfully.'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage(), 500);
+        }
+    }
 }
