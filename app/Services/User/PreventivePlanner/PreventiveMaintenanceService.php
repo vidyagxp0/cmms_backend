@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\GridRecord;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Models\ChecklistRecord;
 
 class PreventiveMaintenanceService
 {
@@ -413,6 +414,79 @@ class PreventiveMaintenanceService
                 }
             }
 
+            /* checklist data */
+            if (
+                $request->has('checklistData') &&
+                is_array($request->checklistData)
+            ) {
+                $newChecklistData = self::normalizeChecklistData(
+                    $request->checklistData
+                );
+
+                $checklistRecord = ChecklistRecord::where(
+                    'process_record_id',
+                    $processRecord->id
+                )->first();
+
+                /* first checklist update */
+                if (!$checklistRecord) {
+                    $checklistRecord = ChecklistRecord::create([
+                        'process_record_id' => $processRecord->id,
+                        'checklist_data' => $newChecklistData,
+                    ]);
+
+                    UserAuditHelper::log(
+                        'Checklist Record',
+                        'Created',
+                        'Checklist data created successfully.',
+                        $checklistRecord->id,
+                        null,
+                        [
+                            'checklist_data' => $newChecklistData,
+                        ],
+                        ChecklistRecord::class
+                    );
+                }
+
+                /* checklist already exists */
+                else {
+                    $oldChecklistData = is_array($checklistRecord->checklist_data)
+                        ? $checklistRecord->checklist_data
+                        : [];
+
+                    [$checklistOldChanges, $checklistNewChanges] =
+                        self::getChecklistDataChanges(
+                            $oldChecklistData,
+                            $newChecklistData
+                        );
+
+                    if (
+                        !empty($checklistOldChanges) ||
+                        !empty($checklistNewChanges)
+                    ) {
+                        UserAuditHelper::log(
+                            'Checklist Record',
+                            'Updated',
+                            'Checklist data updated successfully.',
+                            $checklistRecord->id,
+                            [
+                                'checklist_data' => $checklistOldChanges,
+                            ],
+                            [
+                                'checklist_data' => $checklistNewChanges,
+                            ],
+                            ChecklistRecord::class
+                        );
+                    }
+
+                    if ($oldChecklistData != $newChecklistData) {
+                        $checklistRecord->update([
+                            'checklist_data' => $newChecklistData,
+                        ]);
+                    }
+                }
+            }
+
             DB::commit();
 
             $processRecord->load([
@@ -441,6 +515,185 @@ class PreventiveMaintenanceService
                 500
             );
         }
+    }
+
+    /* normalize checklist data before storing */
+    private static function normalizeChecklistData(array $checklistData): array
+    {
+        $questions = [];
+
+        foreach ($checklistData['questions'] ?? [] as $question) {
+            if (!is_array($question)) {
+                continue;
+            }
+
+            $questionText = $question['question'] ?? '';
+
+            if (is_array($questionText)) {
+                $questionText = reset($questionText) ?: '';
+            }
+
+            $questions[] = [
+                'question_id' => $question['question_id'] ?? null,
+                'question' => $questionText,
+                'values' => is_array($question['values'] ?? null)
+                    ? $question['values']
+                    : [],
+            ];
+        }
+
+        return [
+            'checklist_name' => $checklistData['checklist_name'] ?? null,
+            'include_serial_number' => (bool) (
+                $checklistData['include_serial_number'] ?? false
+            ),
+            'questions' => $questions,
+        ];
+    }
+
+
+    /* compare checklist questions and values */
+    private static function getChecklistDataChanges(
+        array $oldData,
+        array $newData
+    ): array {
+        $oldChanges = [];
+        $newChanges = [];
+
+        $oldQuestions = self::indexChecklistQuestions($oldData);
+        $newQuestions = self::indexChecklistQuestions($newData);
+
+        foreach (
+            array_unique(
+                array_merge(
+                    array_keys($oldQuestions),
+                    array_keys($newQuestions)
+                )
+            ) as $questionId
+        ) {
+            $oldQuestion = $oldQuestions[$questionId] ?? null;
+            $newQuestion = $newQuestions[$questionId] ?? null;
+
+            $oldValues = self::indexChecklistValues(
+                $oldQuestion['values'] ?? []
+            );
+
+            $newValues = self::indexChecklistValues(
+                $newQuestion['values'] ?? []
+            );
+
+            $oldQuestionChanges = [];
+            $newQuestionChanges = [];
+
+            foreach (
+                array_unique(
+                    array_merge(
+                        array_keys($oldValues),
+                        array_keys($newValues)
+                    )
+                ) as $columnId
+            ) {
+                $oldValue = $oldValues[$columnId] ?? null;
+                $newValue = $newValues[$columnId] ?? null;
+
+                $oldColumnValue = $oldValue['value'] ?? null;
+                $newColumnValue = $newValue['value'] ?? null;
+
+                if (
+                    self::processValuesAreSame(
+                        $oldColumnValue,
+                        $newColumnValue
+                    )
+                ) {
+                    continue;
+                }
+
+                $columnName =
+                    $newValue['column_name']
+                    ?? $oldValue['column_name']
+                    ?? "Column {$columnId}";
+
+                $oldQuestionChanges[] = [
+                    'column_id' => $columnId,
+                    'column_name' => $columnName,
+                    'value' => $oldColumnValue,
+                ];
+
+                $newQuestionChanges[] = [
+                    'column_id' => $columnId,
+                    'column_name' => $columnName,
+                    'value' => $newColumnValue,
+                ];
+            }
+
+            if (
+                !empty($oldQuestionChanges) ||
+                !empty($newQuestionChanges)
+            ) {
+                $questionText =
+                    $newQuestion['question']
+                    ?? $oldQuestion['question']
+                    ?? '';
+
+                if (!empty($oldQuestionChanges)) {
+                    $oldChanges[] = [
+                        'question_id' => $questionId,
+                        'question' => $questionText,
+                        'values' => $oldQuestionChanges,
+                    ];
+                }
+
+                if (!empty($newQuestionChanges)) {
+                    $newChanges[] = [
+                        'question_id' => $questionId,
+                        'question' => $questionText,
+                        'values' => $newQuestionChanges,
+                    ];
+                }
+            }
+        }
+
+        return [$oldChanges, $newChanges];
+    }
+
+    /* index checklist questions */
+    private static function indexChecklistQuestions(array $data): array
+    {
+        $result = [];
+
+        foreach ($data['questions'] ?? [] as $question) {
+            if (!is_array($question)) {
+                continue;
+            }
+
+            $questionId = $question['question_id'] ?? null;
+
+            if ($questionId !== null) {
+                $result[$questionId] = $question;
+            }
+        }
+
+        return $result;
+    }
+
+    /* index checklist values */
+    private static function indexChecklistValues(array $values): array
+    {
+        $result = [];
+
+        foreach ($values as $value) {
+            if (!is_array($value)) {
+                continue;
+            }
+
+            $columnId = $value['column_id'] ?? null;
+
+            if ($columnId !== null) {
+                $result[$columnId] = $value;
+            }
+        }
+
+        return $result;
     }
 
     private static function processDataHasKey(
