@@ -249,7 +249,7 @@ class EquipmentMasterService
 
             $allowedFrequencies = [
                 'quarterly' => ['quarterly'],
-                'half yearly' => ['quarterly', 'half yearly'],
+                'half-yearly' => ['quarterly', 'half yearly'],
                 'yearly' => ['quarterly', 'half yearly', 'yearly'],
             ];
 
