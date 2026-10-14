@@ -136,6 +136,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-master-equipment/{id}',[EquipmentMasterController::class, 'update'])->name('update-master-equipment');
         Route::get('/equipment-master-checklist/{equipmentId}/{frequency}', [EquipmentMasterController::class, 'getChecklistByFrequency'])->name('equipment-master-checklist');
         Route::get('/instruments/audit-trail/{id}', [EquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
+        Route::post('/instrument-master-record-stage/{id}',[EquipmentMasterController::class, 'moveStage'])->name('instrument-master-record-stage');
 
         /* field instrument routes */
         Route::get('/all-fields-instrument-masters', [FieldInstrumentMasterController::class, 'getAllFieldIntrument'])->name('all-fields-instrument-masters');
@@ -145,6 +146,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-master-fields-instrument/{id}',[FieldInstrumentMasterController::class, 'update'])->name('update-master-fields-instrument');
         Route::get('/fields-instrument-master-checklist/{equipmentId}/{frequency}', [FieldInstrumentMasterController::class, 'getChecklistByFrequency'])->name('fields-instrument-master-checklist');
         Route::get('/fields-instruments/audit-trail/{id}', [FieldInstrumentMasterController::class, 'getFieldInstrumentAuditTrail'])->name('instrument.audit.details');
+        Route::post('/fields-instrument-record-stage/{id}',[FieldInstrumentMasterController::class, 'moveStage'])->name('fields-instrument-record-stage');
 
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
     });

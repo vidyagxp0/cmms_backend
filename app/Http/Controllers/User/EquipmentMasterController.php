@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\EquipmentMasterService;
 
 class EquipmentMasterController extends Controller
@@ -98,6 +99,22 @@ class EquipmentMasterController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve Instrument.',
+            ], 500);
+        }
+    }
+
+    /* move Instrument Master process record stage */
+    public function moveStage(RecordActivityRequest $request, $id)
+    {
+        try {
+            return EquipmentMasterService::moveStage(
+                $request,
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update Instrument Master stage.',
             ], 500);
         }
     }

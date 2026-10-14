@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\FieldInstrumentMaster\FieldInstrumentMasterService;
 
 class FieldInstrumentMasterController extends Controller
@@ -101,6 +102,22 @@ class FieldInstrumentMasterController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve field instrument audit trail.',
+            ], 500);
+        }
+    }
+
+    /* move Field Instrument Master process record stage */
+    public function moveStage(RecordActivityRequest $request, $id)
+    {
+        try {
+            return FieldInstrumentMasterService::moveStage(
+                $request,
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update Field Instrument Master stage.',
             ], 500);
         }
     }

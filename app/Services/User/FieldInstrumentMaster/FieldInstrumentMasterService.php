@@ -5,9 +5,16 @@ namespace App\Services\User\FieldInstrumentMaster;
 use App\Helpers\ResponseHelper;
 use App\Helpers\UserAuditHelper;
 use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Http\Requests\User\RecordActivityRequest;
+use App\Models\Activity;
 use App\Models\FieldInstrumentMaster;
+use App\Models\ProcessRecord;
+use App\Models\RecordActivityHistory;
+use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class FieldInstrumentMasterService
 {
@@ -384,4 +391,160 @@ class FieldInstrumentMasterService
             );
         }
     }
+
+    
+    /* move Field Instrument Master process record stage */
+    public static function moveStage(RecordActivityRequest $request, $id)
+    {
+        DB::beginTransaction();
+
+        try {
+            $processRecord = ProcessRecord::with([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+            ])->findOrFail($id);
+
+            /* verify process record belongs to Field Instrument Master */
+            if (
+                !$processRecord->process ||
+                $processRecord->process->name !== 'Field Instrument Master'
+            ) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Process record does not belong to Field Instrument Master.',
+                    422
+                );
+            }
+
+            /* get active activity for current stage */
+            $activity = Activity::with([
+                'fromStage',
+                'toStage',
+            ])
+                ->where('id', $request->activity_id)
+                ->where('is_active', true)
+                ->where('from_stage', $processRecord->stage_id)
+                ->first();
+
+            if (!$activity) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Selected activity is not available for the current stage.',
+                    422
+                );
+            }
+
+            /* validate source stage */
+            if (
+                !$activity->fromStage ||
+                $activity->fromStage->process_id != $processRecord->process_id
+            ) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Selected activity does not belong to this process.',
+                    422
+                );
+            }
+
+            /* validate target stage */
+            if (
+                !$activity->toStage ||
+                $activity->toStage->process_id != $processRecord->process_id
+            ) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Invalid target stage for this process.',
+                    422
+                );
+            }
+
+            $currentStage = $processRecord->stage;
+            $targetStage = $activity->toStage;
+
+            /* verify user credentials */
+            $user = User::find($request->user_id);
+
+            if (
+                !$user ||
+                $user->email !== $request->email ||
+                !Hash::check($request->password, $user->password)
+            ) {
+                DB::rollBack();
+
+                return ResponseHelper::error(
+                    'Invalid email or password.',
+                    422
+                );
+            }
+
+            /* record activity history */
+            RecordActivityHistory::create([
+                'process_record_id' => $processRecord->id,
+                'activity_id' => $activity->id,
+                'performed_by' => Auth::id(),
+                'stage_id' => $currentStage->id,
+                'target_stage' => $targetStage->id,
+                'comment' => $request->comment,
+                'performed_at' => now(),
+            ]);
+
+            /* update process record stage */
+            $processRecord->stage_id = $targetStage->id;
+            $processRecord->save();
+
+            /* record audit trail */
+            $description = $request->filled('comment')
+                ? $request->comment
+                : 'Process record stage updated successfully.';
+
+            UserAuditHelper::log(
+                'Process Record',
+                'Activity Performed',
+                $description,
+                $processRecord->id,
+                [
+                    'stage' => $currentStage?->name,
+                ],
+                [
+                    'stage' => $targetStage?->name,
+                ],
+                ProcessRecord::class
+            );
+
+            DB::commit();
+
+            /* return updated process record */
+            $processRecord->load([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+            ]);
+
+            return ResponseHelper::success([
+                'record' => $processRecord,
+                'activity' => [
+                    'id' => $activity->id,
+                    'name' => $activity->name,
+                    'from_stage' => $currentStage->name,
+                    'to_stage' => $targetStage->name,
+                ],
+            ], 'Process record stage updated successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return ResponseHelper::error(
+                'Failed to update Field Instrument Master stage.',
+                500
+            );
+        }
+    }
+
 }
