@@ -22,6 +22,7 @@ class FieldInstrumentMasterService
     private static function instrumentFields(): array
     {
         return [
+            'equipment_name',
             'instrument_name',
             'instrument_id_no',
             'make',
