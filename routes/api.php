@@ -21,6 +21,7 @@ use App\Http\Controllers\User\UserAuditController;
 use App\Http\Controllers\User\PreventiveRecordController;
 use App\Http\Controllers\User\RecordActivityController;
 use App\Http\Controllers\User\PreventiveMaintenanceController;
+use App\Http\Controllers\User\FieldInstrumentMasterController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -134,6 +135,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/equipment-master-detail/{id}',[EquipmentMasterController::class, 'show'])->name('equipment-master-detail');
         Route::put('/update-master-equipment/{id}',[EquipmentMasterController::class, 'update'])->name('update-master-equipment');
         Route::get('/equipment-master-checklist/{equipmentId}/{frequency}', [EquipmentMasterController::class, 'getChecklistByFrequency'])->name('equipment-master-checklist');
+        Route::get('/instruments/audit-trail/{id}', [EquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
+
+        /* field instrument routes */
+        Route::get('/all-fields-instrument-masters', [FieldInstrumentMasterController::class, 'getAllFieldIntrument'])->name('all-fields-instrument-masters');
+        Route::get('/fields-instrument-master-listing',[FieldInstrumentMasterController::class, 'index'])->name('fields-instrument-master-listing');
+        Route::post('/store-fields-instrument-master',[FieldInstrumentMasterController::class, 'store'])->name('store-fields-instrument-master');
+        Route::get('/fields-instrument-master-detail/{id}',[FieldInstrumentMasterController::class, 'show'])->name('fields-instrument-master-detail');
+        Route::put('/update-master-fields-instrument/{id}',[FieldInstrumentMasterController::class, 'update'])->name('update-master-fields-instrument');
+        Route::get('/fields-instrument-master-checklist/{equipmentId}/{frequency}', [FieldInstrumentMasterController::class, 'getChecklistByFrequency'])->name('fields-instrument-master-checklist');
+        Route::get('/fields-instruments/audit-trail/{id}', [FieldInstrumentMasterController::class, 'getFieldInstrumentAuditTrail'])->name('instrument.audit.details');
+
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
     });
 });

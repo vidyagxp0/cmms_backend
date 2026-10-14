@@ -88,4 +88,17 @@ class EquipmentMasterController extends Controller
             ], 500);
         }
     }
+
+    /* Instrument audit trail function */
+    public function getInstrumentAuditTrail($id)
+    {
+        try {
+            return EquipmentMasterService::getInstrumentAuditTrail($id);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Instrument.',
+            ], 500);
+        }
+    }
 }

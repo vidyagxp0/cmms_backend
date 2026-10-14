@@ -291,4 +291,72 @@ class EquipmentMasterService
             );
         }
     }
+
+    
+    /* get instrument audit trail */
+    public static function getInstrumentAuditTrail($id)
+    {
+        try {
+            $instrument = InstrumentMaster::find($id);
+
+            if (!$instrument) {
+                return ResponseHelper::error(
+                    'Instrument not found.',
+                    404
+                );
+            }
+
+            $auditTrail = DB::table('audits')
+                ->where('module', 'Instrument Master')
+                ->where('record_id', $instrument->id)
+                ->where('model', InstrumentMaster::class)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->select([
+                    'id',
+                    'user_id',
+                    'old_value',
+                    'new_value',
+                    'module',
+                    'action',
+                    'description',
+                    'model',
+                    'record_id',
+                    'created_at',
+                ])
+                ->get()
+                ->map(function ($audit) {
+                    /* decode old values */
+                    if (is_string($audit->old_value)) {
+                        $decoded = json_decode($audit->old_value, true);
+
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $audit->old_value = $decoded;
+                        }
+                    }
+
+                    /* decode new values */
+                    if (is_string($audit->new_value)) {
+                        $decoded = json_decode($audit->new_value, true);
+
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $audit->new_value = $decoded;
+                        }
+                    }
+
+                    return $audit;
+                });
+
+            return ResponseHelper::success(
+                $auditTrail,
+                'Instrument audit trail fetched successfully.'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to retrieve instrument audit trail.',
+                500
+            );
+        }
+    }
+
 }

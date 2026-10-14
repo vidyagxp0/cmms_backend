@@ -25,7 +25,7 @@ class ProcessSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Equipment Master',
+                'name' => 'Instrument Master',
                 'is_child' => false,
                 'is_active' => true,
                 'created_at' => now(),
@@ -41,6 +41,13 @@ class ProcessSeeder extends Seeder
             [
                 'name' => 'Calibration Management',
                 'is_child' => true,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Field Instrument Master',
+                'is_child' => false,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),

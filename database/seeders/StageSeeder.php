@@ -47,19 +47,41 @@ class StageSeeder extends Seeder
                 'Closed - Done',
                 'Close - Cancelled',
             ],
+
+            'Instrument Master' => [
+                'Opened',
+                'HOD Review',
+                'QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
+
+            'Field Instrument Master' => [
+                'Opened',
+                'HOD Review',
+                'QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
         ];
 
         foreach ($stageData as $processName => $stages) {
+            $processId = $processes[$processName] ?? null;
 
-            $processId = $processes[$processName];
+            if (!$processId) {
+                continue;
+            }
 
             foreach ($stages as $stageName) {
-
-                Stage::create([
-                    'process_id' => $processId,
-                    'name' => $stageName,
-                    'is_active' => true,
-                ]);
+                Stage::firstOrCreate(
+                    [
+                        'process_id' => $processId,
+                        'name' => $stageName,
+                    ],
+                    [
+                        'is_active' => true,
+                    ]
+                );
             }
         }
     }

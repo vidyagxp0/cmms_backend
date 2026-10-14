@@ -166,6 +166,76 @@ class ActivitySeeder extends Seeder
                 ],
             ]
         );
+
+        /* Instrument Master */
+        $this->createActivities(
+            'Instrument Master',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'HOD Review',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'QA Approval',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'HOD Review',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
+
+        
+        /* Field Instrument Master */
+        $this->createActivities(
+            'Field Instrument Master',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'HOD Review',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'QA Approval',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'HOD Review',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
+
     }
 
     /* Create Activities */
@@ -180,7 +250,6 @@ class ActivitySeeder extends Seeder
             return;
         }
 
-        /* create activity based on the stages */
         foreach ($forwardActivities as $forwardActivity) {
             $fromStage = Stage::where('process_id', $process->id)
                 ->where('name', $forwardActivity['from'])
@@ -194,33 +263,45 @@ class ActivitySeeder extends Seeder
                 continue;
             }
 
-            /* forward activity */
-            Activity::create([
-                'name' => $forwardActivity['name'],
-                'from_stage' => $fromStage->id,
-                'to_stage' => $toStage->id,
-                'is_active' => true,
-                'assigned_role' => null,
-            ]);
+            /* create forward activity without duplicates */
+            Activity::firstOrCreate(
+                [
+                    'name' => $forwardActivity['name'],
+                    'from_stage' => $fromStage->id,
+                    'to_stage' => $toStage->id,
+                ],
+                [
+                    'is_active' => true,
+                    'assigned_role' => null,
+                ]
+            );
 
-            /* cancel activity */
+            /* create cancellation activity from Opened */
             if ($fromStage->name === 'Opened') {
+                $cancelledStageName = $processName === 'Instrument Master'
+                    ? 'Closed - Cancelled'
+                    : 'Close - Cancelled';
+
                 $cancelledStage = Stage::where('process_id', $process->id)
-                    ->where('name', 'Close - Cancelled')
+                    ->where('name', $cancelledStageName)
                     ->first();
 
                 if ($cancelledStage) {
-                    Activity::create([
-                        'name' => 'Cancel',
-                        'from_stage' => $fromStage->id,
-                        'to_stage' => $cancelledStage->id,
-                        'is_active' => true,
-                        'assigned_role' => null,
-                    ]);
+                    Activity::firstOrCreate(
+                        [
+                            'name' => 'Cancel',
+                            'from_stage' => $fromStage->id,
+                            'to_stage' => $cancelledStage->id,
+                        ],
+                        [
+                            'is_active' => true,
+                            'assigned_role' => null,
+                        ]
+                    );
                 }
             }
 
-            /* backward activity */
+            /* create backward activity */
             foreach ($backwardActivities as $backwardActivity) {
                 if ($backwardActivity['from'] !== $forwardActivity['to']) {
                     continue;
@@ -238,13 +319,17 @@ class ActivitySeeder extends Seeder
                     continue;
                 }
 
-                Activity::create([
-                    'name' => $backwardActivity['name'],
-                    'from_stage' => $backwardFromStage->id,
-                    'to_stage' => $backwardToStage->id,
-                    'is_active' => true,
-                    'assigned_role' => null,
-                ]);
+                Activity::firstOrCreate(
+                    [
+                        'name' => $backwardActivity['name'],
+                        'from_stage' => $backwardFromStage->id,
+                        'to_stage' => $backwardToStage->id,
+                    ],
+                    [
+                        'is_active' => true,
+                        'assigned_role' => null,
+                    ]
+                );
 
                 break;
             }
