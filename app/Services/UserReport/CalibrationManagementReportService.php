@@ -3,7 +3,7 @@
 namespace App\Services\UserReport;
 
 use App\Helpers\ResponseHelper;
-use App\Models\EquipmentMaster;
+use App\Models\InstrumentMaster;
 use App\Models\ProcessRecord;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -46,7 +46,7 @@ class CalibrationManagementReportService
             if (isset($processFields['instrumentName'])) {
                 $instrumentId = $processFields['instrumentName']['value'] ?? null;
                 if ($instrumentId !== null && $instrumentId !== '' && is_numeric($instrumentId)) {
-                    $equipment = EquipmentMaster::find($instrumentId);
+                    $equipment = InstrumentMaster::find($instrumentId);
                     if ($equipment) {
                         $processFields['instrumentName']['value'] = $equipment->name;
                     }
@@ -512,7 +512,7 @@ class CalibrationManagementReportService
                 }
             } elseif ($key === 'instrumentName') {
                 if (is_numeric($value) && $value !== '') {
-                    $equipment = EquipmentMaster::find($value);
+                    $equipment = InstrumentMaster::find($value);
                     if ($equipment) {
                         $value = $equipment->name;
                     }

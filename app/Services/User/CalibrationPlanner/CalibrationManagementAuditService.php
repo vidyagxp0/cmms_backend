@@ -4,7 +4,7 @@ namespace App\Services\User\CalibrationPlanner;
 
 use App\Helpers\FieldLabelHelper;
 use App\Helpers\UserAuditHelper;
-use App\Models\EquipmentMaster;
+use App\Models\InstrumentMaster;
 use Illuminate\Http\Request;
 use App\Helpers\ResponseHelper;
 use App\Models\Audit;
@@ -715,7 +715,7 @@ class CalibrationManagementAuditService
             return $value;
         }
 
-        return EquipmentMaster::where('id', $value)->value('name') ?? $value;
+        return InstrumentMaster::where('id', $value)->value('name') ?? $value;
     }
 
     /* use the configured display label for process audit fields */
@@ -879,7 +879,7 @@ class CalibrationManagementAuditService
         try {
             $audits = Audit::with('user')
                 ->where('record_id', $recordId)
-                ->where('model', 'App\Models\EquipmentMaster')
+                ->where('model', 'App\Models\InstrumentMaster')
                 ->orderBy('id', 'desc')
                 ->get();
 

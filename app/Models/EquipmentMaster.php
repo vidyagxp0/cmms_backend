@@ -7,12 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class EquipmentMaster extends Model
 {
     protected $fillable = [
-        'name',
-        'equipment_id',
+        'instrument_name',
+        'instrument_id_no',
         'make',
-        'model',
-        'equipment_type',
-        'checklist_config'
+        'sr_no_model_no',
+        'location',
+        'least_count',
+        'accuracy',
+        'instrument_range',
+        'operating_range',
+        'calibration_test_points',
+        'category',
+        'checklist_config',
     ];
 
     protected $casts = [

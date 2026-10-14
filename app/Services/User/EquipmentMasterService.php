@@ -3,36 +3,53 @@
 namespace App\Services\User;
 
 use App\Helpers\ResponseHelper;
-use App\Http\Requests\User\EquipmentMasterRequest;
-use App\Models\EquipmentMaster;
-use Illuminate\Support\Facades\DB;
 use App\Helpers\UserAuditHelper;
+use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Models\InstrumentMaster;
+use Illuminate\Support\Facades\DB;
 
 class EquipmentMasterService
 {
+    /* instrument fields */
+    private static function instrumentFields(): array
+    {
+        return [
+            'instrument_name',
+            'instrument_id_no',
+            'make',
+            'sr_no_model_no',
+            'location',
+            'least_count',
+            'accuracy',
+            'instrument_range',
+            'operating_range',
+            'calibration_test_points',
+            'category',
+            'checklist_config',
+        ];
+    }
+
     /* equipment listing */
     public static function getEquipments(EquipmentMasterRequest $request)
     {
         try {
-            $equipments = EquipmentMaster::query()
+            $equipments = InstrumentMaster::query()
 
                 ->when($request->search, function ($query) use ($request) {
                     $search = $request->search;
 
                     $query->where(function ($query) use ($search) {
-                        $query->where('name', 'like', "%{$search}%")
-                            ->orWhere('equipment_id', 'like', "%{$search}%")
+                        $query->where('instrument_name', 'like', "%{$search}%")
+                            ->orWhere('instrument_id_no', 'like', "%{$search}%")
                             ->orWhere('make', 'like', "%{$search}%")
-                            ->orWhere('model', 'like', "%{$search}%")
-                            ->orWhere('equipment_type', 'like', "%{$search}%");
+                            ->orWhere('sr_no_model_no', 'like', "%{$search}%")
+                            ->orWhere('category', 'like', "%{$search}%")
+                            ->orWhere('location', 'like', "%{$search}%");
                     });
                 })
 
-                ->when($request->equipment_type, function ($query) use ($request) {
-                    $query->where(
-                        'equipment_type',
-                        $request->equipment_type
-                    );
+                ->when($request->category, function ($query) use ($request) {
+                    $query->where('category', $request->category);
                 })
 
                 ->orderBy('id', 'desc')
@@ -40,11 +57,11 @@ class EquipmentMasterService
 
             return ResponseHelper::success(
                 $equipments,
-                'Equipment fetched successfully.'
+                'Instrument fetched successfully.'
             );
         } catch (\Exception $e) {
             return ResponseHelper::error(
-                'Failed to retrieve equipment.',
+                'Failed to retrieve Instrument.',
                 500
             );
         }
@@ -54,13 +71,12 @@ class EquipmentMasterService
     public static function getEquipmentById($id)
     {
         try {
-            $equipment = EquipmentMaster::findOrFail($id);
+            $equipment = InstrumentMaster::findOrFail($id);
 
             return ResponseHelper::success(
                 $equipment,
-                'Equipment fetched successfully.'
+                'Instrument fetched successfully.'
             );
-
         } catch (\Exception $e) {
             return ResponseHelper::error(
                 'Equipment not found.',
@@ -75,176 +91,146 @@ class EquipmentMasterService
         DB::beginTransaction();
 
         try {
-            $equipment = EquipmentMaster::create([
-                'name' => $request->name,
-                'equipment_id' => $request->equipment_id,
-                'make' => $request->make,
-                'model' => $request->model,
-                'equipment_type' => $request->equipment_type,
-                'checklist_config' => $request->checklist_config,
-            ]);
+            $data = $request->only(self::instrumentFields());
+
+            $equipment = InstrumentMaster::create($data);
 
             /* audit data */
-            $newValue = [
-                'name' => $equipment->name,
-                'equipment_id' => $equipment->equipment_id,
-                'make' => $equipment->make,
-                'model' => $equipment->model,
-                'equipment_type' => $equipment->equipment_type,
-                'checklist_config' => $equipment->checklist_config,
-            ];
+            $newValue = $equipment->only(self::instrumentFields());
 
             UserAuditHelper::log(
-                'Equipment Master',
+                'Instrument Master',
                 'Created',
-                'Equipment created successfully.',
+                'Instrument created successfully.',
                 $equipment->id,
                 null,
                 $newValue,
-                EquipmentMaster::class
+                InstrumentMaster::class
             );
+
             DB::commit();
 
             return ResponseHelper::success(
                 $equipment,
-                'Equipment created successfully.',
+                'Instrument created successfully.',
                 201
             );
         } catch (\Exception $e) {
             DB::rollBack();
 
             return ResponseHelper::error(
-                // 'Failed to create equipment.',
                 $e->getMessage(),
                 500
             );
         }
     }
 
-/* update equipment */
-    public static function updateEquipment(EquipmentMasterRequest $request,$id)
-    {
+    /* update Instrument */
+    public static function updateEquipment(
+        EquipmentMasterRequest $request,
+        $id
+    ) {
         DB::beginTransaction();
 
         try {
-            $equipment = EquipmentMaster::findOrFail($id);
+            $equipment = InstrumentMaster::findOrFail($id);
+
+            $updateData = $request->only(self::instrumentFields());
 
             $oldValue = [];
             $newValue = [];
-            $updateData = [];
+            $changedData = [];
 
-            /* name */
-            if ($request->has('name') &&$request->name != $equipment->name)
-            {
-                $oldValue['name'] = $equipment->name;
-                $newValue['name'] = $request->name;
+            /* identify changed fields */
+            foreach ($updateData as $field => $value) {
+                $currentValue = $equipment->getAttribute($field);
 
-                $updateData['name'] = $request->name;
+                /* compare nested JSON and scalar values */
+                if ($field === 'checklist_config') {
+                    if (is_string($value)) {
+                        $value = json_decode($value, true);
+                    }
+
+                    if ($value == $currentValue) {
+                        continue;
+                    }
+                } elseif ((string) $value === (string) $currentValue) {
+                    continue;
+                }
+
+                $oldValue[$field] = $currentValue;
+                $newValue[$field] = $value;
+                $changedData[$field] = $value;
             }
-
-            /* equipment id */
-            if ($request->has('equipment_id') &&$request->equipment_id != $equipment->equipment_id)
-            {
-                $oldValue['equipment_id'] = $equipment->equipment_id;
-                $newValue['equipment_id'] = $request->equipment_id;
-
-                $updateData['equipment_id'] = $request->equipment_id;
-            }
-
-            /* make */
-            if ($request->has('make') &&$request->make != $equipment->make)
-            {
-                $oldValue['make'] = $equipment->make;
-                $newValue['make'] = $request->make;
-
-                $updateData['make'] = $request->make;
-            }
-
-            /* model */
-            if ($request->has('model') &&$request->model != $equipment->model)
-            {
-                $oldValue['model'] = $equipment->model;
-                $newValue['model'] = $request->model;
-
-                $updateData['model'] = $request->model;
-            }
-
-            /* equipment type */
-            if ($request->has('equipment_type') &&$request->equipment_type != $equipment->equipment_type)
-            {
-                $oldValue['equipment_type'] = $equipment->equipment_type;
-                $newValue['equipment_type'] = $request->equipment_type;
-
-                $updateData['equipment_type'] = $request->equipment_type;
-            }
-
-            /* equipment config */
-            if ($request->has('checklist_config') &&$request->checklist_config != $equipment->checklist_config)
-            {
-                $oldValue['checklist_config'] = $equipment->checklist_config;
-                $newValue['checklist_config'] = $request->checklist_config;
-
-                $updateData['checklist_config'] = $request->checklist_config;
-            }
-
 
             /* update only changed fields */
-            if (!empty($updateData)) {
-
-                $equipment->update($updateData);
+            if (!empty($changedData)) {
+                $equipment->update($changedData);
 
                 /* audit only changed fields */
                 UserAuditHelper::log(
-                    'Equipment Master',
+                    'Instrument Master',
                     'Updated',
-                    'Equipment updated successfully.',
+                    'Instrument updated successfully.',
                     $equipment->id,
                     $oldValue,
                     $newValue,
-                    EquipmentMaster::class
+                    InstrumentMaster::class
                 );
             }
+
             DB::commit();
 
             return ResponseHelper::success(
-                $equipment,
-                'Equipment updated successfully.'
+                $equipment->fresh(),
+                'Instrument updated successfully.'
             );
         } catch (\Exception $e) {
             DB::rollBack();
 
+            if ($e instanceof \Illuminate\Database\Eloquent\ModelNotFoundException) {
+                return ResponseHelper::error(
+                    'Instrument not found.',
+                    404
+                );
+            }
+
             return ResponseHelper::error(
-                'Failed to update equipment.',
+                'Failed to update Instrument.',
                 500
             );
         }
     }
 
+    /* get all Instruments */
     public static function getAllEquipments()
     {
         try {
-            $equipments = EquipmentMaster::orderBy('id', 'asc')->get();
+            $equipments = InstrumentMaster::orderBy('id', 'asc')->get();
 
             return ResponseHelper::success(
                 $equipments,
-                'Equipment fetched successfully.'
+                'Instrument fetched successfully.'
             );
         } catch (\Exception $e) {
             return ResponseHelper::error(
-                'Failed to retrieve equipment.',
+                'Failed to retrieve Instrument.',
                 500
             );
         }
     }
 
-    /* get equipment master checklist */
+    /* get Instrument Master checklist by frequency */
     public static function getChecklistByFrequency($equipmentId, $frequency)
     {
         try {
-            $equipment = EquipmentMaster::find($equipmentId);
+            $equipment = InstrumentMaster::find($equipmentId);
 
             if (!$equipment) {
-                return ResponseHelper::error('Equipment not found.', 404);
+                return ResponseHelper::error(
+                    'Instrument not found.',
+                    404
+                );
             }
 
             $allowedFrequencies = [
@@ -269,7 +255,10 @@ class EquipmentMasterService
             }
 
             if (!is_array($checklistConfig)) {
-                return ResponseHelper::error('Checklist configuration not found.', 404);
+                return ResponseHelper::error(
+                    'Checklist configuration not found.',
+                    404
+                );
             }
 
             $frequencies = $allowedFrequencies[$selectedFrequency];
@@ -281,7 +270,11 @@ class EquipmentMasterService
                         trim($question['frequency'] ?? '')
                     );
 
-                    return in_array($questionFrequency, $frequencies, true);
+                    return in_array(
+                        $questionFrequency,
+                        $frequencies,
+                        true
+                    );
                 }
             ));
 
@@ -292,7 +285,10 @@ class EquipmentMasterService
                 'Checklist fetched successfully.'
             );
         } catch (\Exception $e) {
-            return ResponseHelper::error($e->getMessage(), 500);
+            return ResponseHelper::error(
+                'Failed to retrieve Instrument checklist.',
+                500
+            );
         }
     }
 }

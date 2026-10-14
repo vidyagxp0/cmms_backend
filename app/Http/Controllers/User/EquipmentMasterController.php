@@ -8,7 +8,7 @@ use App\Services\User\EquipmentMasterService;
 
 class EquipmentMasterController extends Controller
 {
-    /* equipment listing function */
+    /* Instrument listing function */
     public function index(EquipmentMasterRequest $request)
     {
         try {
@@ -16,12 +16,12 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve equipment.',
+                'message' => 'Failed to retrieve Instrument.',
             ], 500);
         }
     }
 
-    /* equipment details function */
+    /* Instrument details function */
     public function show($id)
     {
         try {
@@ -29,12 +29,12 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve equipment.',
+                'message' => 'Failed to retrieve Instrument.',
             ], 500);
         }
     }
 
-    /* store equipment function */
+    /* store Instrument function */
     public function store(EquipmentMasterRequest $request)
     {
         try {
@@ -42,12 +42,12 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create equipment.',
+                'message' => 'Failed to create Instrument.',
             ], 500);
         }
     }
 
-    /* update equipment function */
+    /* update Instrument function */
     public function update(EquipmentMasterRequest $request,$id)
     {
         try {
@@ -58,7 +58,7 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update equipment.',
+                'message' => 'Failed to update Instrument.',
             ], 500);
         }
     }
@@ -71,12 +71,12 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve equipment.',
+                'message' => 'Failed to retrieve Instrument.',
             ], 500);
         }
     }
 
-    /* equipment checklist function */
+    /* Instrument checklist function */
     public function getChecklistByFrequency($equipmentId, $frequency)
     {
         try {
@@ -84,7 +84,7 @@ class EquipmentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve equipment checklist.',
+                'message' => 'Failed to retrieve Instrument checklist.',
             ], 500);
         }
     }

@@ -487,7 +487,7 @@ class UserAuditService
         try {
             $audits = Audit::with('user')
                 ->where('record_id', $recordId)
-                ->where('model', 'App\Models\EquipmentMaster')
+                ->where('model', 'App\Models\InstrumentMaster')
                 ->orderBy('id', 'desc')
                 ->get();
 
