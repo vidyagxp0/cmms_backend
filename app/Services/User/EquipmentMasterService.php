@@ -65,7 +65,7 @@ class EquipmentMasterService
                 ->when($request->category, function ($query) use ($request) {
                     $query->where('category', $request->category);
                 })
-
+                ->with('stage', 'process', 'initiator')
                 ->orderBy('id', 'desc')
                 ->paginate($request->per_page ?? 10);
 

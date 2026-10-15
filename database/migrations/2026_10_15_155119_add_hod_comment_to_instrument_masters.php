@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('instrument_masters', function (Blueprint $table) {
+            $table->foreignId('initiator_id')->constrained('users')->onDelete('cascade');
             $table->longText('hod_review_comments')->nullable();
             $table->longText('hod_review_attachment')->nullable();
             $table->longText('qa_review_comments')->nullable();

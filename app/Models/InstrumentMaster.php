@@ -33,7 +33,7 @@ class InstrumentMaster extends Model
         'qa_review_attachment' => 'array',
     ];
 
-        public function process()
+    public function process()
     {
         return $this->belongsTo(Process::class);
     }

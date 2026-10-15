@@ -87,7 +87,8 @@ class FieldInstrumentMasterService
                 })
                 ->when($request->category, function ($query) use ($request) {
                     $query->where('category', $request->category);
-                })
+                })                
+                ->with('stage', 'process', 'initiator')
                 ->orderByDesc('id')
                 ->paginate($request->per_page ?? 10);
 
