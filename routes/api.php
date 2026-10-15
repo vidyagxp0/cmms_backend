@@ -138,6 +138,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/instruments/audit-trail/{id}', [EquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/instrument-master-record-stage/{id}',[EquipmentMasterController::class, 'moveStage'])->name('instrument-master-record-stage');
         Route::get('/instrument-record-permission/{recordId}',[EquipmentMasterController::class, 'checkInstrumentRecordPermission'])->name('instrument-record-permission');
+        Route::get('/instrument-singleReport/{id}',[EquipmentMasterController::class, 'instrumentSingleReport'])->name('instrument-singleReport');
 
         /* field instrument routes */
         Route::get('/all-fields-instrument-masters', [FieldInstrumentMasterController::class, 'getAllFieldIntrument'])->name('all-fields-instrument-masters');
