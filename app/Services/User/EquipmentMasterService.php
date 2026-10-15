@@ -5,11 +5,10 @@ namespace App\Services\User;
 use App\Helpers\ResponseHelper;
 use App\Helpers\UserAuditHelper;
 use App\Http\Requests\User\EquipmentMasterRequest;
-use App\Models\EquipmentMaster;
+use App\Models\FieldInstrumentMaster;
 use App\Models\InstrumentMaster;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\User\RecordActivityRequest;
-use App\Models\ProcessRecord;
 use App\Models\Activity;
 use App\Models\RecordActivityHistory;
 use App\Models\User;
@@ -307,239 +306,231 @@ class EquipmentMasterService
 
     
 
-/* Fields that should never appear in the audit table */
-private const AUDIT_HIDDEN_FIELDS = [
-    'id',
-    'created_at',
-    'updated_at',
-    'deleted_at',
-    'created_by',
-    'updated_by',
-    'password',
-];
+    /* Fields that should never appear in the audit table */
+    private const AUDIT_HIDDEN_FIELDS = [
+        'id',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+        'created_by',
+        'updated_by',
+        'password',
+    ];
 
-/* Friendly labels for fields where Str::headline() is not good enough */
-private const AUDIT_FIELD_LABELS = [
-    'instrument_id_no'        => 'Instrument ID No.',
-    'sr_no_model_no'          => 'Sr. No. / Model No.',
-    'checklist_config'        => 'Checklist Configuration',
-    'calibration_test_points' => 'Calibration Test Points',
-];
+    /* audit fields label */
+    private const AUDIT_FIELD_LABELS = [
+        'instrument_id_no'        => 'Instrument ID No.',
+        'sr_no_model_no'          => 'Sr. No. / Model No.',
+        'checklist_config'        => 'Checklist Configuration',
+        'calibration_test_points' => 'Calibration Test Points',
+    ];
 
-/* get instrument audit trail */
-public static function getInstrumentAuditTrail(Request $request, $id)
-{
-    try {
-        $instrument = InstrumentMaster::find($id);
+    /* get instrument audit trail */
+    public static function getInstrumentAuditTrail(Request $request, $id)
+    {
+        try {
+            $instrument = InstrumentMaster::find($id);
 
-        if (!$instrument) {
-            return ResponseHelper::error('Instrument not found.', 404);
-        }
-
-        $page    = max((int) $request->query('page', 1), 1);
-        $perPage = min(max((int) $request->query('per_page', 10), 5), 100);
-        $search  = trim((string) $request->query('search', ''));
-
-        /* ───── 1. Fetch audits (date filters done in SQL) ───── */
-        $query = DB::table('audits')
-            ->where('module', 'Instrument Master')
-            ->where('record_id', $instrument->id)
-            ->where('model', InstrumentMaster::class);
-
-        if ($request->filled('from_date')) {
-            $query->whereDate('created_at', '>=', $request->query('from_date'));
-        }
-        if ($request->filled('to_date')) {
-            $query->whereDate('created_at', '<=', $request->query('to_date'));
-        }
-
-        $audits = $query
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->select([
-                'id',
-                'user_id',
-                'old_value',
-                'new_value',
-                'action',
-                'description',
-                'created_at',
-            ])
-            ->get();
-
-        /* ───── 2. Resolve user names in one query ─────
-           Change `name` if your users table uses another column. */
-        $userNames = DB::table('users')
-            ->whereIn('id', $audits->pluck('user_id')->filter()->unique())
-            ->pluck('name', 'id');
-
-        /* ───── 3. Flatten: one row per changed field ───── */
-        $rows = collect();
-
-        foreach ($audits as $audit) {
-            $old    = self::decodeAuditValue($audit->old_value);
-            $new    = self::decodeAuditValue($audit->new_value);
-            $action = ucfirst(strtolower((string) $audit->action));
-            $user   = $userNames[$audit->user_id] ?? '-';
-            $date   = Carbon::parse($audit->created_at)->format('d-m-Y H:i:s');
-
-            /* old/new are not key-value data → single fallback row */
-            if (!is_array($old) && !is_array($new)) {
-                $rows->push([
-                    'id'           => $audit->id . '-record',
-                    'audit_id'     => $audit->id,
-                    'action'       => $action,
-                    'field'        => 'Record',
-                    'old_value'    => null,
-                    'new_value'    => null,
-                    'remarks'      => $audit->description,
-                    'performed_by' => $user,
-                    'performed_at' => $date,
-                ]);
-                continue;
+            if (!$instrument) {
+                return ResponseHelper::error('Instrument not found.', 404);
             }
 
-            $old  = is_array($old) ? $old : [];
-            $new  = is_array($new) ? $new : [];
-            $keys = array_unique(array_merge(array_keys($old), array_keys($new)));
+            $page    = max((int) $request->query('page', 1), 1);
+            $perPage = min(max((int) $request->query('per_page', 10), 5), 100);
+            $search  = trim((string) $request->query('search', ''));
 
-            foreach ($keys as $key) {
-                if (in_array($key, self::AUDIT_HIDDEN_FIELDS, true)) {
+            /* fetch audit data */
+            $query = DB::table('audits')
+                ->where('module', 'Instrument Master')
+                ->where('record_id', $instrument->id)
+                ->where('model', InstrumentMaster::class);
+
+            if ($request->filled('from_date')) {
+                $query->whereDate('created_at', '>=', $request->query('from_date'));
+            }
+            if ($request->filled('to_date')) {
+                $query->whereDate('created_at', '<=', $request->query('to_date'));
+            }
+
+            $audits = $query
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->select([
+                    'id',
+                    'user_id',
+                    'old_value',
+                    'new_value',
+                    'action',
+                    'description',
+                    'created_at',
+                ])
+                ->get();
+
+            $userNames = DB::table('users')
+                ->whereIn('id', $audits->pluck('user_id')->filter()->unique())
+                ->pluck('name', 'id');
+
+            $rows = collect();
+
+            foreach ($audits as $audit) {
+                $old    = self::decodeAuditValue($audit->old_value);
+                $new    = self::decodeAuditValue($audit->new_value);
+                $action = ucfirst(strtolower((string) $audit->action));
+                $user   = $userNames[$audit->user_id] ?? '-';
+                $date   = Carbon::parse($audit->created_at)->format('d-m-Y H:i:s');
+
+                if (!is_array($old) && !is_array($new)) {
+                    $rows->push([
+                        'id'           => $audit->id . '-record',
+                        'audit_id'     => $audit->id,
+                        'action'       => $action,
+                        'field'        => 'Record',
+                        'old_value'    => null,
+                        'new_value'    => null,
+                        'remarks'      => $audit->description,
+                        'performed_by' => $user,
+                        'performed_at' => $date,
+                    ]);
                     continue;
                 }
 
-                $oldRaw = $old[$key] ?? null;
-                $newRaw = $new[$key] ?? null;
+                $old  = is_array($old) ? $old : [];
+                $new  = is_array($new) ? $new : [];
+                $keys = array_unique(array_merge(array_keys($old), array_keys($new)));
 
-                /* unchanged → skip */
-                if (json_encode($oldRaw) === json_encode($newRaw)) {
-                    continue;
+                foreach ($keys as $key) {
+                    if (in_array($key, self::AUDIT_HIDDEN_FIELDS, true)) {
+                        continue;
+                    }
+
+                    $oldRaw = $old[$key] ?? null;
+                    $newRaw = $new[$key] ?? null;
+
+                    /* unchanged → skip */
+                    if (json_encode($oldRaw) === json_encode($newRaw)) {
+                        continue;
+                    }
+
+                    $oldText = self::formatAuditValue($oldRaw, 'Previous configuration');
+                    $newText = self::formatAuditValue(
+                        $newRaw,
+                        strtolower($action) === 'created' ? 'Configured' : 'Updated configuration'
+                    );
+
+                    /* nothing meaningful on either side → skip */
+                    if ($oldText === null && $newText === null) {
+                        continue;
+                    }
+
+                    $rows->push([
+                        'id'           => $audit->id . '-' . $key,
+                        'audit_id'     => $audit->id,
+                        'action'       => $action,
+                        'field'        => self::AUDIT_FIELD_LABELS[$key] ?? Str::headline($key),
+                        'old_value'    => $oldText,
+                        'new_value'    => $newText,
+                        'remarks'      => $audit->description,
+                        'performed_by' => $user,
+                        'performed_at' => $date,
+                    ]);
                 }
+            }
 
-                $oldText = self::formatAuditValue($oldRaw, 'Previous configuration');
-                $newText = self::formatAuditValue(
-                    $newRaw,
-                    strtolower($action) === 'created' ? 'Configured' : 'Updated configuration'
-                );
+            /* search filter */
+            if ($search !== '') {
+                $needle = mb_strtolower($search);
+                $rows = $rows->filter(function ($row) use ($needle) {
+                    return str_contains(
+                        mb_strtolower(implode(' ', [
+                            $row['action'],
+                            $row['field'],
+                            $row['old_value'],
+                            $row['new_value'],
+                            $row['performed_by'],
+                        ])),
+                        $needle
+                    );
+                });
+            }
 
-                /* nothing meaningful on either side → skip */
-                if ($oldText === null && $newText === null) {
-                    continue;
-                }
+            /* paginations */
+            $total    = $rows->count();
+            $lastPage = max((int) ceil($total / $perPage), 1);
+            $page     = min($page, $lastPage);
+            $items    = $rows->slice(($page - 1) * $perPage, $perPage)->values();
 
-                $rows->push([
-                    'id'           => $audit->id . '-' . $key,
-                    'audit_id'     => $audit->id,
-                    'action'       => $action,
-                    'field'        => self::AUDIT_FIELD_LABELS[$key] ?? Str::headline($key),
-                    'old_value'    => $oldText,
-                    'new_value'    => $newText,
-                    'remarks'      => $audit->description,
-                    'performed_by' => $user,
-                    'performed_at' => $date,
-                ]);
+            return ResponseHelper::success([
+                'meta' => [
+                    'process'          => 'Master Instrument',
+                    'instrument_name'  => $instrument->instrument_name,
+                    'instrument_id_no' => $instrument->instrument_id_no,
+                    'created_at'       => $instrument->created_at
+                        ? Carbon::parse($instrument->created_at)->format('d/m/Y H:i:s')
+                        : null,
+                ],
+                'items' => $items,
+                'pagination' => [
+                    'current_page' => $page,
+                    'per_page'     => $perPage,
+                    'total'        => $total,
+                    'last_page'    => $lastPage,
+                    'from'         => $total ? (($page - 1) * $perPage) + 1 : 0,
+                    'to'           => $total ? min($page * $perPage, $total) : 0,
+                ],
+            ], 'Instrument audit trail fetched successfully.');
+        } catch (\Exception $e) {
+            return ResponseHelper::error('Failed to retrieve instrument audit trail.', 500);
+        }
+    }
+
+    /* Decode JSON strings */
+    private static function decodeAuditValue($value)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
             }
         }
 
-        /* ───── 4. Search (on flattened rows) ───── */
-        if ($search !== '') {
-            $needle = mb_strtolower($search);
-            $rows = $rows->filter(function ($row) use ($needle) {
-                return str_contains(
-                    mb_strtolower(implode(' ', [
-                        $row['action'],
-                        $row['field'],
-                        $row['old_value'],
-                        $row['new_value'],
-                        $row['performed_by'],
-                    ])),
-                    $needle
-                );
-            });
-        }
-
-        /* ───── 5. Paginate ───── */
-        $total    = $rows->count();
-        $lastPage = max((int) ceil($total / $perPage), 1);
-        $page     = min($page, $lastPage);
-        $items    = $rows->slice(($page - 1) * $perPage, $perPage)->values();
-
-        return ResponseHelper::success([
-            'meta' => [
-                'process'          => 'Master Instrument',
-                'instrument_name'  => $instrument->instrument_name,
-                'instrument_id_no' => $instrument->instrument_id_no,
-                'created_at'       => $instrument->created_at
-                    ? Carbon::parse($instrument->created_at)->format('d/m/Y H:i:s')
-                    : null,
-            ],
-            'items' => $items,
-            'pagination' => [
-                'current_page' => $page,
-                'per_page'     => $perPage,
-                'total'        => $total,
-                'last_page'    => $lastPage,
-                'from'         => $total ? (($page - 1) * $perPage) + 1 : 0,
-                'to'           => $total ? min($page * $perPage, $total) : 0,
-            ],
-        ], 'Instrument audit trail fetched successfully.');
-    } catch (\Exception $e) {
-        return ResponseHelper::error('Failed to retrieve instrument audit trail.', 500);
-    }
-}
-
-/* Decode JSON strings, pass everything else through */
-private static function decodeAuditValue($value)
-{
-    if (is_string($value)) {
-        $decoded = json_decode($value, true);
-        if (json_last_error() === JSON_ERROR_NONE) {
-            return $decoded;
-        }
+        return $value;
     }
 
-    return $value;
-}
-
-/* Turn any value into display text. Returns null when there is nothing to show. */
-private static function formatAuditValue($value, string $complexLabel = 'Configured'): ?string
-{
-    if ($value === null) {
-        return null;
-    }
-
-    if (is_bool($value)) {
-        return $value ? 'Yes' : 'No';
-    }
-
-    if (is_scalar($value)) {
-        $text = trim((string) $value);
-        return $text === '' ? null : $text;
-    }
-
-    if (is_array($value)) {
-        if (empty($value)) {
+    /* format audit values */
+    private static function formatAuditValue($value, string $complexLabel = 'Configured'): ?string
+    {
+        if ($value === null) {
             return null;
         }
 
-        /* flat list of scalars → "a, b, c" */
-        $isScalarList = array_is_list($value)
-            && count(array_filter($value, 'is_scalar')) === count($value);
-
-        if ($isScalarList) {
-            $parts = array_filter(
-                array_map(fn ($v) => trim((string) $v), $value),
-                fn ($v) => $v !== ''
-            );
-            return $parts ? implode(', ', $parts) : null;
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
         }
 
-        /* nested structure (e.g. checklist_config) → never dump raw JSON */
-        return $complexLabel;
-    }
+        if (is_scalar($value)) {
+            $text = trim((string) $value);
+            return $text === '' ? null : $text;
+        }
 
-    return null;
-}
+        if (is_array($value)) {
+            if (empty($value)) {
+                return null;
+            }
+
+            $isScalarList = array_is_list($value)
+                && count(array_filter($value, 'is_scalar')) === count($value);
+
+            if ($isScalarList) {
+                $parts = array_filter(
+                    array_map(fn ($v) => trim((string) $v), $value),
+                    fn ($v) => $v !== ''
+                );
+                return $parts ? implode(', ', $parts) : null;
+            }
+            return $complexLabel;
+        }
+        return null;
+    }
 
     
     /* move Instrument Master process record stage */
