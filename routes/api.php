@@ -149,6 +149,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/fields-instrument-master-checklist/{equipmentId}/{frequency}', [FieldInstrumentMasterController::class, 'getChecklistByFrequency'])->name('fields-instrument-master-checklist');
         Route::get('/fields-instruments/audit-trail/{id}', [FieldInstrumentMasterController::class, 'getFieldInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/fields-instrument-record-stage/{id}',[FieldInstrumentMasterController::class, 'moveStage'])->name('fields-instrument-record-stage');
+        Route::get('/fieldInstrument-singleReport/{id}',[FieldInstrumentMasterController::class, 'fieldInstrumentSingleReport'])->name('fieldInstrument-singleReport');
         Route::get('/field-instrument-record-permission/{recordId}',[FieldInstrumentMasterController::class, 'checkFieldInstrumentRecordPermission'])->name('field-instrument-record-permission');
 
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');

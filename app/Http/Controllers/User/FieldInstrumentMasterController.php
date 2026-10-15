@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\EquipmentMasterRequest;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\FieldInstrumentMaster\FieldInstrumentMasterService;
+use App\Services\UserReport\FIeldInstrumentReportService;
 use Illuminate\Http\Request;
 
 class FieldInstrumentMasterController extends Controller
@@ -134,6 +135,21 @@ class FieldInstrumentMasterController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load data.',
+            ], 500);
+        }
+    }
+
+    /* instrument single report */
+    public function fieldInstrumentSingleReport($id) 
+    {
+        try {
+            return FIeldInstrumentReportService::generateFieldInstrumentReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
             ], 500);
         }
     }
