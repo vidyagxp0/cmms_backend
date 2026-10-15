@@ -5,6 +5,7 @@ namespace App\Services\User;
 use App\Helpers\ResponseHelper;
 use App\Helpers\UserAuditHelper;
 use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Models\EquipmentMaster;
 use App\Models\InstrumentMaster;
 use Illuminate\Support\Facades\DB;
 use App\Http\Requests\User\RecordActivityRequest;
@@ -523,5 +524,38 @@ class EquipmentMasterService
         }
     }
 
+    /* check whether the logged-in user's role can act on a record's current stage */
+    public static function checkInstrumentRecordPermission($id)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) return ResponseHelper::error('Unauthenticated.', 401);
 
+            $record = EquipmentMaster::with(['stage', 'process'])->findOrFail($id);
+            $roles = $user->roles()->pluck('name')->toArray();
+
+            /* stage => required role, per process id */
+            $stageRoles = [
+                1 => [ // Instrument Master
+                    'Opened' => 'Initiator',
+                    'HOD Review' => 'HOD/Designee',
+                    'QA Approval' => 'QA Approver',
+                ],
+            ];
+
+            $stageName = $record->stage?->name;
+            $allowedRole = $stageRoles[$record->process_id][$stageName] ?? null;
+            $canPerformAction = $allowedRole ? in_array($allowedRole, $roles) : false;
+
+            return ResponseHelper::success([
+                'record_id' => $record->id,
+                'process' => ['id' => $record->process?->id, 'name' => $record->process?->name],
+                'stage' => ['id' => $record->stage?->id, 'name' => $stageName],
+                'user' => ['id' => $user->id, 'name' => $user->name, 'roles' => $roles],
+                'permission' => ['allowed_role' => $allowedRole, 'can_perform_action' => $canPerformAction],
+            ], 'Record permission checked successfully.');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage(), 500);
+        }
+    }
 }

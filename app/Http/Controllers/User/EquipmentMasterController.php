@@ -118,4 +118,19 @@ class EquipmentMasterController extends Controller
             ], 500);
         }
     }
+
+    /* user permission */
+    public function checkInstrumentRecordPermission($id) 
+    {
+        try {
+            return EquipmentMasterService::checkInstrumentRecordPermission(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load data.',
+            ], 500);
+        }
+    }
 }

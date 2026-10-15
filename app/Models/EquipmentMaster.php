@@ -24,4 +24,14 @@ class EquipmentMaster extends Model
     protected $casts = [
         'checklist_config' => 'array',
     ];
+
+    public function process()
+    {
+        return $this->belongsTo(Process::class);
+    }
+
+    public function stage()
+    {
+        return $this->belongsTo(Stage::class);
+    }
 }

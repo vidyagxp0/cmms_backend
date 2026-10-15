@@ -121,4 +121,19 @@ class FieldInstrumentMasterController extends Controller
             ], 500);
         }
     }
+
+    /* user permission */
+    public function checkFieldInstrumentRecordPermission($id) 
+    {
+        try {
+            return FieldInstrumentMasterService::checkFieldInstrumentRecordPermission(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load data.',
+            ], 500);
+        }
+    }
 }
