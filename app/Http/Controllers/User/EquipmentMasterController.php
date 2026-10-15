@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\EquipmentMasterRequest;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\EquipmentMasterService;
+use Illuminate\Http\Request;
 
 class EquipmentMasterController extends Controller
 {
@@ -91,10 +92,10 @@ class EquipmentMasterController extends Controller
     }
 
     /* Instrument audit trail function */
-    public function getInstrumentAuditTrail($id)
+    public function getInstrumentAuditTrail(Request $request, $id)
     {
         try {
-            return EquipmentMasterService::getInstrumentAuditTrail($id);
+            return EquipmentMasterService::getInstrumentAuditTrail($request, $id);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
