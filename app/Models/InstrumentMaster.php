@@ -20,11 +20,17 @@ class InstrumentMaster extends Model
         'category',
         'checklist_config',
         'stage_id',
-        'process_id'
+        'process_id',
+        'hod_review_comments',
+        'hod_review_attachment',
+        'qa_review_attachment',
+        'qa_review_comments'
     ];
 
     protected $casts = [
         'checklist_config' => 'array',
+        'hod_review_attachment' => 'array',
+        'qa_review_attachment' => 'array',
     ];
 
         public function process()
