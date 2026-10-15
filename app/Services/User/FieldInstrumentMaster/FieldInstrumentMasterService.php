@@ -156,7 +156,8 @@ class FieldInstrumentMasterService
             DB::rollBack();
 
             return ResponseHelper::error(
-                'Failed to create field instrument.',
+                // 'Failed to create field instrument.',
+                $e->getMessage(),
                 500
             );
         }

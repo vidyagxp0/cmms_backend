@@ -126,7 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
-        Route::get('/user-activity-history/{recordId}',[RecordActivityController::class, 'index'])->name('user-activity-history');
+        Route::get('/user-activity-history/{recordId}/{processId}', [RecordActivityController::class, 'index'])->name('user-activity-history');
 
         /* equipment master routes */
         Route::get('/all-equipment-masters', [EquipmentMasterController::class, 'getAllEquipments'])->name('all-equipment-masters');

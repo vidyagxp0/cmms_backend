@@ -9,11 +9,12 @@ use Illuminate\Http\Request;
 class RecordActivityController extends Controller
 {
     /* activity history */
-    public function index($recordId)
+    public function index($recordId, $processId)
     {
         try {
             return RecordActivityService::getActivityHistory(
-                $recordId
+                $recordId,
+                $processId
             );
         } catch (\Exception $e) {
             return response()->json([
