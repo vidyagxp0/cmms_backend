@@ -24,8 +24,6 @@ class RecordActivityService
                 $column = 'field_instrument_id';
             } elseif (in_array($processId, $processRecordProcesses, true)) {
                 $column = 'process_record_id';
-            } else {
-                $column = 'process_record_id';
             }
 
             $histories = RecordActivityHistory::with([

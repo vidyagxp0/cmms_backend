@@ -120,24 +120,24 @@ class ProcessRecordService
 
             /* stage => required role, per process id */
             $stageRoles = [
-                1 => [ // Calibration Planner
+                17 => [ // Calibration Planner
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
                     'Reviewed By User Department' => 'User Department Role',
                     'Pending QA Approval' => 'QA Approver',
                 ],
-                2 => [ // Preventive Maintenance Planner
+                18 => [ // Preventive Maintenance Planner
                     'Opened' => 'Initiator',
                     'Pending HOD/Designee Review' => 'HOD/Designee',
                     'Pending QA Review' => 'QA Reviewer',
                     'Pending QA Approval' => 'QA Approver',
                 ],
-                4 => [ // Preventive Maintenance
+                20 => [ // Preventive Maintenance
                     'Opened' => 'Initiator',
                     'Engineering Department Review' => 'HOD/Designee',
                     'Pending QA Approval' => 'QA Approver',
                 ],
-                5 => [ // Calibration Management
+                21 => [ // Calibration Management
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',
