@@ -19,6 +19,8 @@ class InstrumentMaster extends Model
         'calibration_test_points',
         'category',
         'checklist_config',
+        'stage_id',
+        'process_id'
     ];
 
     protected $casts = [

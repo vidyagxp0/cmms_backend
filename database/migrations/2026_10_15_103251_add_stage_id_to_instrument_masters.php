@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::table('instrument_masters', function (Blueprint $table) {
             $table->foreignId('stage_id')->constrained('stages')->onDelete('cascade');
+            $table->foreignId('process_id')->constrained('processes')->onDelete('cascade');
         });
     }
 
