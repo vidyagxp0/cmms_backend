@@ -39,4 +39,14 @@ class FieldInstrumentMaster extends Model
     {
         return $this->belongsTo(Stage::class);
     }
+
+        public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function initiator()
+    {
+        return $this->belongsTo(User::class, 'initiator_id');
+    }
 }

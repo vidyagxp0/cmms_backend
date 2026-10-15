@@ -376,7 +376,7 @@ class EquipmentMasterService
         DB::beginTransaction();
 
         try {
-            $processRecord = ProcessRecord::with([
+            $processRecord = InstrumentMaster::with([
                 'process',
                 'stage',
                 'department',
@@ -462,7 +462,7 @@ class EquipmentMasterService
 
             /* record activity history */
             RecordActivityHistory::create([
-                'process_record_id' => $processRecord->id,
+                'instrument_id' => $processRecord->id,
                 'activity_id' => $activity->id,
                 'performed_by' => Auth::id(),
                 'stage_id' => $currentStage->id,
@@ -491,7 +491,7 @@ class EquipmentMasterService
                 [
                     'stage' => $targetStage?->name,
                 ],
-                ProcessRecord::class
+                FieldInstrumentMaster::class
             );
 
             DB::commit();
@@ -518,7 +518,8 @@ class EquipmentMasterService
             DB::rollBack();
 
             return ResponseHelper::error(
-                'Failed to update Instrument Master stage.',
+                // 'Failed to update Instrument Master stage.',
+                $e->getMessage(),
                 500
             );
         }
@@ -531,12 +532,12 @@ class EquipmentMasterService
             $user = Auth::user();
             if (!$user) return ResponseHelper::error('Unauthenticated.', 401);
 
-            $record = EquipmentMaster::with(['stage', 'process'])->findOrFail($id);
+            $record = InstrumentMaster::with(['stage', 'process'])->findOrFail($id);
             $roles = $user->roles()->pluck('name')->toArray();
 
             /* stage => required role, per process id */
             $stageRoles = [
-                1 => [ // Instrument Master
+                19 => [ // Instrument Master
                     'Opened' => 'Initiator',
                     'HOD Review' => 'HOD/Designee',
                     'QA Approval' => 'QA Approver',

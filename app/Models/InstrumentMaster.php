@@ -26,4 +26,24 @@ class InstrumentMaster extends Model
     protected $casts = [
         'checklist_config' => 'array',
     ];
+
+        public function process()
+    {
+        return $this->belongsTo(Process::class);
+    }
+
+    public function stage()
+    {
+        return $this->belongsTo(Stage::class);
+    }
+
+        public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function initiator()
+    {
+        return $this->belongsTo(User::class, 'initiator_id');
+    }
 }

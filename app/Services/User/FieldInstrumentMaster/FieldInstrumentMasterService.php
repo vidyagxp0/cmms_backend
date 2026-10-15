@@ -402,7 +402,7 @@ class FieldInstrumentMasterService
         DB::beginTransaction();
 
         try {
-            $processRecord = ProcessRecord::with([
+            $processRecord = FieldInstrumentMaster::with([
                 'process',
                 'stage',
                 'department',
@@ -488,7 +488,7 @@ class FieldInstrumentMasterService
 
             /* record activity history */
             RecordActivityHistory::create([
-                'process_record_id' => $processRecord->id,
+                'field_instrument_id' => $processRecord->id,
                 'activity_id' => $activity->id,
                 'performed_by' => Auth::id(),
                 'stage_id' => $currentStage->id,
@@ -517,7 +517,7 @@ class FieldInstrumentMasterService
                 [
                     'stage' => $targetStage?->name,
                 ],
-                ProcessRecord::class
+                FieldInstrumentMaster::class
             );
 
             DB::commit();
@@ -562,7 +562,7 @@ class FieldInstrumentMasterService
 
             /* stage => required role, per process id */
             $stageRoles = [
-                1 => [ // Instrument Master
+                22 => [ // Instrument Master
                     'Opened' => 'Initiator',
                     'HOD Review' => 'HOD/Designee',
                     'QA Approval' => 'QA Approver',
