@@ -821,7 +821,7 @@ class FieldInstrumentMasterService
 
             /* stage => required role, per process id */
             $stageRoles = [
-                22 => [ // Instrument Master
+                6 => [ // Instrument Master
                     'Opened' => 'Initiator',
                     'HOD Review' => 'HOD/Designee',
                     'QA Approval' => 'QA Approver',
