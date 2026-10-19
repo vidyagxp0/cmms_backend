@@ -39,7 +39,8 @@ class EquipmentMasterService
             'stage_id',
             'process_id',
             'hod_review_comments',
-            'qa_review_comments'
+            'qa_review_comments',
+            'initiator_id'
         ];
     }
 

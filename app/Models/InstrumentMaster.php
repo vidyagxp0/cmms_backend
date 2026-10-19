@@ -24,7 +24,8 @@ class InstrumentMaster extends Model
         'hod_review_comments',
         'hod_review_attachment',
         'qa_review_attachment',
-        'qa_review_comments'
+        'qa_review_comments',
+        'initiator_id'
     ];
 
     protected $casts = [
