@@ -12,15 +12,15 @@ class RecordActivityService
     {
         try {
             $processRecordProcesses = [
-                '17',
-                '18',
-                '20',
-                '21',
+                '1',
+                '2',
+                '4',
+                '5',
             ];
 
-            if ($processId === '19') {
+            if ($processId === '3') {
                 $column = 'instrument_id';
-            } elseif ($processId === '22') {
+            } elseif ($processId === '6') {
                 $column = 'field_instrument_id';
             } elseif (in_array($processId, $processRecordProcesses, true)) {
                 $column = 'process_record_id';
