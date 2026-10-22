@@ -240,12 +240,12 @@ class CalibrationReportService
     private static function getGridFieldLabel($key)
     {
         $labels = [
-            'equipmentInstrumentName' => 'Equipment / Instrument Name',
-            'equipmentInstrumentId' => 'Equipment / Instrument ID',
+            'equipmentInstrumentName' => 'Instrument Name',
+            'equipmentInstrumentId' => 'Instrument ID No.',
             'department' => 'Department',
             'location' => 'Location',
             'make' => 'Make',
-            'model' => 'Model',
+            'model' => 'Sr. No / Model No',
             'instrumentrange' => 'Instrument Range',
             'operatingrange' => 'Operating Range',
             'leastCount' => 'Least Count',
@@ -256,6 +256,9 @@ class CalibrationReportService
             'remark' => 'Remark',
             'monthlyCalibration' => 'Monthly Calibration',
             'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
+            'calibrationTestPoints' => 'Calibration Test Points',
+            'plannedDate' => 'Planned Date',
+            'calibrationDoneDate' => 'Calibration Done On',
         ];
 
         return $labels[$key] ?? self::formatFieldLabel($key);
