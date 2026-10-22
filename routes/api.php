@@ -88,8 +88,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/get-calibration-management-records', [ProcessRecordController::class, 'getCalibrationManagementRecords'])->name('get-calibration-management-records');
         Route::get('/get-preventive-planner-records', [ProcessRecordController::class, 'getPreventiveMaintenancePlannerRecords'])->name('get-preventive-planner-records');
         Route::get('/get-preventive-maintenance-records', [ProcessRecordController::class, 'getPreventiveMaintenanceRecords'])->name('get-preventive-maintenance-records');
-        Route::get('/get-field-instrument-planner-records', [ProcessRecordController::class, 'getFieldInstrumentPlannerRecords'])->name('get-field-instrument-planner-records');
-        Route::get('/get-all-field-instrument-planner-records', [ProcessRecordController::class, 'getAllFieldInstrumentPlannerRecords'])->name('get-all-field-instrument-planner-records');
 
        
         /* calibration planner routes */
@@ -159,10 +157,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
 
          /* field instrument planner routes */
+        Route::get('/get-field-instrument-planner-records', [ProcessRecordController::class, 'getFieldInstrumentPlannerRecords'])->name('get-field-instrument-planner-records');
+        Route::get('/get-all-field-instrument-planner-records', [ProcessRecordController::class, 'getAllFieldInstrumentPlannerRecords'])->name('get-all-field-instrument-planner-records');
         Route::post('/store-field-instrument-planner-record', [FieldInstrumentPlannerController::class, 'store'])->name('store-field-instrument-planner-record');
         Route::get('/show-field-instrument-planner-record/{id}', [FieldInstrumentPlannerController::class, 'show'])->name('show-field-instrument-planner-record');
         Route::match(['put', 'post'], '/update-field-instrument-planner-record/{id}', [FieldInstrumentPlannerController::class, 'update'])->name('update-field-instrument-planner-record');
         Route::post('/field-instrument-planner-record-stage/{id}', [FieldInstrumentPlannerController::class, 'moveStage'])->name('field-instrument-planner-record-stage');
-
     });
 });
