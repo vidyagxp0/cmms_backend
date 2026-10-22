@@ -57,6 +57,30 @@ class ProcessRecordController extends Controller
             ], 500);
         }
     }
+
+    public function getFieldInstrumentPlannerRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getFieldInstrumentPlannerRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
+
+    public function getAllFieldInstrumentPlannerRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getAllFieldInstrumentPlannerRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
     
         /* generate record number for a process */
     public function generateRecordNumber($processId)

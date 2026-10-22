@@ -46,6 +46,43 @@ class ProcessRecordService
         return self::getRecordsByProcessName($request, 'Preventive Maintenance');
     }
 
+    public static function getFieldInstrumentPlannerRecords(Request $request)
+    {
+        return self::getRecordsByProcessName($request, 'Field Instrument Planner');
+    }
+
+    public static function getAllFieldInstrumentPlannerRecords(Request $request)
+    {
+        return self::getAllRecordsByProcessName($request, 'Field Instrument Planner');
+    }
+
+    /* fetch non-paginated records for a process, with search + date range filters */
+    private static function getAllRecordsByProcessName(Request $request, string $processName)
+    {
+        try {
+            $records = ProcessRecord::with(['process', 'department', 'initiator', 'stage'])
+                ->whereHas('process', fn($query) => $query->where('name', $processName))
+                ->when($request->search, function ($query) use ($request) {
+                    $search = $request->search;
+
+                    $query->where(function ($query) use ($search) {
+                        $query->where('short_description', 'like', "%{$search}%")
+                            ->orWhereHas('process', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                            ->orWhereHas('initiator', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                            ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                    });
+                })
+                ->when($request->from_date, fn($query) => $query->whereDate('initiation_date', '>=', $request->from_date))
+                ->when($request->to_date, fn($query) => $query->whereDate('initiation_date', '<=', $request->to_date))
+                ->orderBy('id', 'desc')
+                ->get();
+
+            return ResponseHelper::success($records, 'Process records fetched successfully.');
+        } catch (\Exception $e) {
+            return ResponseHelper::error($e->getMessage(), 500);
+        }
+    }
+
     /* fetch paginated records for a process, with search + date range filters */
     private static function getRecordsByProcessName(Request $request, string $processName)
     {

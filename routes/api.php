@@ -22,6 +22,7 @@ use App\Http\Controllers\User\PreventiveRecordController;
 use App\Http\Controllers\User\RecordActivityController;
 use App\Http\Controllers\User\PreventiveMaintenanceController;
 use App\Http\Controllers\User\FieldInstrumentMasterController;
+use App\Http\Controllers\User\FieldInstrumentPlannerController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
@@ -87,7 +88,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/get-calibration-management-records', [ProcessRecordController::class, 'getCalibrationManagementRecords'])->name('get-calibration-management-records');
         Route::get('/get-preventive-planner-records', [ProcessRecordController::class, 'getPreventiveMaintenancePlannerRecords'])->name('get-preventive-planner-records');
         Route::get('/get-preventive-maintenance-records', [ProcessRecordController::class, 'getPreventiveMaintenanceRecords'])->name('get-preventive-maintenance-records');
+        Route::get('/get-field-instrument-planner-records', [ProcessRecordController::class, 'getFieldInstrumentPlannerRecords'])->name('get-field-instrument-planner-records');
+        Route::get('/get-all-field-instrument-planner-records', [ProcessRecordController::class, 'getAllFieldInstrumentPlannerRecords'])->name('get-all-field-instrument-planner-records');
 
+       
         /* calibration planner routes */
         Route::post('/store-calibration-planner-record', [CalibrationPlannerController::class, 'store'])->name('store-calibration-planner-record');
         Route::get('/show-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'show'])->name('show-calibration-planner-record');
@@ -151,7 +155,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/fields-instrument-record-stage/{id}',[FieldInstrumentMasterController::class, 'moveStage'])->name('fields-instrument-record-stage');
         Route::get('/fieldInstrument-singleReport/{id}',[FieldInstrumentMasterController::class, 'fieldInstrumentSingleReport'])->name('fieldInstrument-singleReport');
         Route::get('/field-instrument-record-permission/{recordId}',[FieldInstrumentMasterController::class, 'checkFieldInstrumentRecordPermission'])->name('field-instrument-record-permission');
-
+        Route::get('/filter-equipment-masters',[EquipmentMasterController::class, 'getFilteredEquipments'])->name('filter-equipment-masters');
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
+
+         /* field instrument planner routes */
+        Route::post('/store-field-instrument-planner-record', [FieldInstrumentPlannerController::class, 'store'])->name('store-field-instrument-planner-record');
+        Route::get('/show-field-instrument-planner-record/{id}', [FieldInstrumentPlannerController::class, 'show'])->name('show-field-instrument-planner-record');
+        Route::match(['put', 'post'], '/update-field-instrument-planner-record/{id}', [FieldInstrumentPlannerController::class, 'update'])->name('update-field-instrument-planner-record');
+        Route::post('/field-instrument-planner-record-stage/{id}', [FieldInstrumentPlannerController::class, 'moveStage'])->name('field-instrument-planner-record-stage');
+
     });
 });
