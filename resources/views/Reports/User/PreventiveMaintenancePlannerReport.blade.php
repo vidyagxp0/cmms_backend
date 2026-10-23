@@ -142,19 +142,15 @@
             text-align: center;
         }
         .planner-equipment-table th:nth-child(1),
-        .planner-equipment-table td:nth-child(1) { width: 4%; }
+        .planner-equipment-table td:nth-child(1) { width: 6%; }
         .planner-equipment-table th:nth-child(2),
-        .planner-equipment-table td:nth-child(2) { width: 21%; }
+        .planner-equipment-table td:nth-child(2) { width: 29%; }
         .planner-equipment-table th:nth-child(3),
-        .planner-equipment-table td:nth-child(3) { width: 10%; }
+        .planner-equipment-table td:nth-child(3) { width: 20%; }
         .planner-equipment-table th:nth-child(4),
-        .planner-equipment-table td:nth-child(4) { width: 10%; }
+        .planner-equipment-table td:nth-child(4) { width: 23%; }
         .planner-equipment-table th:nth-child(5),
-        .planner-equipment-table td:nth-child(5) { width: 17%; }
-        .planner-equipment-table th:nth-child(6),
-        .planner-equipment-table td:nth-child(6) { width: 12%; }
-        .planner-equipment-table th:nth-child(7),
-        .planner-equipment-table td:nth-child(7) { width: 16%; }
+        .planner-equipment-table td:nth-child(5) { width: 22%; }
 
         /* planner additional information table */
         .planner-info-table {
@@ -183,14 +179,18 @@
             text-align: left;
         }
 
-        /* monthly schedule table */
-        .monthly-title {
-            margin: 6px 0 3px 0;
-            padding: 5px 7px;
-            font-size: 8px;
+        /* Monthly planner grid: one compact table per month, with P/A columns per week. */
+        .month-block {
+            margin: 5px 0 8px 0;
+            page-break-inside: auto;
+        }
+        .month-heading {
+            background: #e5f0eb;
+            border: 1px solid #d9e2df;
+            padding: 4px 5px;
+            text-align: center;
+            font-size: 7px;
             font-weight: bold;
-            background: #eef6f2;
-            border-left: 3px solid #28735c;
             page-break-after: avoid;
         }
         .monthly-table {
@@ -199,32 +199,38 @@
             padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
-            page-break-inside: avoid;
+            page-break-inside: auto;
         }
+        .monthly-table tr { page-break-inside: avoid; }
         .monthly-table th,
         .monthly-table td {
             border: 1px solid #d9e2df;
-            padding: 4px 5px;
+            padding: 3px 2px;
             vertical-align: middle;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            text-align: center;
         }
         .monthly-table th {
             background: #eef6f2;
-            font-size: 7px;
+            font-size: 5.5px;
+            line-height: 1.1;
             font-weight: bold;
-            text-align: center;
         }
         .monthly-table td {
-            font-size: 7px;
-            text-align: center;
+            font-size: 6px;
+            line-height: 1.1;
         }
-        .monthly-table th:first-child,
-        .monthly-table td:first-child { width: 25%; }
-        .monthly-table th:nth-child(2),
-        .monthly-table td:nth-child(2) { width: 37.5%; }
-        .monthly-table th:nth-child(3),
-        .monthly-table td:nth-child(3) { width: 37.5%; }
+        .monthly-table .equipment-col { width: 15%; }
+        .monthly-table .code-col { width: 10%; }
+        .monthly-table .location-col { width: 10%; }
+        .monthly-table .week-heading { width: 6.5%; }
+        .monthly-table .pa-heading { width: 3.25%; }
+        .week-date {
+            margin-top: 2px;
+            font-size: 5px;
+            font-weight: normal;
+        }
     </style>
 </head>
 
@@ -412,104 +418,86 @@
 
                 @endforeach
 
-                {{-- preventive maintenance planner --}}
-                @if(($tab['tab_title'] ?? '') === 'General Information')
+                {{-- Preventive Maintenance Planner: render the title and table headers once --}}
+                @if(($tab['tab_title'] ?? '') === 'General Information' && !empty($plannerGrid['rows'] ?? []))
+                    <div class="section grid-section">
+                        <div class="grid-title">Preventive Maintenance Planner</div>
 
-                    @if(!empty($plannerGrid['rows'] ?? []))
+                        <table class="planner-equipment-table">
+                            <thead>
+                                <tr>
+                                    <th>S.No</th>
+                                    <th>Equipment Name</th>
+                                    <th>Equipment Code</th>
+                                    <th>Location</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($plannerGrid['rows'] as $rowIndex => $row)
+                                    <tr>
+                                        <td>{{ $rowIndex + 1 }}</td>
+                                        <td>{{ $row['equipmentInstrumentName'] ?: '-' }}</td>
+                                        <td>{{ $row['equipmentInstrumentId'] ?: '-' }}</td>
+                                        <td>{{ $row['location'] ?: '-' }}</td>
+                                        <td>{{ $row['remark'] ?: '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
 
-                        <div class="section grid-section">
+                        <div class="monthly-title">Monthly Preventive Maintenance Schedule</div>
 
-                            <div class="grid-title">
-                                Preventive Maintenance Planner
-                            </div>
-
-                            @foreach($plannerGrid['rows'] ?? [] as $rowIndex => $row)
-
-                                {{-- equipment information --}}
-                                <table class="planner-equipment-table">
+                        @foreach(($plannerGrid['monthlySchedules'] ?? []) as $monthSchedule)
+                            <div class="month-block">
+                                <div class="month-heading">{{ $monthSchedule['name'] ?? '-' }}</div>
+                                <table class="monthly-table">
                                     <thead>
                                         <tr>
-                                            <th>S.No</th>
-                                            <th>Equipment Name</th>
-                                            <th>Equipment Code</th>
-                                            <th>Block</th>
-                                            <th>Department</th>
-                                            <th>Location</th>
-                                            <th>Preventive Frequency</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        <tr>
-                                            <td>{{ $rowIndex + 1 }}</td>
-                                            <td>{{ data_get($row, 'equipmentInstrumentName.value', '-') }}</td>
-                                            <td>{{ data_get($row, 'equipmentInstrumentId.value', '-') }}</td>
-                                            <td>{{ data_get($row, 'block.value', '-') }}</td>
-                                            <td>{{ data_get($row, 'department.value', '-') }}</td>
-                                            <td>{{ data_get($row, 'location.value', '-') }}</td>
-                                            <td>{{ data_get($row, 'preventiveFrequency.value', '-') }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                {{-- additional planner information --}}
-                                <table class="planner-info-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Previous Preventive Date</th>
-                                            <th>Next Preventive Date</th>
-                                            <th>Make</th>
-                                            <th>Model</th>
-                                            <th>Remark</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        <tr>
-                                            <td>{{ data_get($row, 'previousPreventiveDate.value', '-') ?: '-' }}</td>
-                                            <td>{{ data_get($row, 'nextPreventiveDate.value', '-') ?: '-' }}</td>
-                                            <td>{{ data_get($row, 'make.value', '-') ?: '-' }}</td>
-                                            <td>{{ data_get($row, 'model.value', '-') ?: '-' }}</td>
-                                            <td>{{ data_get($row, 'remark.value', '-') ?: '-' }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
-                                {{-- frequency schedule --}}
-                                @if(!empty($row['schedule'] ?? []))
-
-                                    <div class="monthly-title">
-                                        {{ $row['frequencyLabel'] ?? 'Preventive Maintenance' }}
-                                    </div>
-
-                                    <table class="monthly-table">
-                                        <thead>
-                                            <tr>
-                                                <th>Month</th>
-                                                <th>Planned Date</th>
-                                                <th>Execute Date</th>
-                                            </tr>
-                                        </thead>
-
-                                        <tbody>
-                                            @foreach($row['schedule'] as $schedule)
-                                                <tr>
-                                                    <td>{{ $schedule['month'] ?? '-' }}</td>
-                                                    <td>{{ !empty($schedule['plannedDate']) ? $schedule['plannedDate'] : '-' }}</td>
-                                                    <td>{{ !empty($schedule['executeDate']) ? $schedule['executeDate'] : '-' }}</td>
-                                                </tr>
+                                            <th rowspan="2" class="equipment-col">Equipment Name</th>
+                                            <th rowspan="2" class="code-col">Equipment Code</th>
+                                            <th rowspan="2" class="location-col">Location</th>
+                                            @foreach(($monthSchedule['weeks'] ?? []) as $week)
+                                                <th colspan="2" class="week-heading">
+                                                    Week {{ $week['number'] ?? '-' }}
+                                                    <div class="week-date">
+                                                        @if(!empty($week['date']))
+                                                            {{ \Carbon\Carbon::parse($week['date'])->format('d/m/Y') }}
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    </div>
+                                                </th>
                                             @endforeach
-                                        </tbody>
-                                    </table>
-
-                                @endif
-
-                            @endforeach
-
-                        </div>
-
-                    @endif
-
+                                        </tr>
+                                        <tr>
+                                            @foreach(($monthSchedule['weeks'] ?? []) as $week)
+                                                <th class="pa-heading">P</th>
+                                                <th class="pa-heading">A</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse(($monthSchedule['rows'] ?? []) as $monthRow)
+                                            <tr>
+                                                <td>{{ $monthRow['equipmentInstrumentName'] ?: '-' }}</td>
+                                                <td>{{ $monthRow['equipmentInstrumentId'] ?: '-' }}</td>
+                                                <td>{{ $monthRow['location'] ?: '-' }}</td>
+                                                @foreach(($monthRow['weeks'] ?? []) as $weekValue)
+                                                    <td>{{ !empty($weekValue['planned']) ? $weekValue['planned'] : '-' }}</td>
+                                                    <td>{{ !empty($weekValue['actual']) ? $weekValue['actual'] : '-' }}</td>
+                                                @endforeach
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="13">No equipment rows available.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endforeach
+                    </div>
                 @endif
 
             </div>

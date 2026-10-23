@@ -19,8 +19,7 @@ use Illuminate\Support\Facades\Hash;
 
 class PreventiveRecordService
 {
-    /* store process record */
-    public static function storePreventivePlannerRecord(Request $request)
+    public static function storePreventivePlannerRecord($request)
     {
         DB::beginTransaction();
 
@@ -79,21 +78,31 @@ class PreventiveRecordService
                 'process_data' => $processData,
             ]);
 
-            /* Store grid data */
-            if (
-                $request->has('gridData') &&
-                is_array($request->gridData) &&
-                !empty($request->gridData)
-            ) {
+
+            
+            /* Store grid data and header week dates */
+            if ($request->has('gridData')) {
+
+                $gridData = is_array($request->input('gridData'))
+                    ? $request->input('gridData')
+                    : [];
+
+                $weekDatesData = $request->input('headerWeekDates', []);
+
                 $gridData = array_map(function ($row) {
-                    unset($row['_rowId'], $row['row_id']);
+                    unset(
+                        $row['_rowId'],
+                        $row['row_id'],
+                        $row['headerWeekDates']
+                    );
 
                     return $row;
-                }, $request->gridData);
+                }, $gridData);
 
                 $gridRecord = GridRecord::create([
                     'process_record_id' => $processRecord->id,
                     'grid_data' => $gridData,
+                    'week_dates_data' => $weekDatesData,
                 ]);
 
                 /* Grid audit */
@@ -105,7 +114,8 @@ class PreventiveRecordService
                     null,
                     [
                         'process_record_id' => $gridRecord->process_record_id,
-                        'grid_data' => $gridRecord->grid_data,
+                        'grid_data' => $gridData,
+                        'week_dates_data' => $weekDatesData,
                     ],
                     GridRecord::class
                 );
@@ -343,16 +353,22 @@ class PreventiveRecordService
                 );
             }
 
-            /* grid data */
+            
+            /* Update grid data and header week dates */
             if ($request->has('gridData')) {
-                $gridData = is_array($request->gridData)
-                    ? $request->gridData
+
+                $gridData = is_array($request->input('gridData'))
+                    ? $request->input('gridData')
                     : [];
 
+                $weekDatesData = $request->input('headerWeekDates', []);
+
+                // Keep header-level dates separate from row-level data.
                 $gridData = array_map(function ($row) {
                     unset(
                         $row['_rowId'],
-                        $row['row_id']
+                        $row['row_id'],
+                        $row['headerWeekDates']
                     );
 
                     return $row;
@@ -364,8 +380,13 @@ class PreventiveRecordService
                 )->first();
 
                 if ($gridRecord) {
+
                     $oldGridData = is_array($gridRecord->grid_data)
                         ? $gridRecord->grid_data
+                        : [];
+
+                    $oldWeekDatesData = is_array($gridRecord->week_dates_data)
+                        ? $gridRecord->week_dates_data
                         : [];
 
                     [$gridOldChanges, $gridNewChanges] =
@@ -374,9 +395,12 @@ class PreventiveRecordService
                             $gridData
                         );
 
+                    $weekDatesChanged = $oldWeekDatesData != $weekDatesData;
+
                     if (
                         !empty($gridOldChanges) ||
-                        !empty($gridNewChanges)
+                        !empty($gridNewChanges) ||
+                        $weekDatesChanged
                     ) {
                         UserAuditHelper::log(
                             'Grid Record',
@@ -386,24 +410,37 @@ class PreventiveRecordService
                             [
                                 'process_record_id' => $processRecord->id,
                                 'grid_data' => $gridOldChanges,
+                                'week_dates_data' => $weekDatesChanged
+                                    ? $oldWeekDatesData
+                                    : null,
                             ],
                             [
                                 'process_record_id' => $processRecord->id,
                                 'grid_data' => $gridNewChanges,
+                                'week_dates_data' => $weekDatesChanged
+                                    ? $weekDatesData
+                                    : null,
                             ],
                             GridRecord::class
                         );
                     }
 
-                    if ($oldGridData != $gridData) {
+                    if (
+                        $oldGridData != $gridData ||
+                        $weekDatesChanged
+                    ) {
                         $gridRecord->update([
                             'grid_data' => $gridData,
+                            'week_dates_data' => $weekDatesData,
                         ]);
                     }
-                } elseif (!empty($gridData)) {
+
+                } elseif (!empty($gridData) || !empty($weekDatesData)) {
+
                     $gridRecord = GridRecord::create([
                         'process_record_id' => $processRecord->id,
                         'grid_data' => $gridData,
+                        'week_dates_data' => $weekDatesData,
                     ]);
 
                     UserAuditHelper::log(
@@ -415,6 +452,7 @@ class PreventiveRecordService
                         [
                             'process_record_id' => $processRecord->id,
                             'grid_data' => $gridData,
+                            'week_dates_data' => $weekDatesData,
                         ],
                         GridRecord::class
                     );

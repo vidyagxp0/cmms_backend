@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\FieldInstrumentCalibrationPlanner\FieldInstrumentCalibrationPlanner;
+use App\Services\UserReport\FieldInstrumentPlannerReportService;
 use Illuminate\Http\Request;
 
 class FieldInstrumentPlannerController extends Controller
@@ -63,6 +64,21 @@ class FieldInstrumentPlannerController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update process record stage.',
+            ], 500);
+        }
+    }
+
+    /* calibration single report */
+    public function fieldInstrumentPlannerSingleReport($id) 
+    {
+        try {
+            return FieldInstrumentPlannerReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
             ], 500);
         }
     }

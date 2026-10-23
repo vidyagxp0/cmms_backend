@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Services\User\PreventivePlanner\PreventivePlannerAuditService;
 use App\Services\User\UserAuditService;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,23 @@ class UserAuditController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve equipment master audits.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* preventive planner audit code */
+    public function preventivePlannerAudit(Request $request, $recordId)
+    {
+        try {
+            return PreventivePlannerAuditService::getProcessRecordAudits(
+                $recordId,
+                $request
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
                 'error' => $e->getMessage(),
             ], 500);
         }

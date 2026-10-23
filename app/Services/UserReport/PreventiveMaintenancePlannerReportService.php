@@ -202,141 +202,144 @@ class PreventiveMaintenancePlannerReportService
     private static function preparePlannerGrid($gridRecords)
     {
         $rows = [];
+        $weekDatesData = [];
+        $monthNames = [
+            'Jan' => 'January', 'Feb' => 'February', 'Mar' => 'March',
+            'Apr' => 'April', 'May' => 'May', 'Jun' => 'June',
+            'Jul' => 'July', 'Aug' => 'August', 'Sep' => 'September',
+            'Oct' => 'October', 'Nov' => 'November', 'Dec' => 'December',
+        ];
 
         foreach ($gridRecords as $gridRecord) {
-            $gridData = $gridRecord->grid_data;
+            // Week header dates are stored once in grid_records.week_dates_data.
+            $storedWeekDates = $gridRecord->week_dates_data ?? [];
+            if (is_string($storedWeekDates)) {
+                $storedWeekDates = json_decode($storedWeekDates, true);
+            }
+            if (is_array($storedWeekDates) && !empty($storedWeekDates)) {
+                $weekDatesData = $storedWeekDates;
+            }
 
+            $gridData = $gridRecord->grid_data;
             if (is_string($gridData)) {
                 $gridData = json_decode($gridData, true);
             }
-
             if (!is_array($gridData)) {
                 continue;
             }
 
-            $rawRows = [];
-
-            foreach ($gridData as $row) {
+            foreach ($gridData as $rowIndex => $row) {
                 if (!is_array($row)) {
                     continue;
                 }
 
-                if (
-                    isset($row['equipmentInstrumentName']) ||
-                    isset($row['equipmentInstrumentId']) ||
-                    isset($row['monthlyPreventive'])
-                ) {
-                    $rawRows[] = $row;
-                    continue;
-                }
-
-                $normalizedRow = [];
-
-                foreach ($row as $field) {
-                    if (!is_array($field)) {
-                        continue;
+                // Normalize values such as ['key' => 'location', 'value' => 'IND'].
+                $normalized = [];
+                foreach ($row as $key => $value) {
+                    if (is_array($value) && isset($value['key'])) {
+                        $normalized[$value['key']] = $value;
+                    } else {
+                        $normalized[$key] = $value;
                     }
-
-                    $key = $field['key'] ?? null;
-
-                    if (!$key) {
-                        continue;
-                    }
-
-                    $normalizedRow[$key] = $field;
                 }
 
-                if (!empty($normalizedRow)) {
-                    $rawRows[] = $normalizedRow;
+                $weeklyPreventive = self::getRawGridValue($normalized, 'weeklyPreventive');
+                if (is_string($weeklyPreventive)) {
+                    $decoded = json_decode($weeklyPreventive, true);
+                    $weeklyPreventive = is_array($decoded) ? $decoded : [];
                 }
+                if (!is_array($weeklyPreventive)) {
+                    $weeklyPreventive = [];
+                }
+
+                $rows[] = [
+                    'row_id' => $normalized['row_id'] ?? ($rowIndex + 1),
+                    'equipmentInstrumentName' => self::extractGridSimpleValue(
+                        $normalized['equipmentInstrumentName'] ?? $normalized['equipmentName'] ?? null
+                    ),
+                    'equipmentInstrumentId' => self::extractGridSimpleValue(
+                        $normalized['equipmentInstrumentId'] ?? $normalized['equipmentId'] ?? $normalized['equipmentCode'] ?? null
+                    ),
+                    'location' => self::extractGridSimpleValue($normalized['location'] ?? null),
+                    'remark' => self::extractGridSimpleValue($normalized['remark'] ?? $normalized['remarks'] ?? null),
+                    'weeklyPreventive' => $weeklyPreventive,
+                ];
+            }
+        }
+
+        // Build a month-first schedule so the PDF can mirror the form's month/week/P-A grid.
+        $monthlySchedules = [];
+        foreach ($monthNames as $monthKey => $monthLabel) {
+            $dates = $weekDatesData[$monthKey] ?? $weekDatesData[$monthLabel] ?? [];
+            if (is_string($dates)) {
+                $decoded = json_decode($dates, true);
+                $dates = is_array($decoded) ? $decoded : [];
+            }
+            if (!is_array($dates)) {
+                $dates = [];
             }
 
-            foreach ($rawRows as $rowIndex => $row) {
-                $monthlyPreventive = self::getRawGridValue($row, 'monthlyPreventive');
+            $weeks = [];
+            for ($weekIndex = 0; $weekIndex < 5; $weekIndex++) {
+                $date = $dates[$weekIndex] ?? null;
+                $weeks[] = [
+                    'number' => $weekIndex + 1,
+                    'date' => $date,
+                ];
+            }
 
-                if (is_string($monthlyPreventive)) {
-                    $decoded = json_decode($monthlyPreventive, true);
-                    $monthlyPreventive = is_array($decoded) ? $decoded : [];
+            $monthRows = [];
+            foreach ($rows as $row) {
+                $monthValues = $row['weeklyPreventive'][$monthKey]
+                    ?? $row['weeklyPreventive'][$monthLabel]
+                    ?? [];
+
+                // Some forms may wrap the month map in an additional value property.
+                if (is_array($monthValues) && isset($monthValues['value']) && is_array($monthValues['value'])) {
+                    $monthValues = $monthValues['value'];
                 }
 
-                if (!is_array($monthlyPreventive)) {
-                    $monthlyPreventive = [];
-                }
-
-                $schedule = [];
-
-                foreach ($monthlyPreventive as $month => $monthData) {
-                    if (!is_array($monthData)) {
-                        continue;
+                $values = [];
+                for ($weekIndex = 0; $weekIndex < 5; $weekIndex++) {
+                    $weekValue = $monthValues[$weekIndex] ?? [];
+                    if (is_string($weekValue)) {
+                        $decoded = json_decode($weekValue, true);
+                        $weekValue = is_array($decoded) ? $decoded : [];
+                    }
+                    if (!is_array($weekValue)) {
+                        $weekValue = [];
                     }
 
-                    $plannedDate = $monthData['plannedDate'] ?? $monthData['Planned Date'] ?? null;
-                    $executeDate = $monthData['executeDate'] ?? $monthData['Execute Date'] ?? null;
-
-                    if (empty($plannedDate) && empty($executeDate)) {
-                        continue;
-                    }
-
-                    $schedule[] = [
-                        'month' => $month,
-                        'plannedDate' => $plannedDate,
-                        'executeDate' => $executeDate,
+                    $values[] = [
+                        'planned' => self::extractGridSimpleValue($weekValue['planned'] ?? $weekValue['p'] ?? null),
+                        'actual' => self::extractGridSimpleValue($weekValue['actual'] ?? $weekValue['executed'] ?? $weekValue['a'] ?? null),
                     ];
                 }
 
-                $frequency = self::getRawGridValue($row, 'preventiveFrequency');
-
-                $rows[] = [
-                    'row_id' => $row['row_id'] ?? ($rowIndex + 1),
-                    'equipmentInstrumentName' => $row['equipmentInstrumentName'] ?? $row['equipmentName'] ?? null,
-                    'equipmentInstrumentId' => $row['equipmentInstrumentId']
-                        ?? $row['equipmentId']
-                        ?? $row['equipmentCode']
-                        ?? null,
-                    'block' => $row['block'] ?? null,
-                    'department' => $row['department'] ?? null,
-                    'location' => $row['location'] ?? null,
-                    'preventiveFrequency' => $row['preventiveFrequency'] ?? null,
-                    'preventiveFrequencyStartDate' => $row['preventiveFrequencyStartDate'] ?? null,
-                    'previousPreventiveDate' => $row['previousPreventiveDate'] ?? null,
-                    'nextPreventiveDate' => $row['nextPreventiveDate'] ?? null,
-                    'make' => $row['make'] ?? null,
-                    'model' => $row['model'] ?? null,
-                    'remark' => $row['remark'] ?? null,
-                    'frequencyLabel' => self::getPreventiveFrequencyLabel(
-                        self::extractGridSimpleValue($frequency)
-                    ),
-                    'schedule' => $schedule,
+                $monthRows[] = [
+                    'equipmentInstrumentName' => $row['equipmentInstrumentName'],
+                    'equipmentInstrumentId' => $row['equipmentInstrumentId'],
+                    'location' => $row['location'],
+                    'remark' => $row['remark'],
+                    'weeks' => $values,
                 ];
             }
+
+            $monthlySchedules[] = [
+                'key' => $monthKey,
+                'name' => $monthLabel,
+                'weeks' => $weeks,
+                'rows' => $monthRows,
+            ];
         }
 
         return [
             'name' => 'preventiveMaintenancePlanner',
             'label' => 'Preventive Maintenance Planner',
+            'weekDatesData' => $weekDatesData,
             'rows' => $rows,
+            'monthlySchedules' => $monthlySchedules,
         ];
-    }
-
-    private static function getPreventiveFrequencyLabel(?string $frequency): string
-    {
-        if (!$frequency) {
-            return 'Preventive Maintenance';
-        }
-
-        $normalized = strtolower(trim(str_replace(['-', '_'], ' ', $frequency)));
-
-        $labels = [
-            'monthly' => 'Monthly Preventive Maintenance',
-            'quarterly' => 'Quarterly Preventive Maintenance',
-            'half yearly' => 'Half-Yearly Preventive Maintenance',
-            'halfyearly' => 'Half-Yearly Preventive Maintenance',
-            'yearly' => 'Yearly Preventive Maintenance',
-            'two yearly' => 'Two-Yearly Preventive Maintenance',
-            'twoyearly' => 'Two-Yearly Preventive Maintenance',
-        ];
-
-        return $labels[$normalized] ?? ucwords($frequency) . ' Preventive Maintenance';
     }
 
     private static function extractGridSimpleValue($value): ?string
