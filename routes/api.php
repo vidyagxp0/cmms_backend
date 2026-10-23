@@ -166,5 +166,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::match(['put', 'post'], '/update-field-instrument-planner-record/{id}', [FieldInstrumentPlannerController::class, 'update'])->name('update-field-instrument-planner-record');
         Route::post('/field-instrument-planner-record-stage/{id}', [FieldInstrumentPlannerController::class, 'moveStage'])->name('field-instrument-planner-record-stage');
         Route::get('/field-instrument-planner-singleReport/{id}', [FieldInstrumentPlannerController::class, 'fieldInstrumentPlannerSingleReport'])->name('field-instrument-planner-singleReport');
+        Route::get('/field-instrument-planner-audit-listing/{recordId}', [UserAuditController::class, 'fieldInstrumentPlannerAudit'])->name('field-instrument-planner-audit-listing');
+
     });
 });
