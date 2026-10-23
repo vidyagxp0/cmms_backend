@@ -14,6 +14,8 @@ class RecordActivityHistory extends Model
         'target_stage',
         'comment',
         'performed_at',
+        'instrument_id',
+        'field_instrument_id'
     ];
 
     protected function casts(): array

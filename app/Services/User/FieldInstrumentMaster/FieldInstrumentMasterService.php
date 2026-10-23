@@ -458,6 +458,34 @@ class FieldInstrumentMasterService
             foreach ($audits as $audit) {
                 $old = self::decodeAuditValue($audit->old_value);
                 $new = self::decodeAuditValue($audit->new_value);
+                
+                if (strtolower(trim((string) $audit->action)) === 'activity performed') {
+                    $oldData = is_array($old) ? $old : [];
+                    $newData = is_array($new) ? $new : [];
+
+                    $activityName = $newData['activity']
+                        ?? $oldData['activity']
+                        ?? 'Activity';
+
+                    $oldStage = $oldData['stage'] ?? null;
+                    $newStage = $newData['stage'] ?? null;
+
+                    $rows->push([
+                        'id' => $audit->id . '-activity',
+                        'audit_id' => $audit->id,
+                        'action' => 'Activity performed',
+                        'field' => Str::headline((string) $activityName),
+                        'old_value' => self::formatAuditValue($oldStage),
+                        'new_value' => self::formatAuditValue($newStage),
+                        'remarks' => $audit->description,
+                        'performed_by' => $userNames[$audit->user_id] ?? '-',
+                        'performed_at' => Carbon::parse($audit->created_at)
+                            ->format('d-m-Y H:i:s'),
+                    ]);
+
+                    continue;
+                }
+
 
                 $action = ucfirst(strtolower((string) $audit->action));
                 $user = $userNames[$audit->user_id] ?? '-';
@@ -761,6 +789,17 @@ class FieldInstrumentMasterService
             $processRecord->stage_id = $targetStage->id;
             $processRecord->save();
 
+            /* audit code */
+            $oldValue = [
+                'activity' => $activity->name,
+                'stage' => $currentStage?->name,
+            ];
+
+            $newValue = [
+                'activity' => $activity->name,
+                'stage' => $targetStage?->name,
+            ];
+
             /* record audit trail */
             $description = $request->filled('comment')
                 ? $request->comment
@@ -771,12 +810,8 @@ class FieldInstrumentMasterService
                 'Activity Performed',
                 $description,
                 $processRecord->id,
-                [
-                    'stage' => $currentStage?->name,
-                ],
-                [
-                    'stage' => $targetStage?->name,
-                ],
+                $oldValue,
+                $newValue,
                 FieldInstrumentMaster::class
             );
 

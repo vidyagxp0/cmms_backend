@@ -924,6 +924,16 @@ class CalibrationPlannerService
             $processRecord->stage_id = $targetStage->id;
             $processRecord->save();
 
+            /* audit code */
+            $oldValue = [
+                'activity' => $activity->name,
+                'stage' => $currentStage?->name,
+            ];
+
+            $newValue = [
+                'activity' => $activity->name,
+                'stage' => $targetStage?->name,
+            ];
             $description = $request->filled('comment') ? $request->comment : 'Process record stage updated successfully.';
 
             /* audit: stage change */
@@ -932,8 +942,8 @@ class CalibrationPlannerService
                 'Activity Performed',
                 $description,
                 $processRecord->id,
-                ['stage' => $currentStage?->name],
-                ['stage' => $targetStage?->name],
+                $oldValue,
+                $newValue,
                 ProcessRecord::class
             );
 
