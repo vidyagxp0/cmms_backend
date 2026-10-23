@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Services\User\PreventivePlanner\PreventiveMaintenanceService;
+use App\Services\UserReport\PreventiveMaintenanceReportService;
 use Illuminate\Http\Request;
 use App\Http\Requests\User\RecordActivityRequest;
 
@@ -63,6 +64,21 @@ class PreventiveMaintenanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update process record stage.',
+            ], 500);
+        }
+    }
+
+    /* calibration single report */
+    public function preventiveMaintenanceReport($id) 
+    {
+        try {
+            return PreventiveMaintenanceReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
             ], 500);
         }
     }

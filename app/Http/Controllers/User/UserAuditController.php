@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Services\User\FieldInstrumentCalibrationPlanner\FieldInstrumentPlannerAuditService;
+use App\Services\User\PreventivePlanner\PreventiveMaintenanceAuditService;
 use App\Services\User\PreventivePlanner\PreventivePlannerAuditService;
 use App\Services\User\UserAuditService;
 use Illuminate\Http\Request;
@@ -48,6 +49,23 @@ class UserAuditController extends Controller
     {
         try {
             return PreventivePlannerAuditService::getProcessRecordAudits(
+                $recordId,
+                $request
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* preventive maintenance audit code */
+    public function preventiveMaintenanceAudit(Request $request, $recordId)
+    {
+        try {
+            return PreventiveMaintenanceAuditService::getProcessRecordAudits(
                 $recordId,
                 $request
             );

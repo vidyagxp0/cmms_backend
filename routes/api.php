@@ -119,6 +119,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-preventive-maintenance-record/{id}', [PreventiveMaintenanceController::class, 'show'])->name('show-preventive-maintenance-record');
         Route::put('/update-preventive-maintenance-record/{id}', [PreventiveMaintenanceController::class, 'update'])->name('update-preventive-maintenance-record');
         Route::post('/preventive-maintenance-record-stage/{id}',[PreventiveMaintenanceController::class, 'moveStage'])->name('preventive-maintenance-record-stage');
+        Route::get('/preventive-maintenance-audit-listing/{recordId}', [UserAuditController::class, 'preventiveMaintenanceAudit'])->name('preventive-maintenance-audit-listing');
+        Route::get('/preventive-maintenance-singleReport/{id}',[PreventiveMaintenanceController::class, 'preventiveMaintenanceReport'])->name('preventive-maintenance-singleReport');
 
         /* process records routes */
         Route::get('/equipment-master-records', [ProcessRecordController::class, 'equipmentMaster'])->name('equipment-master-records');
