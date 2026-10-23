@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('record_activity_histories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('process_record_id')->constrained('process_records')->cascadeOnDelete();
+            $table->foreignId('process_record_id')->nullable()->constrained('process_records')->cascadeOnDelete();
             $table->foreignId('activity_id')->constrained('activities')->restrictOnDelete();
             $table->foreignId('performed_by')->constrained('users')->restrictOnDelete();
             $table->foreignId('stage_id')->constrained('stages')->restrictOnDelete();

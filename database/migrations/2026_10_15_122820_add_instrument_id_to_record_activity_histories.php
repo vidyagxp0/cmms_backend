@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('record_activity_histories', function (Blueprint $table) {
-            $table->foreignId('instrument_id')->constrained('instrument_masters')->onDelete('cascade');
-            $table->foreignId('field_instrument_id')->constrained('field_instrument_masters')->onDelete('cascade');
+            $table->foreignId('instrument_id')->nullable()->constrained('instrument_masters')->onDelete('cascade');
+            $table->foreignId('field_instrument_id')->nullable()->constrained('field_instrument_masters')->onDelete('cascade');
         });
     }
 
