@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\User\AddendumFieldInstrumentController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -24,6 +23,7 @@ use App\Http\Controllers\User\RecordActivityController;
 use App\Http\Controllers\User\PreventiveMaintenanceController;
 use App\Http\Controllers\User\FieldInstrumentMasterController;
 use App\Http\Controllers\User\FieldInstrumentPlannerController;
+use App\Http\Controllers\User\AddendumFieldInstrumentController;
 
 /* common routes for user/admin */
 Route::post('/login', [AuthController::class, 'login'])->name('login');
