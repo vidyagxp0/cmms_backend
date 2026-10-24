@@ -280,6 +280,52 @@ class ActivitySeeder extends Seeder
             ]
         );
 
+        
+        /* Field Instrument Calibration Addendum */
+        $this->createActivities(
+            'Field Instrument Calibration Addendum',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Reviewed By User Department',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Reviewed By User Department',
+                    'to' => 'Pending QA Approval',
+                    'name' => 'User Department Review Complete',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Reviewed By User Department',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Reviewed By User Department',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
+
+
     }
 
     /* Create Activities */

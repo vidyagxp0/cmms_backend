@@ -56,6 +56,11 @@ class ProcessRecordService
         return self::getAllRecordsByProcessName($request, 'Field Instrument Planner');
     }
 
+    public static function getAddendumFieldInstrumentRecords(Request $request)
+    {
+        return self::getRecordsByProcessName($request, 'Field Instrument Calibration Addendum');
+    }
+
     /* fetch non-paginated records for a process, with search + date range filters */
     private static function getAllRecordsByProcessName(Request $request, string $processName)
     {

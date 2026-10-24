@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\User\AddendumFieldInstrumentController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -160,7 +161,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/filter-equipment-masters',[EquipmentMasterController::class, 'getFilteredEquipments'])->name('filter-equipment-masters');
         Route::get('/equipment-master-audit-listing/{recordId}', [UserAuditController::class, 'getEquipmentMasterAudit'])->name('equipment-master-audit-listing');
 
-         /* field instrument planner routes */
+        /* field instrument planner routes */
         Route::get('/get-field-instrument-planner-records', [ProcessRecordController::class, 'getFieldInstrumentPlannerRecords'])->name('get-field-instrument-planner-records');
         Route::get('/get-all-field-instrument-planner-records', [ProcessRecordController::class, 'getAllFieldInstrumentPlannerRecords'])->name('get-all-field-instrument-planner-records');
         Route::post('/store-field-instrument-planner-record', [FieldInstrumentPlannerController::class, 'store'])->name('store-field-instrument-planner-record');
@@ -169,6 +170,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/field-instrument-planner-record-stage/{id}', [FieldInstrumentPlannerController::class, 'moveStage'])->name('field-instrument-planner-record-stage');
         Route::get('/field-instrument-planner-singleReport/{id}', [FieldInstrumentPlannerController::class, 'fieldInstrumentPlannerSingleReport'])->name('field-instrument-planner-singleReport');
         Route::get('/field-instrument-planner-audit-listing/{recordId}', [UserAuditController::class, 'fieldInstrumentPlannerAudit'])->name('field-instrument-planner-audit-listing');
+
+        /* Addendum to Field Instrument Calibration routes */
+        Route::get('/addendum-field-instrument-planner-records', [ProcessRecordController::class, 'getAddendumFieldInstrumentRecords'])->name('get-addendum-field-instrument-planner-records');
+        Route::post('/store-addendum-field-instrument-planner-record', [AddendumFieldInstrumentController::class, 'store'])->name('store-addendum-field-instrument-planner-record');
+        Route::get('/show-addendum-field-instrument-planner-record/{id}', [AddendumFieldInstrumentController::class, 'show'])->name('show-addendum-field-instrument-planner-record');
+        Route::match(['put', 'post'], '/update-addendum-field-instrument-planner-record/{id}', [AddendumFieldInstrumentController::class, 'update'])->name('update-addendum-field-instrument-planner-record');
+        Route::post('/addendum-field-instrument-planner-moveStage/{id}', [AddendumFieldInstrumentController::class, 'moveStage'])->name('field-addendum-instrument-planner-record-stage');
 
     });
 });

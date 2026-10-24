@@ -70,6 +70,14 @@ class StageSeeder extends Seeder
                 'Pending QA Approval',
                 'Closed - Done',
                 'Close - Cancelled',
+            ],
+            'Field Instrument Calibration Addendum' => [
+                'Opened',
+                'Reviewed By HOD/Designee (Engineering)',
+                'Reviewed By User Department',
+                'Pending QA Approval',
+                'Closed - Done',
+                'Close - Cancelled',
             ]
         ];
 

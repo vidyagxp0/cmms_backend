@@ -81,6 +81,19 @@ class ProcessRecordController extends Controller
             ], 500);
         }
     }
+
+    /* Addendum Field Instrument Planner Record */
+    public function getAddendumFieldInstrumentRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getAddendumFieldInstrumentRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
     
         /* generate record number for a process */
     public function generateRecordNumber($processId)
@@ -110,7 +123,7 @@ class ProcessRecordController extends Controller
         }
     }
 
-    /* user permission */
+    /* upload attachment */
     public function uploadAttachments(Request $request, $recordId) 
     {
         try {
