@@ -197,7 +197,7 @@ class AddendumFieldInstrumentReportService
             ];
 
             /* generate PDF */
-            $pdf = Pdf::loadView('Reports.User.FieldInstrumentPlannerReport', $data);
+            $pdf = Pdf::loadView('Reports.User.AddendumFieldInstrumentPlannerReport', $data);
             $pdf->setPaper('a4', 'portrait');
 
             return $pdf->stream('process-record-' . $record->id . '.pdf');
