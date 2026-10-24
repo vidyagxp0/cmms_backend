@@ -94,4 +94,20 @@ class UserAuditController extends Controller
             ], 500);
         }
     }
+
+    /* calibration audit report code */
+    public function calibrationPlannerAuditReport(Request $request, $id)
+    {
+        try {
+            return UserAuditService::generateProcessRecordAuditReport(
+                $id,
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

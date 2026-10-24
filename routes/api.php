@@ -97,6 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-calibration-planner-record/{id}', [CalibrationPlannerController::class, 'update'])->name('update-calibration-planner-record');
         Route::get('/calibration-planner-singleReport/{id}', [CalibrationPlannerController::class, 'calibrationSingleReport'])->name('calibration-planner-singleReport');
         Route::get('/calibration-audit-listing/{recordId}', [UserAuditController::class, 'index'])->name('calibration-audit-listing');
+        Route::get('/calibration-audit-report/{id}', [UserAuditController::class, 'calibrationPlannerAuditReport'])->name('calibration-audit-report');
 
         /* calibration management routes */
         Route::post('/store-calibration-management-record', [CalibrationManagementController::class, 'store'])->name('store-calibration-management-record');
