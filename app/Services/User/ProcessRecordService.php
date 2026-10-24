@@ -190,6 +190,12 @@ class ProcessRecordService
                     'Reviewed By User Department' => 'User Department Role',
                     'Pending QA Approval' => 'QA Approver',
                 ],
+                8 => [ // Addendum Field Instrument Planner
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Reviewed By User Department' => 'User Department Role',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
             ];
 
             $stageName = $record->stage?->name;
