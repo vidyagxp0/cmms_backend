@@ -177,6 +177,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-addendum-field-instrument-planner-record/{id}', [AddendumFieldInstrumentController::class, 'show'])->name('show-addendum-field-instrument-planner-record');
         Route::match(['put', 'post'], '/update-addendum-field-instrument-planner-record/{id}', [AddendumFieldInstrumentController::class, 'update'])->name('update-addendum-field-instrument-planner-record');
         Route::post('/addendum-field-instrument-planner-moveStage/{id}', [AddendumFieldInstrumentController::class, 'moveStage'])->name('field-addendum-instrument-planner-record-stage');
+        Route::get('/addendum-field-instrument-planner-audit/{id}', [AddendumFieldInstrumentController::class, 'addendumFieldInstrumentAudit'])->name('field-addendum-instrument-planner-audit');
+        Route::get('/addendum-field-instrument-planner-singleReport/{id}', [AddendumFieldInstrumentController::class, 'addendumFieldInstrumentSingleReport'])->name('field-addendum-instrument-planner-singleReport');
 
     });
 });

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Services\User\AddendumFieldInstrument\AddendumFieldInstrumentAuditService;
 use App\Services\User\AddendumFieldInstrument\AddendumFieldInstrumentService;
+use App\Services\UserReport\AddendumFieldInstrumentReportService;
 use Illuminate\Http\Request;
 use App\Http\Requests\User\RecordActivityRequest;
 
@@ -67,18 +69,35 @@ class AddendumFieldInstrumentController extends Controller
         }
     }
 
-    /* calibration single report */
-    // public function calibrationSingleReport($id) 
-    // {
-    //     try {
-    //         return CalibrationReportService::generateReport(
-    //             $id
-    //         );
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to load report.',
-    //         ], 500);
-    //     }
-    // }
+    /* get Addendum Field Instrument audit data */
+    public function addendumFieldInstrumentAudit(Request $request, $id)
+    {
+        try {
+            return AddendumFieldInstrumentAuditService::getProcessRecordAudits(
+                $id,
+                $request
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* Addendum Field Instrument single report */
+    public function addendumFieldInstrumentSingleReport($id) 
+    {
+        try {
+            return AddendumFieldInstrumentReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
 }
