@@ -191,5 +191,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/spare-instruments/audit-trail/{id}', [SpareInstrumentMasterController::class, 'getSpareInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/spare-instrument-record-stage/{id}',[SpareInstrumentMasterController::class, 'moveStage'])->name('spare-instrument-record-stage');
         Route::post('/spare-instrument-record-permission/{id}',[SpareInstrumentMasterController::class, 'checkSpareInstrumentRecordPermission'])->name('spare-instrument-record-permission');
+        Route::get('/spare-instrument-singleReport/{id}',[SpareInstrumentMasterController::class, 'SpareInstrumentSingleReport'])->name('spare-instrument-singleReport');
     });
 });

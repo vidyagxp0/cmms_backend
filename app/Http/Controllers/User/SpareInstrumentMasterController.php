@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\SpareInstrumentMaster\SpareInstrumentMasterService;
+use App\Services\UserReport\SpareInstrumentMasterReportService;
 use Illuminate\Http\Request;
 
 class SpareInstrumentMasterController extends Controller
@@ -121,18 +122,18 @@ class SpareInstrumentMasterController extends Controller
         }
     }
 
-    /* instrument single report */
-    // public function SpareInstrumentSingleReport($id) 
-    // {
-    //     try {
-    //         return SpareInstrumentReportService::generateSpareInstrumentReport(
-    //             $id
-    //         );
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to load report.',
-    //         ], 500);
-    //     }
-    // }
+    /* Spare instrument single report */
+    public function SpareInstrumentSingleReport($id) 
+    {
+        try {
+            return SpareInstrumentMasterReportService::generateSpareInstrumentMasterReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
 }
