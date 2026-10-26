@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\User\SpareInstrumentMasterController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -181,5 +182,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/addendum-field-instrument-planner-audit/{id}', [AddendumFieldInstrumentController::class, 'addendumFieldInstrumentAudit'])->name('field-addendum-instrument-planner-audit');
         Route::get('/addendum-field-instrument-planner-singleReport/{id}', [AddendumFieldInstrumentController::class, 'addendumFieldInstrumentSingleReport'])->name('field-addendum-instrument-planner-singleReport');
 
+        /* Spare Instrument Master Service routes */
+        Route::get('/all-spare-instrument-masters', [SpareInstrumentMasterController::class, 'getAllSpareInstrument'])->name('all-spare-instrument-masters');
+        Route::get('/spare-instrument-master-listing',[SpareInstrumentMasterController::class, 'index'])->name('spare-instrument-master-listing');
+        Route::post('/store-spare-instrument-master',[SpareInstrumentMasterController::class, 'store'])->name('store-spare-instrument-master');
+        Route::get('/spare-instrument-master-detail/{id}',[SpareInstrumentMasterController::class, 'show'])->name('spare-instrument-master-detail');
+        Route::put('/update-master-spare-instrument/{id}',[SpareInstrumentMasterController::class, 'update'])->name('update-master-spare-instrument');
+        Route::get('/spare-instruments/audit-trail/{id}', [SpareInstrumentMasterController::class, 'getSpareInstrumentAuditTrail'])->name('instrument.audit.details');
+        Route::post('/spare-instrument-record-stage/{id}',[SpareInstrumentMasterController::class, 'moveStage'])->name('spare-instrument-record-stage');
+        Route::post('/spare-instrument-record-permission/{id}',[SpareInstrumentMasterController::class, 'checkSpareInstrumentRecordPermission'])->name('spare-instrument-record-permission');
     });
 });

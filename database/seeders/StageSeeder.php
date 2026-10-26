@@ -63,6 +63,7 @@ class StageSeeder extends Seeder
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
+            
             'Field Instrument Planner' => [
                 'Opened',
                 'Reviewed By HOD/Designee (Engineering)',
@@ -71,6 +72,7 @@ class StageSeeder extends Seeder
                 'Closed - Done',
                 'Close - Cancelled',
             ],
+
             'Field Instrument Calibration Addendum' => [
                 'Opened',
                 'Reviewed By HOD/Designee (Engineering)',
@@ -78,7 +80,15 @@ class StageSeeder extends Seeder
                 'Pending QA Approval',
                 'Closed - Done',
                 'Close - Cancelled',
-            ]
+            ],
+
+            'Spare Instrument Master' => [
+                'Opened',
+                'HOD Review',
+                'QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
         ];
 
         foreach ($stageData as $processName => $stages) {
