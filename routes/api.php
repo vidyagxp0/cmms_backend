@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ExcelImport\ExcelImportController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -192,5 +193,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/spare-instrument-record-stage/{id}',[SpareInstrumentMasterController::class, 'moveStage'])->name('spare-instrument-record-stage');
         Route::post('/spare-instrument-record-permission/{id}',[SpareInstrumentMasterController::class, 'checkSpareInstrumentRecordPermission'])->name('spare-instrument-record-permission');
         Route::get('/spare-instrument-singleReport/{id}',[SpareInstrumentMasterController::class, 'SpareInstrumentSingleReport'])->name('spare-instrument-singleReport');
+
+        /* excel import api */
+        Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');
+        Route::get('/import-excel/{importId}', [ExcelImportController::class, 'status'])->whereNumber('importId');
     });
 });
