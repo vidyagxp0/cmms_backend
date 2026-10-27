@@ -3,6 +3,7 @@
 namespace App\Services\User\CalibrationPlanner;
 
 use App\Helpers\ResponseHelper;
+use App\Services\User\StageValidation\StageValidationService;
 use App\Services\User\ProcessRecordService;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
@@ -902,6 +903,19 @@ class CalibrationPlannerService
 
             $currentStage = $processRecord->stage;
             $targetStage = $activity->toStage;
+
+            /* validate required fields before moving stage */
+            $validationError = StageValidationService::validateActivity(
+                $processRecord,
+                (int) $activity->id
+            );
+
+            if ($validationError !== null) {
+                DB::rollBack();
+
+                return ResponseHelper::error($validationError, 422);
+            }
+
             $user = User::find($request->user_id);
 
             /* re-verify the acting user's credentials before moving stage */
