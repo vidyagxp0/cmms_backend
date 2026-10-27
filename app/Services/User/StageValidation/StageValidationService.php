@@ -109,105 +109,95 @@ class StageValidationService
     ];
 
     public static function validateActivity(
-    ProcessRecord $processRecord,
-    int $activityId
-): ?string {
-    $processId = (int) $processRecord->process_id;
+        ProcessRecord $processRecord,
+        int $activityId
+    ): ?string {
+        $processId = (int) $processRecord->process_id;
 
-    \Log::info('Validating process activity', [
-        'process_record_id' => $processRecord->id,
-        'process_id' => $processId,
-        'activity_id' => $activityId,
-    ]);
+        $rules = self::RULES[$processId][$activityId] ?? null;
 
-    $rules = self::RULES[$processId][$activityId] ?? null;
+        if ($rules === null) {
 
-    if ($rules === null) {
-        \Log::warning('No stage validation rules configured', [
-            'process_id' => $processId,
-            'activity_id' => $activityId,
-        ]);
-
-        return null;
-    }
-
-    $processData = self::normalize($processRecord->process_data);
-
-    foreach ($rules['process_fields'] ?? [] as $key => $label) {
-        if (!self::hasProcessValue($processData, $key)) {
-            \Log::warning('Stage validation failed', [
-                'process_id' => $processId,
-                'activity_id' => $activityId,
-                'missing_field' => $key,
-            ]);
-
-            return "Please enter {$label} before proceeding.";
-        }
-    }
-
-    if (!empty($rules['grid_fields'])) {
-        $gridRecords = GridRecord::where(
-            'process_record_id',
-            $processRecord->id
-        )->get();
-
-        if ($gridRecords->isEmpty()) {
-            return 'Please add at least one grid record before proceeding.';
+            return null;
         }
 
-        foreach ($gridRecords as $index => $gridRecord) {
-            $gridData = self::normalize($gridRecord->grid_data);
+        $processData = self::normalize($processRecord->process_data);
 
-            foreach ($rules['grid_fields'] as $key => $label) {
-                if (!self::hasGridValue($gridData, $key)) {
-                    return "{$label} is required in grid row " . ($index + 1) . '.';
-                }
+        foreach ($rules['process_fields'] ?? [] as $key => $label) {
+            if (!self::hasProcessValue($processData, $key)) {
+                \Log::warning('Stage validation failed', [
+                    'process_id' => $processId,
+                    'activity_id' => $activityId,
+                    'missing_field' => $key,
+                ]);
+
+                return "Please enter {$label} before proceeding.";
+            }
+        }
+
+        if (!empty($rules['grid_fields'])) {
+            $gridRecords = GridRecord::where(
+                'process_record_id',
+                $processRecord->id
+            )->get();
+
+            if ($gridRecords->isEmpty()) {
+                return 'Please add at least one grid record before proceeding.';
             }
 
-            if (!empty($rules['week_dates_required'])) {
-                $weekDates = self::normalize($gridRecord->week_dates_data);
+            foreach ($gridRecords as $index => $gridRecord) {
+                $gridData = self::normalize($gridRecord->grid_data);
 
-                if (empty($weekDates)) {
-                    return 'Weekly preventive dates are required in grid row ' . ($index + 1) . '.';
+                foreach ($rules['grid_fields'] as $key => $label) {
+                    if (!self::hasGridValue($gridData, $key)) {
+                        return "{$label} is required in grid row " . ($index + 1) . '.';
+                    }
                 }
 
-                $weeklyPreventive = self::getGridFieldValue(
-                    $gridData,
-                    'weeklyPreventive'
-                );
+                if (!empty($rules['week_dates_required'])) {
+                    $weekDates = self::normalize($gridRecord->week_dates_data);
 
-                foreach ([
-                    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-                ] as $month) {
-                    if (
-                        !isset($weekDates[$month]) ||
-                        !is_array($weekDates[$month])
-                    ) {
-                        return "Weekly preventive dates for {$month} are missing in grid row " . ($index + 1) . '.';
+                    if (empty($weekDates)) {
+                        return 'Weekly preventive dates are required in grid row ' . ($index + 1) . '.';
                     }
 
-                    $monthlyPlanned = is_array($weeklyPreventive)
-                        ? ($weeklyPreventive[$month] ?? [])
-                        : [];
+                    $weeklyPreventive = self::getGridFieldValue(
+                        $gridData,
+                        'weeklyPreventive'
+                    );
 
-                    foreach ($weekDates[$month] as $weekIndex => $date) {
-                        $planned = $monthlyPlanned[$weekIndex]['planned'] ?? null;
-
+                    foreach ([
+                        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+                    ] as $month) {
                         if (
-                            self::hasValue($planned) &&
-                            !self::hasValue($date)
+                            !isset($weekDates[$month]) ||
+                            !is_array($weekDates[$month])
                         ) {
-                            return "A weekly preventive date is missing for {$month}, grid row " . ($index + 1) . '.';
+                            return "Weekly preventive dates for {$month} are missing in grid row " . ($index + 1) . '.';
+                        }
+
+                        $monthlyPlanned = is_array($weeklyPreventive)
+                            ? ($weeklyPreventive[$month] ?? [])
+                            : [];
+
+                        foreach ($weekDates[$month] as $weekIndex => $date) {
+                            $planned = $monthlyPlanned[$weekIndex]['planned'] ?? null;
+
+                            if (
+                                self::hasValue($planned) &&
+                                !self::hasValue($date)
+                            ) {
+                                return "A weekly preventive date is missing for {$month}, grid row " . ($index + 1) . '.';
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
-    return null;
-}
+        return null;
+    }
 
     private static function hasProcessValue(
         array $data,

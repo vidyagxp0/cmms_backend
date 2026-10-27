@@ -239,7 +239,7 @@ class EquipmentMasterService
         }
     }
 
-    /* get Instrument Master checklist by frequency */
+    /* Get Instrument Master checklist by frequency */
     public static function getChecklistByFrequency($equipmentId, $frequency)
     {
         try {
@@ -253,16 +253,16 @@ class EquipmentMasterService
             }
 
             $allowedFrequencies = [
-                'quarterly' => ['quarterly'],
-                'half-yearly' => ['quarterly', 'half yearly'],
-                'yearly' => ['quarterly', 'half yearly', 'yearly'],
+                'Q' => ['quarterly'],
+                'H' => ['quarterly', 'half yearly'],
+                'Y' => ['quarterly', 'half yearly', 'yearly'],
             ];
 
-            $selectedFrequency = strtolower(trim($frequency));
+            $selectedFrequency = strtoupper(trim((string) $frequency));
 
             if (!isset($allowedFrequencies[$selectedFrequency])) {
                 return ResponseHelper::error(
-                    'Invalid frequency. Allowed values are Quarterly, Half Yearly and Yearly.',
+                    'Invalid frequency. Allowed values are Q, H and Y.',
                     422
                 );
             }
@@ -309,7 +309,7 @@ class EquipmentMasterService
                 500
             );
         }
-    }   
+    }
 
     /* Fields that should never appear in the audit table */
     private const AUDIT_HIDDEN_FIELDS = [
