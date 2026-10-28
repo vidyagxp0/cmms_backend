@@ -42,45 +42,42 @@ class SpareInstrumentMasterService
         ];
     }
 
-    /* field instrument listing */
+    /* spare instrument listing */
     public static function getSpareInstruments(Request $request)
     {
         try {
+            $categoryMap = [
+                'critical'     => 'C',
+                'non critical' => 'NC',
+                'indicative'   => 'I',
+                'c'            => 'C',
+                'nc'           => 'NC',
+                'i'            => 'I',
+            ];
+
+            $categoryKey = strtolower(str_replace(['-', '_'], ' ', trim((string) $request->category)));
+            $category = $categoryMap[$categoryKey] ?? null;
+
             $equipments = SpareInstrumentMaster::query()
                 ->when($request->search, function ($query) use ($request) {
                     $search = $request->search;
 
                     $query->where(function ($query) use ($search) {
-                        $query->where(
-                            'instrument_name',
-                            'like',
-                            "%{$search}%"
-                        )
-                            ->orWhere(
-                                'instrument_id_no',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->orWhere(
-                                'make',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->orWhere(
-                                'sr_no_model_no',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->orWhere(
-                                'location',
-                                'like',
-                                "%{$search}%"
-                            );
+                        $query->where('instrument_name', 'like', "%{$search}%")
+                            ->orWhere('instrument_id_no', 'like', "%{$search}%")
+                            ->orWhere('make', 'like', "%{$search}%")
+                            ->orWhere('sr_no_model_no', 'like', "%{$search}%")
+                            ->orWhere('location', 'like', "%{$search}%");
                     });
                 })
-                ->when($request->category, function ($query) use ($request) {
-                    $query->where('category', $request->category);
-                })                
+                ->when($category, function ($query) use ($category) {
+                    $query->where('category', $category);
+                })
+                ->when($request->status, function ($query) use ($request) {
+                    $query->whereHas('stage', function ($q) use ($request) {
+                        $q->where('name', $request->status);
+                    });
+                })
                 ->with('stage', 'process', 'initiator')
                 ->orderByDesc('id')
                 ->paginate($request->per_page ?? 10);

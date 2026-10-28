@@ -48,8 +48,19 @@ class EquipmentMasterService
     public static function getEquipments(EquipmentMasterRequest $request)
     {
         try {
-            $equipments = InstrumentMaster::query()
+            $categoryMap = [
+                'critical'     => 'C',
+                'non critical' => 'NC',
+                'indicative'   => 'I',
+                'c'            => 'C',
+                'nc'           => 'NC',
+                'i'            => 'I',
+            ];
 
+            $categoryKey = strtolower(str_replace(['-', '_'], ' ', trim((string) $request->category)));
+            $category = $categoryMap[$categoryKey] ?? null;
+
+            $equipments = InstrumentMaster::query()
                 ->when($request->search, function ($query) use ($request) {
                     $search = $request->search;
 
@@ -62,9 +73,13 @@ class EquipmentMasterService
                             ->orWhere('location', 'like', "%{$search}%");
                     });
                 })
-
-                ->when($request->category, function ($query) use ($request) {
-                    $query->where('category', $request->category);
+                ->when($category, function ($query) use ($category) {
+                    $query->where('category', $category);
+                })
+                ->when($request->status, function ($query) use ($request) {
+                    $query->whereHas('stage', function ($q) use ($request) {
+                        $q->where('name', $request->status);
+                    });
                 })
                 ->with('stage', 'process', 'initiator')
                 ->orderBy('id', 'desc')
