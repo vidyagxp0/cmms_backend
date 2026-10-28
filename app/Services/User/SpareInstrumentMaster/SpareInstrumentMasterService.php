@@ -242,7 +242,14 @@ class SpareInstrumentMasterService
     public static function getAllSpareInstrument()
     {
         try {
-            $equipments = SpareInstrumentMaster::orderBy('id', 'asc')->get();
+            $equipments = SpareInstrumentMaster::where(function ($query) {
+                    $query->where('is_imported', true)
+                        ->orWhereHas('stage', function ($q) {
+                            $q->where('name', 'Closed - Done');
+                        });
+                })
+                ->orderBy('id', 'asc')
+                ->get();
 
             return ResponseHelper::success(
                 $equipments,

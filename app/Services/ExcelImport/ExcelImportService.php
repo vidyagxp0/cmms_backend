@@ -8,6 +8,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
 use Throwable;
+use Illuminate\Support\Facades\Storage;
 
 class ExcelImportService
 {
@@ -33,11 +34,17 @@ class ExcelImportService
         $lastDataRow = $firstDataRow + (int) $import->total_rows - 1;
         $endRow = min($startRow + $chunkSize - 1, $lastDataRow);
 
-        $path = storage_path('app/' . ltrim($import->file_path, '/'));
+        $disk = Storage::disk('local');
+        $relativePath = $import->file_path;
 
-        if (!is_file($path)) {
-            throw new RuntimeException('The stored Excel file could not be found.');
+        if (!$relativePath || !$disk->exists($relativePath)) {
+            throw new RuntimeException(
+                'The stored Excel file could not be found. Path: ' .
+                ($relativePath ?? 'NULL')
+            );
         }
+
+        $path = $disk->path($relativePath);
 
         $table = config('cmms-import.tables.' . $import->category);
         $processId = config('cmms-import.process_ids.' . $import->category);
@@ -129,6 +136,7 @@ class ExcelImportService
                 $mapped['stage_id'] = null;
                 $mapped['process_id'] = (int) $processId;
                 $mapped['initiator_id'] = (int) $import->created_by;
+                $mapped['is_imported'] = true;
 
                 if ($table === 'instrument_masters') {
                     $mapped['checklist_config'] = null;

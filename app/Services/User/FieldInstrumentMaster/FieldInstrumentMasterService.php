@@ -250,8 +250,11 @@ class FieldInstrumentMasterService
     public static function getAllEquipments()
     {
         try {
-            $equipments = FieldInstrumentMaster::whereHas('stage', function ($query) {
-                    $query->where('name', 'Closed - Done');
+            $equipments = FieldInstrumentMaster::where(function ($query) {
+                    $query->where('is_imported', true)
+                        ->orWhereHas('stage', function ($q) {
+                            $q->where('name', 'Closed - Done');
+                        });
                 })
                 ->orderBy('id', 'asc')
                 ->get();

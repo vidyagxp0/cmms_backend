@@ -221,8 +221,11 @@ class EquipmentMasterService
     public static function getAllEquipments()
     {
         try {
-            $equipments = InstrumentMaster::whereHas('stage', function ($query) {
-                    $query->where('name', 'Closed - Done');
+            $equipments = InstrumentMaster::where(function ($query) {
+                    $query->where('is_imported', true)
+                        ->orWhereHas('stage', function ($q) {
+                            $q->where('name', 'Closed - Done');
+                        });
                 })
                 ->orderBy('id', 'asc')
                 ->get();

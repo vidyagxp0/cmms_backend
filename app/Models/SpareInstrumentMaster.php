@@ -25,7 +25,8 @@ class SpareInstrumentMaster extends Model
         'hod_review_attachment',
         'qa_review_attachment',
         'qa_review_comments',
-        'initiator_id'
+        'initiator_id',
+        'is_imported'
     ];
 
     protected $casts = [
