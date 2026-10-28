@@ -61,7 +61,7 @@ class ProcessRecordService
         return self::getRecordsByProcessName($request, 'Field Instrument Calibration Addendum');
     }
 
-    /* fetch non-paginated records for a process, with search + date range filters */
+    /* fetch non-paginated records for a process, with search + status + date range filters */
     private static function getAllRecordsByProcessName(Request $request, string $processName)
     {
         try {
@@ -76,6 +76,12 @@ class ProcessRecordService
                             ->orWhereHas('initiator', fn($q) => $q->where('name', 'like', "%{$search}%"))
                             ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"));
                     });
+                })                
+                ->when($request->process, function ($query) use ($request) {
+                    $query->whereHas('process', fn($q) => $q->where('name', $request->process));
+                })
+                ->when($request->status, function ($query) use ($request) {
+                    $query->whereHas('stage', fn($q) => $q->where('name', $request->status));
                 })
                 ->when($request->from_date, fn($query) => $query->whereDate('initiation_date', '>=', $request->from_date))
                 ->when($request->to_date, fn($query) => $query->whereDate('initiation_date', '<=', $request->to_date))
@@ -88,7 +94,7 @@ class ProcessRecordService
         }
     }
 
-    /* fetch paginated records for a process, with search + date range filters */
+    /* fetch paginated records for a process, with search + status + date range filters */
     private static function getRecordsByProcessName(Request $request, string $processName)
     {
         try {
@@ -104,6 +110,12 @@ class ProcessRecordService
                             ->orWhereHas('initiator', fn($q) => $q->where('name', 'like', "%{$search}%"))
                             ->orWhereHas('department', fn($q) => $q->where('name', 'like', "%{$search}%"));
                     });
+                })
+                ->when($request->process, function ($query) use ($request) {
+                    $query->whereHas('process', fn($q) => $q->where('name', $request->process));
+                })
+                ->when($request->status, function ($query) use ($request) {
+                    $query->whereHas('stage', fn($q) => $q->where('name', $request->status));
                 })
                 ->when($request->from_date, fn($query) => $query->whereDate('initiation_date', '>=', $request->from_date))
                 ->when($request->to_date, fn($query) => $query->whereDate('initiation_date', '<=', $request->to_date))
