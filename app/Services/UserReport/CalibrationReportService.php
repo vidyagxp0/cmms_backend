@@ -9,30 +9,40 @@ use Carbon\Carbon;
 
 class CalibrationReportService
 {
-    /* generate calibration report */
     public static function generateReport($id)
     {
         try {
-            $record = ProcessRecord::with(['process', 'stage', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
+            $record = ProcessRecord::with([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+                'gridRecords'
+            ])->findOrFail($id);
 
-            /* process data */
             $processData = $record->process_data;
+
             if (is_string($processData)) {
                 $processData = json_decode($processData, true);
             }
+
             if (!is_array($processData)) {
                 $processData = [];
             }
 
             $processFields = [];
+
             foreach ($processData as $field) {
                 if (!is_array($field)) {
                     continue;
                 }
+
                 $key = $field['key'] ?? null;
+
                 if (!$key) {
                     continue;
                 }
+
                 $processFields[$key] = [
                     'key' => $key,
                     'label' => $field['label'] ?? self::formatFieldLabel($key),
@@ -40,67 +50,133 @@ class CalibrationReportService
                 ];
             }
 
-            /* get record attachments */
             $recordAttachments = $record->attachments;
+
             if (is_string($recordAttachments)) {
-                $decoded = json_decode($recordAttachments, true);
-                $recordAttachments = is_array($decoded) ? $decoded : [];
+                $recordAttachments = json_decode($recordAttachments, true);
             }
+
             if (!is_array($recordAttachments)) {
                 $recordAttachments = [];
             }
 
-            /* map record attachments to process fields */
             foreach ($processFields as $key => &$field) {
                 if ($key === 'attachment' || str_contains($key, 'attachment')) {
-                    $field['value'] = self::getAttachmentsByField($recordAttachments, $key);
+                    $field['value'] = self::getAttachmentsByField(
+                        $recordAttachments,
+                        $key
+                    );
                 }
             }
+
             unset($field);
 
-            $recordNumber = self::getProcessFieldValue($processFields, 'recordNumber');
-            $siteLocationCode = self::getProcessFieldValue($processFields, 'siteLocationCode');
+            $recordNumber = self::getProcessFieldValue(
+                $processFields,
+                'recordNumber'
+            );
 
-            $calibrationFields = self::getFieldsByKeys($processFields, [
-                'year', 'block', 'area', 'comment', 'attachment',
-            ]);
+            $documentNumber = self::getProcessFieldValue(
+                $processFields,
+                'documentNumber'
+            );
 
-            $hodReviewFields = self::getFieldsByKeys($processFields, [
-                'hod_review_comments', 'hod_review_attachment',
-            ]);
+            $documentType = self::getProcessFieldValue(
+                $processFields,
+                'documentType'
+            );
 
-            $qaReviewFields = self::getFieldsByKeys($processFields, [
-                'user_dept_review_comments', 'user_dept_review_attachment',
-            ]);
+            $siteLocationCode = self::getProcessFieldValue(
+                $processFields,
+                'siteLocationCode'
+            );
 
-            $qaApprovalFields = self::getFieldsByKeys($processFields, [
-                'qa_review_comments', 'qa_review_attachment',
-            ]);
+            $calibrationFields = self::getFieldsByKeys(
+                $processFields,
+                [
+                    'year',
+                    'block',
+                    'area',
+                    'comment',
+                    'attachment',
+                ]
+            );
 
-            $tabs = [];
+            $hodReviewFields = self::getFieldsByKeys(
+                $processFields,
+                [
+                    'hod_review_comments',
+                    'hod_review_attachment',
+                ]
+            );
 
-            /* general information */
+            $userDepartmentFields = self::getFieldsByKeys(
+                $processFields,
+                [
+                    'user_dept_review_comments',
+                    'user_dept_review_attachment',
+                ]
+            );
+
+            $qaApprovalFields = self::getFieldsByKeys(
+                $processFields,
+                [
+                    'qa_review_comments',
+                    'qa_review_attachment',
+                ]
+            );
+
             $generalFields = self::prepareReportFields([
-                ['label' => 'Record Number', 'value' => $recordNumber],
-                ['label' => 'Site / Location Code', 'value' => $siteLocationCode],
-                ['label' => 'Process', 'value' => $record->process?->name],
-                ['label' => 'Initiator', 'value' => $record->initiator?->name],
-                ['label' => 'Initiation Department', 'value' => $record->department?->name],
-                ['label' => 'Date of Initiation', 'value' => $record->initiation_date ? Carbon::parse($record->initiation_date)->format('d-m-Y') : null],
-                ['label' => 'Stage', 'value' => $record->stage?->name],
-                ['label' => 'Short Description', 'value' => $record->short_description],
+                [
+                    'label' => 'Record Number',
+                    'value' => $recordNumber,
+                ],
+                // [
+                //     'label' => 'Site / Location Code',
+                //     'value' => $siteLocationCode,
+                // ],
+                [
+                    'label' => 'Process',
+                    'value' => $record->process?->name,
+                ],
+                [
+                    'label' => 'Initiator',
+                    'value' => $record->initiator?->name,
+                ],
+                [
+                    'label' => 'Initiation Department',
+                    'value' => $record->department?->name,
+                ],
+                [
+                    'label' => 'Date of Initiation',
+                    'value' => $record->initiation_date
+                        ? Carbon::parse($record->initiation_date)->format('d-m-Y')
+                        : null,
+                ],
+                // [
+                //     'label' => 'Stage',
+                //     'value' => $record->stage?->name,
+                // ],
+                [
+                    'label' => 'Short Description',
+                    'value' => $record->short_description,
+                ],
             ]);
 
             $calibrationFields = self::prepareReportFields($calibrationFields);
+            $hodReviewFields = self::prepareReportFields($hodReviewFields);
+            $userDepartmentFields = self::prepareReportFields($userDepartmentFields);
+            $qaApprovalFields = self::prepareReportFields($qaApprovalFields);
 
-            /* prepare grid data */
             $gridRecords = [];
 
             foreach ($record->gridRecords ?? [] as $gridRecord) {
                 $gridData = $gridRecord->grid_data;
+
                 if (is_string($gridData)) {
                     $gridData = json_decode($gridData, true);
                 }
+
                 if (!is_array($gridData)) {
                     continue;
                 }
@@ -113,23 +189,24 @@ class CalibrationReportService
                     $fields = [];
 
                     foreach ($row as $key => $field) {
-                        /* hide technical field from the report UI */
                         if ($key === 'calibrationFrequencyStartDate') {
                             continue;
                         }
 
-                        /* monthlyCalibration is stored as a raw array of months, not inside "value" */
                         if ($key === 'monthlyCalibration') {
                             $fields[$key] = [
                                 'label' => 'Monthly Calibration',
                                 'value' => is_array($field) ? $field : [],
                             ];
+
                             continue;
                         }
 
                         $fields[$key] = [
                             'label' => self::getGridFieldLabel($key),
-                            'value' => is_array($field) ? ($field['value'] ?? null) : $field,
+                            'value' => is_array($field)
+                                ? ($field['value'] ?? null)
+                                : $field,
                         ];
                     }
 
@@ -139,46 +216,16 @@ class CalibrationReportService
                 }
             }
 
-            $tabs[] = [
-                'tab_title' => 'General Information',
-                'sections' => [
-                    ['title' => 'Process Record Detail', 'fields' => $generalFields],
-                    ['title' => 'Calibration Information', 'fields' => $calibrationFields],
-                ],
-            ];
-
-            $hodReviewFields = self::prepareReportFields($hodReviewFields);
-            $tabs[] = [
-                'tab_title' => 'HOD/Designee Review (Engineering Dept)',
-                'sections' => [
-                    ['title' => 'HOD/Designee Review (Engineering Dept)', 'fields' => $hodReviewFields],
-                ],
-            ];
-
-            $qaReviewFields = self::prepareReportFields($qaReviewFields);
-            $tabs[] = [
-                'tab_title' => 'User Department Review (User Dept)',
-                'sections' => [
-                    ['title' => 'User Department Review (User Dept)', 'fields' => $qaReviewFields],
-                ],
-            ];
-
-            $qaApprovalFields = self::prepareReportFields($qaApprovalFields);
-            $tabs[] = [
-                'tab_title' => 'QA Approval Review',
-                'sections' => [
-                    ['title' => 'QA Approval Review', 'fields' => $qaApprovalFields],
-                ],
-            ];
-
-            /* report data */
             $data = [
                 'header' => [
-                    'company_name' => 'Shilpa Medicare Pvt Ltd',
-                    'report_title' => $record->process?->name ?? 'Process Report',
+                    'company_name' => 'SHILPA MEDICARE LIMITED',
+                    'report_title' => $record->process->name,
                 ],
+
                 'record' => [
                     'record_id' => $record->id,
+                    'document_number' => $documentNumber,
+                    'document_type' => $documentType,
                     'record_number' => $recordNumber,
                     'site_location_code' => $siteLocationCode,
                     'process' => $record->process?->name,
@@ -186,27 +233,82 @@ class CalibrationReportService
                     'department' => $record->department?->name,
                     'initiator' => $record->initiator?->name,
                     'short_description' => $record->short_description,
-                    'initiation_date' => $record->initiation_date ? Carbon::parse($record->initiation_date)->format('d-m-Y') : null,
+                    'initiation_date' => $record->initiation_date
+                        ? Carbon::parse($record->initiation_date)->format('d-m-Y')
+                        : null,
                 ],
-                'tabs' => $tabs,
+
+                'tabs' => [
+                    [
+                        'tab_title' => 'General Information',
+                        'sections' => [
+                            [
+                                'title' => 'PROCESS RECORD DETAILS',
+                                'fields' => $generalFields,
+                            ],
+                            [
+                                'title' => 'CALIBRATION INFORMATION',
+                                'fields' => $calibrationFields,
+                            ],
+                        ],
+                    ],
+                    [
+                        'tab_title' => 'HOD / DESIGNEE REVIEW',
+                        'sections' => [
+                            [
+                                'title' => 'HOD / DESIGNEE REVIEW',
+                                'fields' => $hodReviewFields,
+                            ],
+                        ],
+                    ],
+                    [
+                        'tab_title' => 'USER DEPARTMENT REVIEW',
+                        'sections' => [
+                            [
+                                'title' => 'USER DEPARTMENT REVIEW',
+                                'fields' => $userDepartmentFields,
+                            ],
+                        ],
+                    ],
+                    [
+                        'tab_title' => 'QA APPROVAL REVIEW',
+                        'sections' => [
+                            [
+                                'title' => 'QA APPROVAL REVIEW',
+                                'fields' => $qaApprovalFields,
+                            ],
+                        ],
+                    ],
+                ],
+
                 'grid_records' => $gridRecords,
+
                 'footer' => [
-                    'generated_by' => auth()->user()?->name,
+                    'generated_by' => auth()->user()?->name ?? '-',
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
             ];
 
-            /* generate PDF */
-            $pdf = Pdf::loadView('Reports.User.CalibrationSingleReport', $data);
-            $pdf->setPaper('a4', 'portrait');
+            $pdf = Pdf::loadView(
+                'Reports.User.CalibrationSingleReport',
+                $data
+            );
 
-            return $pdf->stream('process-record-' . $record->id . '.pdf');
-        } catch (\Exception $e) {
-            return ResponseHelper::error('Failed to generate process report.', 500);
+            $pdf->setPaper('a4', 'landscape');
+
+            return $pdf->stream(
+                'calibration-planner-' . $record->id . '.pdf'
+            );
+        } catch (\Throwable $e) {
+            report($e);
+
+            return ResponseHelper::error(
+                'Failed to generate process report.',
+                500
+            );
         }
     }
 
-    /* get attachments by field */
     private static function getAttachmentsByField($attachments, $attachmentField)
     {
         if (!is_array($attachments)) {
@@ -214,17 +316,21 @@ class CalibrationReportService
         }
 
         $result = [];
+
         foreach ($attachments as $attachment) {
             if (!is_array($attachment)) {
                 continue;
             }
+
             if (($attachment['attachment_field'] ?? null) !== $attachmentField) {
                 continue;
             }
 
             $result[] = [
                 'attachment_field' => $attachmentField,
-                'name' => $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment',
+                'name' => $attachment['name']
+                    ?? $attachment['file_name']
+                    ?? 'Attachment',
                 'file_name' => $attachment['file_name'] ?? null,
                 'path' => $attachment['path'] ?? null,
                 'url' => $attachment['url'] ?? null,
@@ -236,29 +342,36 @@ class CalibrationReportService
         return $result;
     }
 
-    /* known grid field labels, falling back to a formatted key */
     private static function getGridFieldLabel($key)
     {
         $labels = [
             'equipmentInstrumentName' => 'Instrument Name',
             'equipmentInstrumentId' => 'Instrument ID No.',
+            'equipmentName' => 'Equipment Name',
+            'instrumentName' => 'Instrument Name',
+            'instrumentId' => 'Instrument ID No.',
             'department' => 'Department',
             'location' => 'Location',
             'make' => 'Make',
-            'model' => 'Sr. No / Model No',
+            'model' => 'Sr. No. / Model No.',
+            'modelNo' => 'Sr. No. / Model No.',
             'instrumentrange' => 'Instrument Range',
+            'instrumentRange' => 'Instrument Range',
             'operatingrange' => 'Operating Range',
+            'operatingRange' => 'Operating Range',
             'leastCount' => 'Least Count',
             'accuracy' => 'Accuracy',
             'calibrationFrequency' => 'Calibration Frequency',
-            'previousCalibrationDate' => 'Previous / Calibration Date',
+            'previousCalibrationDate' => 'Previous Calibration Date',
             'nextCalibrationDate' => 'Next Calibration Date',
-            'remark' => 'Remark',
-            'monthlyCalibration' => 'Monthly Calibration',
-            'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
-            'calibrationTestPoints' => 'Calibration Test Points',
-            'plannedDate' => 'Planned Date',
+            'calibrationNextDueDate' => 'Planned Date',
             'calibrationDoneDate' => 'Calibration Done On',
+            'plannedDate' => 'Planned Date',
+            'remark' => 'Remarks',
+            'monthlyCalibration' => 'Monthly Calibration',
+            'calibrationTestPoints' => 'Calibration Test Points',
+            'calibrationTestPoint' => 'Calibration Test Points',
+            'category' => 'Category',
         ];
 
         return $labels[$key] ?? self::formatFieldLabel($key);
@@ -272,6 +385,7 @@ class CalibrationReportService
     private static function getFieldsByKeys($fields, array $keys)
     {
         $result = [];
+
         foreach ($keys as $key) {
             if (isset($fields[$key])) {
                 $result[] = $fields[$key];
@@ -281,7 +395,6 @@ class CalibrationReportService
         return $result;
     }
 
-    /* prepare report fields */
     private static function prepareReportFields($fields)
     {
         $result = [];
@@ -295,7 +408,19 @@ class CalibrationReportService
             $key = $field['key'] ?? '';
 
             if ($key === 'attachment' || str_contains($key, 'attachment')) {
-                if (!is_array($value) || empty($value)) {
+                if (is_array($value)) {
+                    $names = [];
+
+                    foreach ($value as $attachment) {
+                        if (is_array($attachment)) {
+                            $names[] = $attachment['name']
+                                ?? $attachment['file_name']
+                                ?? 'Attachment';
+                        }
+                    }
+
+                    $value = count($names) ? implode(', ', $names) : '-';
+                } else {
                     $value = '-';
                 }
             } elseif (is_array($value)) {
@@ -304,7 +429,10 @@ class CalibrationReportService
                 } elseif (empty($value)) {
                     $value = '-';
                 } else {
-                    $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    $value = json_encode(
+                        $value,
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    );
                 }
             }
 

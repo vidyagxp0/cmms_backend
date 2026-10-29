@@ -1,471 +1,570 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{{ $header['report_title'] }}</title>
-
+    <title>{{ $header['report_title'] ?? 'Calibration Planner Report' }}</title>
     <style>
-        {!! file_get_contents(resource_path('views/Reports/CSS/Report.css')) !!}
-
-        .report-content {
-            width: 100%;
-            margin: 0;
-            padding: 0;
+        @page {
+            size: A4 landscape;
+            margin: 16px 20px 34px 20px;
         }
 
-        .tab-section {
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "DejaVu Sans", sans-serif;
+            font-size: 9px;
+            line-height: 1.45;
+            color: #263449;
+            background: #fff;
+            margin: 0;
+        }
+
+        .document-header {
             width: 100%;
-            margin: 10px 0 0 0;
-            padding: 0;
-            page-break-before: auto;
-            page-break-after: auto;
-            page-break-inside: auto;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            border: 1px solid #d5deea;
+            border-radius: 5px;
+        }
+
+        .document-header td {
+            border: 1px solid #d5deea;
+            padding: 9px 12px;
+            vertical-align: middle;
+        }
+
+        .company-name {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 0.6px;
+            color: #15375b;
+            padding: 12px 8px !important;
+            background: #f5f8fc;
         }
 
         .report-title {
-            margin: 10px 0 5px 0;
-            padding: 0;
-            page-break-after: avoid;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.3px;
+            color: #fff;
+            background: #24476b;
+            padding: 10px 8px !important;
+            text-transform: uppercase;
         }
 
-        .section {
+        .document-meta {
             width: 100%;
-            margin: 0 0 10px 0;
-            padding: 0;
-            page-break-before: auto;
-            page-break-after: auto;
-            page-break-inside: auto;
-        }
-
-        .section-heading {
-            margin: 0;
-            padding: 6px 8px;
-            page-break-after: avoid;
-        }
-
-        .section-header-block {
-            page-break-after: avoid;
-        }
-
-        .data-table {
-            width: 100%;
-            margin: 10px 0 0 0;
-            padding: 0;
             border-collapse: collapse;
-            page-break-before: auto;
-            page-break-after: auto;
-            page-break-inside: auto;
+            margin-bottom: 12px;
         }
 
-        .data-table tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
+        .document-meta td {
+            border: 1px solid #d5deea;
+            background: #f7f9fc;
+            padding: 7px 9px;
+            font-size: 8.5px;
+            width: 50%;
+            color: #34445a;
         }
 
-        .data-table td,
-        .data-table th {
-            page-break-inside: avoid;
+        .document-meta strong {
+            color: #15375b;
         }
 
-        .field-value {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+        .section-title {
+            background: #eaf1f8;
+            color: #1e4268;
+            border-left: 4px solid #3674a5;
+            border-top: 1px solid #d4e0ed;
+            border-right: 1px solid #d4e0ed;
+            border-bottom: 1px solid #d4e0ed;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
         }
 
-        .array-value {
-            margin: 0;
-            padding: 0;
-        }
-
-        .array-item {
-            margin: 0 0 2px 0;
-            padding: 0;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .grid-section {
-            margin-top: 10px;
-        }
-
-        .grid-group {
-            margin: 0 0 8px 0;
-            padding: 0;
-            page-break-inside: auto;
-        }
-
-        .grid-table {
+        .details-table {
             width: 100%;
-            margin-top: 10px;
-            padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
-            page-break-inside: auto;
+            margin-bottom: 10px;
         }
 
-        .grid-table th,
-        .grid-table td {
-            border: 1px solid #d9e2df;
-            padding: 5px 6px;
+        /* Space between section heading and its content */
+        .section-title + table,
+        .section-title + .section-content {
+            margin-top: 8px;
+        }
+
+        /* Space between sections */
+        .report-section {
+            margin-bottom: 14px;
+        }
+
+        .details-table th,
+        .details-table td {
+            border: 1px solid #d8e0e9;
+            padding: 7px 9px;
             vertical-align: top;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
 
-        .grid-table th {
-            font-size: 8px;
-            font-weight: bold;
-            background: #eef6f2;
-        }
-
-        .grid-table td {
-            font-size: 8px;
-        }
-
-        .grid-label {
-            font-size: 7.5px;
+        .details-table th {
+            width: 24%;
+            background: #f3f6fa;
+            color: #344b65;
+            text-align: left;
             font-weight: bold;
         }
 
-        .grid-value {
-            font-size: 8px;
+        .details-table td {
+            width: 26%;
+            background: #fff;
+            color: #263449;
+        }
+
+        .instrument-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .instrument-table th,
+        .instrument-table td {
+            border: 1px solid #d3dce7;
+            padding: 6px 4px;
+            text-align: center;
+            vertical-align: middle;
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
 
-        .grid-number {
-            width: 5%;
-            text-align: center;
-            vertical-align: middle !important;
-        }
-
-        .grid-column {
-            width: 23.75%;
-        }
-
-        .monthly-title {
-            margin: 5px 0 2px 0;
-            font-size: 8px;
+        .instrument-table th {
+            background: #24476b;
+            color: #fff;
             font-weight: bold;
+            font-size: 7.5px;
+            line-height: 1.4;
         }
 
-        .monthly-table {
+        .instrument-table td {
+            background: #fff;
+            color: #34445a;
+            font-size: 7.5px;
+            line-height: 1.45;
+        }
+
+        .instrument-table tbody tr:nth-child(even) td {
+            background: #f5f8fc;
+        }
+
+        .instrument-table .serial { width: 4%; }
+        .instrument-table .instrument-name { width: 12%; }
+        .instrument-table .instrument-id { width: 10%; }
+        .instrument-table .make { width: 7%; }
+        .instrument-table .model { width: 9%; }
+        .instrument-table .location { width: 10%; }
+        .instrument-table .least-count { width: 6%; }
+        .instrument-table .accuracy { width: 7%; }
+        .instrument-table .instrument-range { width: 7%; }
+        .instrument-table .operating-range { width: 7%; }
+        .instrument-table .test-points { width: 8%; }
+        .instrument-table .category { width: 5%; }
+        .instrument-table .planned-date { width: 7%; }
+        .instrument-table .done-date { width: 7%; }
+        .instrument-table .remarks { width: 7%; }
+
+        .review-table {
             width: 100%;
-            margin: 0;
             border-collapse: collapse;
-            page-break-inside: auto;
+            table-layout: fixed;
+            margin-bottom: 10px;
         }
 
-        .monthly-table th,
-        .monthly-table td {
-            border: 1px solid #d9e2df;
-            padding: 4px 5px;
-            font-size: 8px;
+        .review-table th,
+        .review-table td {
+            border: 1px solid #d8e0e9;
+            padding: 8px 10px;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
-        .monthly-table th {
+        .review-table th {
+            width: 27%;
+            background: #f3f6fa;
+            color: #344b65;
+            text-align: left;
             font-weight: bold;
-            background: #eef6f2;
         }
 
-        .monthly-table tr {
+        .review-table td {
+            background: #fff;
+            color: #263449;
+        }
+
+        .empty-message {
+            border: 1px solid #d8e0e9;
+            padding: 12px;
+            text-align: center;
+            color: #64748b;
+            background: #f8fafc;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: -22px;
+            left: 0;
+            right: 0;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 6px;
+            font-size: 7.5px;
+            line-height: 1.5;
+            color: #52647a;
+        }
+
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .footer-table td {
+            width: 50%;
+        }
+
+        .footer-table strong {
+            color: #24476b;
+            letter-spacing: 0.3px;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .page-number:after {
+            content: counter(page);
+        }
+
+        .muted {
+            color: #64748b;
+        }
+
+        tr {
             page-break-inside: avoid;
         }
 
-        .grid-break {
-            page-break-before: auto;
-        }
-
-        .attachment-item {
-            margin: 0 0 3px 0;
-            padding: 0;
-        }
-
-        .attachment-link {
-            color: #1d5f8f;
-            text-decoration: underline;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
+        .monthly-value {
+            text-align: left !important;
+            font-size: 7.5px !important;
         }
     </style>
 </head>
-
 <body>
 
-    {{-- Header --}}
-    <header>
-        <div class="header-wrapper">
-            <div class="header-left">
-                <div class="logo-box">
-                    <div class="logo-box-inner">
-                        <img src="{{ public_path('uploads/ReportLogo/shilpaimage.png') }}" alt="Logo">
-                    </div>
-                </div>
-            </div>
+<table class="document-header">
+    <tr>
+        <td class="company-name">
+            {{ $header['company_name'] ?? 'SHILPA MEDICARE LIMITED' }}
+        </td>
+    </tr>
+    <tr>
+        <td class="report-title">
+            {{ $header['report_title'] ?? 'CALIBRATION PLANNER' }}
+        </td>
+    </tr>
+</table>
 
-            <div class="header-center">
-                <div class="company-name">Shilpa Medicare Pvt Ltd</div>
-                <div class="document-title">{{ $header['report_title'] }}</div>
-                <div class="document-subtitle">Process Record Report</div>
-            </div>
+{{-- Document metadata: only Document Number and Document Type --}}
+<table class="document-meta">
+    <tr>
+        <td>
+            <strong>Document Number:</strong>
+            {{ $record['document_number'] ?? '-' }}
+        </td>
+        <td>
+            <strong>Document Type:</strong>
+            {{ $record['document_type'] ?? '-' }}
+        </td>
+    </tr>
+</table>
 
-            <div class="header-right">
-                <div class="logo-box">
-                    <div class="logo-box-inner">
-                        <img src="{{ public_path('uploads/ReportLogo/vidyagxp_logo.png') }}" alt="Logo">
-                    </div>
-                </div>
-            </div>
+<div class="section-title">General Information</div>
+
+<table class="details-table">
+    @php
+        $generalFields = $tabs[0]['sections'][0]['fields'] ?? [];
+        $generalRows = array_chunk($generalFields, 2);
+    @endphp
+
+    @forelse ($generalRows as $row)
+        <tr>
+            @foreach ($row as $field)
+                <th>{{ $field['label'] ?? '-' }}</th>
+                <td>
+                    {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
+                </td>
+            @endforeach
+
+            @if (count($row) === 1)
+                <th></th>
+                <td></td>
+            @endif
+        </tr>
+    @empty
+        <tr>
+            <td colspan="4">No general information available.</td>
+        </tr>
+    @endforelse
+</table>
+
+@php
+    $calibrationFields = $tabs[0]['sections'][1]['fields'] ?? [];
+
+    $commentFields = array_values(array_filter(
+        $calibrationFields,
+        function ($field) {
+            $key = strtolower(trim($field['key'] ?? ''));
+            $label = strtolower(trim($field['label'] ?? ''));
+
+            return in_array($key, ['comment', 'comments', 'attachment'])
+                || in_array($label, ['comments', 'comment', 'attachment']);
+        }
+    ));
+
+    $calibrationFields = array_values(array_filter(
+        $calibrationFields,
+        function ($field) {
+            $key = strtolower(trim($field['key'] ?? ''));
+            $label = strtolower(trim($field['label'] ?? ''));
+
+            return !in_array($key, ['comment', 'comments', 'attachment'])
+                && !in_array($label, ['comments', 'comment', 'attachment']);
+        }
+    ));
+
+    $calibrationRows = array_chunk($calibrationFields, 2);
+@endphp
+
+<div class="section-title">Calibration Information</div>
+
+<table class="details-table">
+    @forelse ($calibrationRows as $row)
+        <tr>
+            @foreach ($row as $field)
+                <th>{{ $field['label'] ?? '-' }}</th>
+                <td>
+                    {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
+                </td>
+            @endforeach
+
+            @if (count($row) === 1)
+                <th></th>
+                <td></td>
+            @endif
+        </tr>
+    @empty
+        <tr>
+            <td colspan="4">No calibration information available.</td>
+        </tr>
+    @endforelse
+</table>
+
+<div class="section-title">Instrument Calibration Planner</div>
+
+<table class="instrument-table">
+    <thead>
+        <tr>
+            <th class="serial">Sr. No.</th>
+            <th class="instrument-name">Instrument Name</th>
+            <th class="instrument-id">Instrument ID No.</th>
+            <th class="make">Make</th>
+            <th class="model">Sr. No. / Model No.</th>
+            <th class="location">Location</th>
+            <th class="least-count">Least Count</th>
+            <th class="accuracy">Accuracy</th>
+            <th class="instrument-range">Instrument Range</th>
+            <th class="operating-range">Operating Range</th>
+            <th class="test-points">Calibration Test Points</th>
+            <th class="category">Category</th>
+            <th class="planned-date">Planned Date</th>
+            <th class="done-date">Calibration Done On</th>
+            <th class="remarks">Remarks</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse ($grid_records ?? [] as $index => $grid)
+            <tr>
+                <td>{{ $index + 1 }}</td>
+
+                <td>
+                    {{ $grid['equipmentInstrumentName']['value']
+                        ?? $grid['instrumentName']['value']
+                        ?? $grid['equipmentName']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>
+                    {{ $grid['equipmentInstrumentId']['value']
+                        ?? $grid['instrumentId']['value']
+                        ?? $grid['instrument_id_no']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>{{ $grid['make']['value'] ?? '-' }}</td>
+
+                <td>
+                    {{ $grid['model']['value']
+                        ?? $grid['modelNo']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>{{ $grid['location']['value'] ?? '-' }}</td>
+
+                <td>
+                    {{ $grid['leastCount']['value']
+                        ?? $grid['least_count']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>{{ $grid['accuracy']['value'] ?? '-' }}</td>
+
+                <td>
+                    {{ $grid['instrumentrange']['value']
+                        ?? $grid['instrumentRange']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>
+                    {{ $grid['operatingrange']['value']
+                        ?? $grid['operatingRange']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>
+                    {{ $grid['calibrationTestPoints']['value']
+                        ?? $grid['calibrationTestPoint']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>{{ $grid['category']['value'] ?? '-' }}</td>
+
+                <td>
+                    {{ $grid['calibrationNextDueDate']['value']
+                        ?? $grid['plannedDate']['value']
+                        ?? $grid['nextCalibrationDate']['value']
+                        ?? '-' }}
+                </td>
+
+                <td>
+                    {{ $grid['calibrationDoneDate']['value'] ?? '-' }}
+                </td>
+
+                <td>
+                    {{ $grid['remark']['value'] ?? '-' }}
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="15" class="empty-message">
+                    No instrument records available.
+                </td>
+            </tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{-- Comments and Attachment are displayed below the instrument grid --}}
+@if (count($commentFields) > 0)
+    <div class="section-title">Comments &amp; Attachments</div>
+
+    <table class="review-table">
+        @foreach ($commentFields as $field)
+            <tr>
+                <th>{{ $field['label'] ?? '-' }}</th>
+                <td>
+                    @php
+                        $value = $field['value'] ?? null;
+                    @endphp
+
+                    @if (is_array($value))
+                        @if (count($value) > 0)
+                            @foreach ($value as $attachment)
+                                @if (is_array($attachment))
+                                    {{ $attachment['name'] ?? $attachment['filename'] ?? $attachment['original_name'] ?? '-' }}
+                                @elseif (is_scalar($attachment))
+                                    {{ $attachment }}
+                                @else
+                                    -
+                                @endif
+                                @if (!$loop->last)
+                                    ,
+                                @endif
+                            @endforeach
+                        @else
+                            -
+                        @endif
+                    @elseif (is_scalar($value))
+                        {{ ($value !== '' && $value !== null) ? $value : '-' }}
+                    @else
+                        -
+                    @endif
+                </td>
+            </tr>
+        @endforeach
+    </table>
+@endif
+
+{{-- Existing review sections remain unchanged --}}
+@foreach (array_slice($tabs ?? [], 1) as $tab)
+    @foreach ($tab['sections'] ?? [] as $section)
+        <div class="section-title">
+            {{ $section['title'] ?? $tab['tab_title'] ?? 'Review' }}
         </div>
-    </header>
 
-    {{-- Footer --}}
-    <footer>
-        <div class="footer-wrapper">
-            <table class="footer-table">
+        <table class="review-table">
+            @forelse ($section['fields'] ?? [] as $field)
                 <tr>
-                    <td class="footer-left">
-                        <div class="footer-company">Shilpa Medicare Pvt Ltd</div>
-                        <div class="footer-meta">
-                            {{ $header['report_title'] }} &nbsp;|&nbsp; Controlled Document
-                        </div>
-                    </td>
-                    <td class="footer-right">
-                        <div>Generated By: <strong>{{ $footer['generated_by'] ?? 'System' }}</strong></div>
-                        <div class="footer-meta">Generated On: {{ $footer['generated_at'] ?? '-' }}</div>
+                    <th>{{ $field['label'] ?? '-' }}</th>
+                    <td>
+                        {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
                     </td>
                 </tr>
-            </table>
-        </div>
-    </footer>
+            @empty
+                <tr>
+                    <td colspan="2">No review information available.</td>
+                </tr>
+            @endforelse
+        </table>
+    @endforeach
+@endforeach
 
-    {{-- Report Content --}}
-    <div class="report-content">
-        @foreach($tabs ?? [] as $tab)
-            <div class="tab-section">
-
-                {{-- Tab --}}
-                <div class="report-title">{{ $tab['tab_title'] ?? '-' }}</div>
-
-                @foreach($tab['sections'] ?? [] as $section)
-                    @if(!empty($section['fields']))
-                        <div class="section">
-
-                            {{-- Section --}}
-                            <div class="section-heading section-header-block">{{ $section['title'] ?? '-' }}</div>
-
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>Field</th>
-                                        <th>Value</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($section['fields'] as $field)
-                                        <tr>
-                                            <td class="field-name">{{ $field['label'] ?? '-' }}</td>
-                                            <td class="field-value">
-                                                @php
-                                                    $value = $field['value'] ?? null;
-                                                    $fieldKey = $field['key'] ?? '';
-                                                    $fieldLabel = strtolower($field['label'] ?? '');
-                                                @endphp
-
-                                                @if($fieldKey === 'attachment' || str_contains($fieldKey, 'attachment') || str_contains($fieldLabel, 'attachment'))
-                                                    @if(is_array($value) && !empty($value))
-                                                        @foreach($value as $attachment)
-                                                            @if(is_array($attachment))
-                                                                @php
-                                                                    $attachmentName = $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment';
-                                                                    $attachmentUrl = $attachment['url'] ?? null;
-                                                                @endphp
-                                                                <div class="attachment-item">
-                                                                    @if($attachmentUrl)
-                                                                        <a href="{{ $attachmentUrl }}" target="_blank"
-                                                                            class="attachment-link">{{ $attachmentName }}</a>
-                                                                    @else
-                                                                        {{ $attachmentName }}
-                                                                    @endif
-                                                                </div>
-                                                            @endif
-                                                        @endforeach
-                                                    @else
-                                                        -
-                                                    @endif
-                                                @elseif(is_array($value))
-                                                    @if(isset($value['name']))
-                                                        {{ $value['name'] }}
-                                                    @elseif(empty($value))
-                                                        -
-                                                    @else
-                                                        <div class="array-value">
-                                                            @foreach($value as $item)
-                                                                <div class="array-item">
-                                                                    @if(is_array($item))
-                                                                        @if(isset($item['name']))
-                                                                            {{ $item['name'] }}
-                                                                        @elseif(isset($item['file_name']))
-                                                                            {{ $item['file_name'] }}
-                                                                        @else
-                                                                            {{ json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
-                                                                        @endif
-                                                                    @else
-                                                                        {{ $item }}
-                                                                    @endif
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
-                                                    @endif
-                                                @else
-                                                    {{ $value !== null && $value !== '' ? $value : '-' }}
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                @endforeach
-
-                @if(($tab['tab_title'] ?? '') === 'General Information' && !empty($grid_records))
-                    <div class="section grid-section">
-                        <div class="section-heading section-header-block">Calibration Planner</div>
-
-                        @foreach($grid_records as $rowIndex => $row)
-                            @php
-                                $gridFields = [];
-
-                                foreach ($row as $key => $field) {
-                                    if ($key === 'monthlyCalibration') {
-                                        continue;
-                                    }
-
-                                    if (!is_array($field)) {
-                                        continue;
-                                    }
-
-                                    $gridFields[] = [
-                                        'key' => $key,
-                                        'label' => $field['label'] ?? $key,
-                                        'value' => $field['value'] ?? null,
-                                    ];
-                                }
-
-                                // Four columns per table; remaining columns continue in next table.
-                                $gridChunks = array_chunk($gridFields, 4);
-                            @endphp
-
-                            {{-- Normal grid fields --}}
-                            @foreach($gridChunks as $chunkIndex => $chunk)
-                                <div class="grid-group">
-                                    <table class="grid-table">
-                                        <thead>
-                                            <tr>
-                                                @if($chunkIndex === 0)
-                                                    <th class="grid-number">S.No</th>
-                                                @endif
-
-                                                @foreach($chunk as $field)
-                                                    <th class="grid-column">{{ $field['label'] }}</th>
-                                                @endforeach
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                @if($chunkIndex === 0)
-                                                    <td class="grid-number">{{ $rowIndex + 1 }}</td>
-                                                @endif
-
-                                                @foreach($chunk as $field)
-                                                    <td class="grid-value">
-                                                        @php $value = $field['value'] ?? null; @endphp
-
-                                                        @if(is_array($value))
-                                                            @if(isset($value['name']))
-                                                                {{ $value['name'] }}
-                                                            @elseif(empty($value))
-                                                                -
-                                                            @else
-                                                                {{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
-                                                            @endif
-                                                        @else
-                                                            {{ $value !== null && $value !== '' ? $value : '-' }}
-                                                        @endif
-                                                    </td>
-                                                @endforeach
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            @endforeach
-
-                            {{-- Calibration Schedule --}}
-                            @php
-                                $frequency = strtolower(
-                                    trim($row['calibrationFrequency']['value'] ?? '')
-                                );
-
-                                $frequencyTitle = match ($frequency) {
-                                    'half-yearly' => 'Half-Yearly Calibration',
-                                    'yearly' => 'Yearly Calibration',
-                                    'two-yearly' => 'Two-Yearly Calibration',
-                                    default => 'Calibration Schedule',
-                                };
-
-                                $monthlyData = $row['monthlyCalibration']['value'] ?? [];
-                                $scheduleData = [];
-
-                                /* Show only months having a scheduler or calibration date. */
-                                if (is_array($monthlyData)) {
-                                    foreach ($monthlyData as $month => $monthData) {
-                                        if (
-                                            !is_array($monthData) ||
-                                            (
-                                                empty($monthData['schedulerDate']) &&
-                                                empty($monthData['calibrationDate'])
-                                            )
-                                        ) {
-                                            continue;
-                                        }
-
-                                        $scheduleData[$month] = $monthData;
-                                    }
-                                }
-                            @endphp
-
-                            @if(!empty($scheduleData))
-                                <div class="monthly-title">{{ $frequencyTitle }}</div>
-
-                                <table class="monthly-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Month</th>
-                                            <th>Scheduler Date</th>
-                                            <th>Calibration Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($scheduleData as $month => $monthData)
-                                            <tr>
-                                                <td>{{ $month }}</td>
-                                                <td>{{ !empty($monthData['schedulerDate']) ? $monthData['schedulerDate'] : '-' }}</td>
-                                                <td>{{ !empty($monthData['calibrationDate']) ? $monthData['calibrationDate'] : '-' }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            @endif
-                        @endforeach
-                    </div>
-                @endif
-
-            </div>
-        @endforeach
-    </div>
+<div class="footer">
+    <table class="footer-table">
+        <tr>
+            <td>
+                <strong>SHILPA MEDICARE LIMITED</strong><br>
+                <span class="muted">Calibration Planner | Controlled Document</span>
+            </td>
+            <td class="footer-right">
+                Generated By: {{ $footer['generated_by'] ?? '-' }}<br>
+                Generated On: {{ $footer['generated_at'] ?? '-' }}
+            </td>
+        </tr>
+    </table>
+</div>
 
 </body>
-
 </html>
