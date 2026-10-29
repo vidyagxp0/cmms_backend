@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class SpareInstrumentMaster extends Model
 {
-    protected $table = 'field_instrument_masters';
+    protected $table = 'spare_instrument_masters';
 
     protected $fillable = [
         'instrument_name',
@@ -26,7 +26,8 @@ class SpareInstrumentMaster extends Model
         'qa_review_attachment',
         'qa_review_comments',
         'initiator_id',
-        'is_imported'
+        'is_imported',
+        'category'
     ];
 
     protected $casts = [
