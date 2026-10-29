@@ -4,27 +4,55 @@ namespace App\Services\ExcelImport;
 
 use App\Imports\ExcelChunkReadFilter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
-use Throwable;
-use Illuminate\Support\Facades\Storage;
 
 class ExcelImportService
 {
     private const COLUMN_MAP = [
-        2 => 'equipment_name',
-        3 => 'instrument_name',
-        4 => 'instrument_id_no',
-        5 => 'make',
-        6 => 'sr_no_model_no',
-        7 => 'least_count',
-        8 => 'location',
-        9 => 'accuracy',
-        10 => 'instrument_range',
-        11 => 'operating_range',
-        12 => 'calibration_test_points',
-        13 => 'category',
+        'master_instrument' => [
+            2 => 'instrument_name',
+            3 => 'instrument_id_no',
+            4 => 'make',
+            5 => 'sr_no_model_no',
+            6 => 'location',
+            7 => 'least_count',
+            8 => 'accuracy',
+            9 => 'instrument_range',
+            10 => 'operating_range',
+            11 => 'calibration_test_points',
+            12 => 'category',
+        ],
+
+        'field_instrument_master' => [
+            2 => 'equipment_name',
+            3 => 'instrument_name',
+            4 => 'instrument_id_no',
+            5 => 'make',
+            6 => 'sr_no_model_no',
+            7 => 'least_count',
+            8 => 'location',
+            9 => 'accuracy',
+            10 => 'instrument_range',
+            11 => 'operating_range',
+            12 => 'calibration_test_points',
+            13 => 'category',
+        ],
+
+        'spare_instrument_master' => [
+            2 => 'instrument_name',
+            3 => 'instrument_id_no',
+            4 => 'make',
+            5 => 'sr_no_model_no',
+            6 => 'location',
+            7 => 'least_count',
+            8 => 'accuracy',
+            9 => 'instrument_range',
+            10 => 'operating_range',
+            11 => 'calibration_test_points',
+        ],
     ];
 
     public function processChunk(object $import, int $startRow): array
@@ -33,6 +61,16 @@ class ExcelImportService
         $firstDataRow = (int) config('cmms-import.first_data_row', 7);
         $lastDataRow = $firstDataRow + (int) $import->total_rows - 1;
         $endRow = min($startRow + $chunkSize - 1, $lastDataRow);
+
+        $category = $import->category;
+        $columnMap = self::COLUMN_MAP[$category] ?? null;
+
+        $table = config('cmms-import.tables.' . $category);
+        $processId = config('cmms-import.process_ids.' . $category);
+
+        if (!$columnMap || !$table || !$processId) {
+            throw new RuntimeException('The import category is not configured correctly.');
+        }
 
         $disk = Storage::disk('local');
         $relativePath = $import->file_path;
@@ -46,13 +84,6 @@ class ExcelImportService
 
         $path = $disk->path($relativePath);
 
-        $table = config('cmms-import.tables.' . $import->category);
-        $processId = config('cmms-import.process_ids.' . $import->category);
-
-        if (!$table || !$processId) {
-            throw new RuntimeException('The import category is not configured.');
-        }
-
         $reader = IOFactory::createReaderForFile($path);
         $reader->setReadDataOnly(true);
         $reader->setReadFilter(new ExcelChunkReadFilter($startRow, $endRow));
@@ -63,13 +94,16 @@ class ExcelImportService
             $sheet = $spreadsheet->getSheet(0);
             $rowsToInsert = [];
             $errors = [];
-            $processed = 0;
             $seenIds = [];
+
+            $processed = max(0, $endRow - $startRow + 1);
+
+            $maxColumn = max(array_keys($columnMap));
 
             for ($rowNumber = $startRow; $rowNumber <= $endRow; $rowNumber++) {
                 $values = [];
 
-                for ($col = 1; $col <= 13; $col++) {
+                for ($col = 1; $col <= $maxColumn; $col++) {
                     $cell = $sheet->getCell(
                         Coordinate::stringFromColumnIndex($col) . $rowNumber
                     );
@@ -78,18 +112,31 @@ class ExcelImportService
                     $values[$col] = is_string($value) ? trim($value) : $value;
                 }
 
-                $nonEmptyValues = array_filter(
-                    $values,
-                    fn ($value) => $value !== null && $value !== ''
-                );
+                $mapped = [];
 
-                if (count($nonEmptyValues) === 0) {
+                foreach ($columnMap as $excelColumn => $dbColumn) {
+                    $value = $values[$excelColumn] ?? null;
+
+                    $mapped[$dbColumn] = $value === '' || $value === null
+                        ? null
+                        : (string) $value;
+                }
+
+                // Skip blank rows using only the mapped data columns.
+                $hasData = false;
+
+                foreach ($mapped as $value) {
+                    if ($value !== null && trim((string) $value) !== '') {
+                        $hasData = true;
+                        break;
+                    }
+                }
+
+                if (!$hasData) {
                     continue;
                 }
 
-                $processed++;
-
-                $instrumentId = trim((string) ($values[4] ?? ''));
+                $instrumentId = trim((string) ($mapped['instrument_id_no'] ?? ''));
 
                 if ($instrumentId === '') {
                     $errors[] = [
@@ -110,33 +157,13 @@ class ExcelImportService
                 }
 
                 $seenIds[$instrumentId] = true;
-                $mapped = [];
-
-                foreach (self::COLUMN_MAP as $excelColumn => $dbColumn) {
-                    if (
-                        $dbColumn === 'equipment_name' &&
-                        $table !== 'field_instrument_masters'
-                    ) {
-                        continue;
-                    }
-
-                    if (
-                        $dbColumn === 'category' &&
-                        $table === 'spare_instrument_masters'
-                    ) {
-                        continue;
-                    }
-
-                    $value = $values[$excelColumn] ?? null;
-                    $mapped[$dbColumn] = $value === '' || $value === null
-                        ? null
-                        : (string) $value;
-                }
 
                 $mapped['stage_id'] = null;
                 $mapped['process_id'] = (int) $processId;
                 $mapped['initiator_id'] = (int) $import->created_by;
                 $mapped['is_imported'] = true;
+                $mapped['created_at'] = now();
+                $mapped['updated_at'] = now();
 
                 if ($table === 'instrument_masters') {
                     $mapped['checklist_config'] = null;
@@ -146,8 +173,6 @@ class ExcelImportService
                 $mapped['hod_review_attachment'] = null;
                 $mapped['qa_review_comments'] = null;
                 $mapped['qa_review_attachment'] = null;
-                $mapped['created_at'] = now();
-                $mapped['updated_at'] = now();
 
                 $rowsToInsert[] = [
                     'row_number' => $rowNumber,
@@ -187,7 +212,7 @@ class ExcelImportService
                     $insertRows[] = $item['data'];
                 }
 
-                if ($insertRows === []) {
+                if (empty($insertRows)) {
                     continue;
                 }
 

@@ -106,7 +106,38 @@ class StageValidationService
                     'qa_approval_comments' => 'QA Approval Comments',
                 ],
             ],
-        ],        
+        ],
+
+        /* Field Instrument Calibration Addendum */
+        8 => [
+            48 => [
+                'process_fields' => [
+                    'year' => 'Year',
+                    'block' => 'Block',
+                    'area' => 'Area',
+                    'comment' => 'Comments',
+                ],
+                'grid_fields' => [
+                    'equipmentName' => 'Equipment Name',
+                    'calibrationNextDueDate' => 'Calibration Next Due Date',
+                ],
+            ],
+            51 => [
+                'process_fields' => [
+                    'hod_review_comments' => 'HOD / Designee Review Comments',
+                ],
+            ],
+            53 => [
+                'process_fields' => [
+                    'user_dept_review_comments' => 'User Dept Review Comments',
+                ],
+            ],
+            55 => [
+                'process_fields' => [
+                    'qa_review_comments' => 'QA Review Comments',
+                ],
+            ],
+        ],
     ];
 
     public static function validateActivity(
@@ -118,7 +149,6 @@ class StageValidationService
         $rules = self::RULES[$processId][$activityId] ?? null;
 
         if ($rules === null) {
-
             return null;
         }
 

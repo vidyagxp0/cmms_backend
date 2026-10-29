@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ExcelImport\ExcelImportController;
+use App\Http\Controllers\User\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -197,5 +198,8 @@ Route::middleware('auth:sanctum')->group(function () {
         /* excel import api */
         Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');
         Route::get('/import-excel/{importId}', [ExcelImportController::class, 'status'])->whereNumber('importId');
+
+        /* dashboard api */
+        Route::get('/dashboard-count', [DashboardController::class, 'counts'])->name('dashboard-counts');
     });
 });

@@ -8,6 +8,7 @@ use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
 use App\Helpers\UserAuditHelper;
 use App\Models\Stage;
+use App\Services\User\StageValidation\StageValidationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\Activity;
@@ -885,6 +886,19 @@ class AddendumFieldInstrumentService
 
             $currentStage = $processRecord->stage;
             $targetStage = $activity->toStage;
+
+            /* validate required fields before moving stage */
+            $validationError = StageValidationService::validateActivity(
+                $processRecord,
+                (int) $activity->id
+            );
+
+            if ($validationError !== null) {
+                DB::rollBack();
+
+                return ResponseHelper::error($validationError, 422);
+            }
+
             $user = User::find($request->user_id);
 
             /* re-verify the acting user's credentials before moving stage */
