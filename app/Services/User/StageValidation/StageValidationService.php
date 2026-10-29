@@ -16,6 +16,7 @@ class StageValidationService
                     'block' => 'Block',
                     'area' => 'Area',
                     'comment' => 'Comments',
+                    'instrumentType' => 'Instrument Type',
                 ],
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
