@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Services\Dashboard\DashboardService;
+use App\Services\User\Dashboard\DashboardService;
 
 class DashboardController extends Controller
 {

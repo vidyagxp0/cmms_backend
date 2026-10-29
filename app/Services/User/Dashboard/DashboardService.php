@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\Dashboard;
+namespace App\Services\User\Dashboard;
 
 use Illuminate\Support\Facades\DB;
 
