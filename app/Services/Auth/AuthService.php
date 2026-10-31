@@ -19,12 +19,12 @@ class AuthService
                     ->with('permissions');
             }
         ])
-        ->where('email', $data['email'])
+        ->where('username', $data['username'])
         ->first();
 
         /* check password */
         if (!$user || !Hash::check($data['password'], $user->password)) {
-            throw new \Exception('Invalid email or password.');
+            throw new \Exception('Invalid username or password.');
         }
 
         /* check logged in user roles */

@@ -9,8 +9,13 @@ use Carbon\Carbon;
 
 class PreventiveMaintenancePlannerReportService
 {
-    /* how many months are printed side by side in one table (3 = four tables for the year) */
-    private const MONTHS_PER_TABLE = 3;
+    /*
+     * equipment (records) printed in the planner grid:
+     * - first page shares the page with General Information, so it holds fewer rows
+     * - every following page holds at most EQUIPMENT_PER_PAGE rows, all months are repeated on each page
+     */
+    private const FIRST_PAGE_EQUIPMENT = 20;
+    private const EQUIPMENT_PER_PAGE = 10;
 
     /* shown in the header row when process_data has no documentNumber / documentType */
     private const DEFAULT_DOCUMENT_NUMBER = '-';
@@ -93,7 +98,8 @@ class PreventiveMaintenancePlannerReportService
                         'type' => 'planner',
                         'title' => 'Preventive Planner Information',
                         'year' => $planner['year'],
-                        'rows' => $planner['rows'],
+                        'total' => $planner['total'],
+                        'weeks' => $planner['weeks'],
                         'tables' => $planner['tables'],
                     ],
                     ['type' => 'fields', 'title' => 'Comments & Attachments', 'fields' => $commentFields],
@@ -164,7 +170,7 @@ class PreventiveMaintenancePlannerReportService
                 ],
             ];
 
-            /* generate PDF */
+            /* generate PDF: landscape, all months of the year are printed side by side */
             $pdf = Pdf::loadView('Reports.User.PreventiveMaintenancePlannerReport', $data);
             $pdf->setPaper('a4', 'landscape');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
@@ -178,7 +184,11 @@ class PreventiveMaintenancePlannerReportService
         }
     }
 
-    /* build the planner: equipment rows + month / week / date headers split into tables */
+    /*
+     * build the planner:
+     * - weeks: every week of the year (month, week number, day of month)
+     * - tables: equipment rows split across pages
+     */
     private static function preparePlannerGrid($gridRecords)
     {
         $monthNames = [
@@ -244,14 +254,16 @@ class PreventiveMaintenancePlannerReportService
                         $normalized['equipmentInstrumentId'] ?? $normalized['equipmentId'] ?? $normalized['equipmentCode'] ?? null
                     ),
                     'location' => self::extractGridSimpleValue($normalized['location'] ?? null),
+                    'remark' => self::extractGridSimpleValue($normalized['remark'] ?? $normalized['remarks'] ?? null),
                     'schedule' => $schedule,
                 ];
             }
         }
 
-        /* month headers with the 5 week dates each */
+        /* month headers with their week numbers and day of month */
         $months = [];
         $year = null;
+        $hasAnyDate = false;
 
         foreach ($monthNames as $monthKey => $monthLabel) {
             $dates = self::decodeArray($weekDatesData[$monthKey] ?? $weekDatesData[$monthLabel] ?? []);
@@ -260,13 +272,18 @@ class PreventiveMaintenancePlannerReportService
             for ($weekIndex = 0; $weekIndex < 5; $weekIndex++) {
                 $rawDate = $dates[$weekIndex] ?? null;
 
-                if ($year === null && is_string($rawDate) && preg_match('/^(\d{4})-/', $rawDate, $match)) {
-                    $year = $match[1];
+                if ($rawDate !== null && $rawDate !== '') {
+                    $hasAnyDate = true;
+
+                    if ($year === null && is_string($rawDate) && preg_match('/^(\d{4})-/', $rawDate, $match)) {
+                        $year = $match[1];
+                    }
                 }
 
                 $weeks[] = [
                     'number' => $weekIndex + 1,
-                    'date' => self::formatPlannerDate($rawDate),
+                    'index' => $weekIndex,
+                    'date' => self::formatPlannerDay($rawDate),
                 ];
             }
 
@@ -277,32 +294,104 @@ class PreventiveMaintenancePlannerReportService
             ];
         }
 
-        /* split the 12 months into tables so every table fits on the page */
-        /* only the first table shows equipment name / code / location, the rest continue the same rows */
+        /*
+         * weeks without a date are disabled in the form, so they are removed completely
+         * (a week is only kept if it somehow holds data). When no dates are saved at all,
+         * nothing is removed so the equipment is still printed.
+         */
+        if ($hasAnyDate) {
+            foreach ($months as $monthIndex => $month) {
+                $keptWeeks = [];
+
+                foreach ($month['weeks'] as $week) {
+                    if (!empty($week['date']) || self::weekHasData($rows, $month['key'], $week['index'])) {
+                        $keptWeeks[] = $week;
+                    }
+                }
+
+                $months[$monthIndex]['weeks'] = $keptWeeks;
+            }
+
+            /* months without any week are not printed */
+            $months = array_values(array_filter($months, fn ($month) => !empty($month['weeks'])));
+        }
+
+        /* flat list of week columns */
+        $plannerWeeks = [];
+        foreach ($months as $month) {
+            foreach ($month['weeks'] as $position => $week) {
+                $plannerWeeks[] = [
+                    'month_key' => $month['key'],
+                    'month_name' => $month['name'],
+                    'month_rowspan' => $position === 0 ? count($month['weeks']) : 0,
+                    'number' => $week['number'],
+                    'index' => $week['index'],
+                    'date' => $week['date'],
+                ];
+            }
+        }
+
+        /* first page shares space with General Information, later pages hold EQUIPMENT_PER_PAGE rows */
+        $total = count($rows);
         $tables = [];
-        foreach (array_chunk($months, self::MONTHS_PER_TABLE) as $tableIndex => $monthChunk) {
-            $tables[] = [
-                'show_equipment' => $tableIndex === 0,
-                'months' => $monthChunk,
-            ];
+
+        if ($total > 0) {
+            $firstChunk = array_slice($rows, 0, self::FIRST_PAGE_EQUIPMENT, true);
+
+            if (!empty($firstChunk)) {
+                $keys = array_keys($firstChunk);
+
+                $tables[] = [
+                    'from' => reset($keys) + 1,
+                    'to' => end($keys) + 1,
+                    'equipment' => $firstChunk,
+                ];
+            }
+
+            $remainingRows = array_slice($rows, self::FIRST_PAGE_EQUIPMENT, null, true);
+
+            foreach (array_chunk($remainingRows, self::EQUIPMENT_PER_PAGE, true) as $equipmentChunk) {
+                $keys = array_keys($equipmentChunk);
+
+                $tables[] = [
+                    'from' => reset($keys) + 1,
+                    'to' => end($keys) + 1,
+                    'equipment' => $equipmentChunk,
+                ];
+            }
         }
 
         return [
             'year' => $year,
-            'rows' => $rows,
+            'total' => $total,
+            'weeks' => $plannerWeeks,
             'tables' => $tables,
         ];
     }
 
-    /* week date as dd/mm/yyyy, null when not set */
-    private static function formatPlannerDate($date)
+    /* true when any equipment has a P / A value in the given month and week */
+    private static function weekHasData($rows, $monthKey, $weekIndex)
+    {
+        foreach ($rows as $row) {
+            $cell = $row['schedule'][$monthKey][$weekIndex] ?? [];
+
+            if (($cell['planned'] ?? null) !== null || ($cell['actual'] ?? null) !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /* day of month only (04), null when the date is not set */
+    private static function formatPlannerDay($date)
     {
         if ($date === null || $date === '') {
             return null;
         }
 
         try {
-            return Carbon::parse($date)->format('d/m/Y');
+            return Carbon::parse($date)->format('d');
         } catch (\Exception $e) {
             return is_scalar($date) ? (string) $date : null;
         }
