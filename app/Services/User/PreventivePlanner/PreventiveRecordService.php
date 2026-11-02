@@ -932,7 +932,7 @@ class PreventiveRecordService
 
             if (
                 !$user ||
-                $user->email !== $request->email ||
+                $user->username !== $request->username ||
                 !Hash::check(
                     $request->password,
                     $user->password
@@ -941,7 +941,7 @@ class PreventiveRecordService
                 DB::rollBack();
 
                 return ResponseHelper::error(
-                    'Invalid email or password.',
+                    'Invalid username or password.',
                     422
                 );
             }

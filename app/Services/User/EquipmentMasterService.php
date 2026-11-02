@@ -745,13 +745,13 @@ class EquipmentMasterService
 
             if (
                 !$user ||
-                $user->email !== $request->email ||
+                $user->username !== $request->username ||
                 !Hash::check($request->password, $user->password)
             ) {
                 DB::rollBack();
 
                 return ResponseHelper::error(
-                    'Invalid email or password.',
+                    'Invalid username or password.',
                     422
                 );
             }

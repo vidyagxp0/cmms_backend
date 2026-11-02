@@ -201,5 +201,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* dashboard api */
         Route::get('/dashboard-count', [DashboardController::class, 'counts'])->name('dashboard-counts');
+
+        /* user department listing */        
+        Route::get('/user-departments-listing', [DepartmentController::class, 'index'])->name('user-departments-listing');
     });
 });
