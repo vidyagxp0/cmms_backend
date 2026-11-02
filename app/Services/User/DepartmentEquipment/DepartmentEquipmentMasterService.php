@@ -29,7 +29,11 @@ class DepartmentEquipmentMasterService
             'equipment_model',
             'equipment_location',
             'asset_code',
-            'capacity'
+            'capacity',            
+            'stage_id',
+            'process_id',
+            'initiator_id',
+            'department_id'
         ];
     }
 
