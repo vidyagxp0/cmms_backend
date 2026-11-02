@@ -19,6 +19,13 @@ class EquipmentMaster extends Model
         'calibration_test_points',
         'category',
         'checklist_config',
+        'equipment_name',
+        'equipment_id_no',
+        'equipment_make',
+        'equipment_model',
+        'equipment_location',
+        'asset_code',
+        'capacity'
     ];
 
     protected $casts = [

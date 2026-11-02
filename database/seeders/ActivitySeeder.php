@@ -358,6 +358,40 @@ class ActivitySeeder extends Seeder
                 ],
             ]
         );
+
+        /* Equipment Master */
+        $this->createActivities(
+            'Equipment Master',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'HOD Review',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'QA Approval',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'HOD Review',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'QA Approval',
+                    'to' => 'HOD Review',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
     }
 
     /* Create Activities */

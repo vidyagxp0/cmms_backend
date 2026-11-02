@@ -89,6 +89,14 @@ class StageSeeder extends Seeder
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
+
+            'Equipment Master' => [
+                'Opened',
+                'HOD Review',
+                'QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
         ];
 
         foreach ($stageData as $processName => $stages) {

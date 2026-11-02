@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ExcelImport\ExcelImportController;
 use App\Http\Controllers\User\DashboardController;
+use App\Http\Controllers\User\DepartmentEquipmentMasterController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -194,6 +195,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/spare-instrument-record-stage/{id}',[SpareInstrumentMasterController::class, 'moveStage'])->name('spare-instrument-record-stage');
         Route::post('/spare-instrument-record-permission/{id}',[SpareInstrumentMasterController::class, 'checkSpareInstrumentRecordPermission'])->name('spare-instrument-record-permission');
         Route::get('/spare-instrument-singleReport/{id}',[SpareInstrumentMasterController::class, 'SpareInstrumentSingleReport'])->name('spare-instrument-singleReport');
+
+
+        /* Equipment Master routes */
+        Route::get('/all-department-equipment-masters', [DepartmentEquipmentMasterController::class, 'getAllEquipments'])->name('all-department-equipment-masters');
+        Route::get('/department-equipment-master-listing',[DepartmentEquipmentMasterController::class, 'index'])->name('department-equipment-master-listing');
+        Route::post('/store-department-equipment-master',[DepartmentEquipmentMasterController::class, 'store'])->name('store-department-equipment-master');
+        Route::get('/department-equipment-master-detail/{id}',[DepartmentEquipmentMasterController::class, 'show'])->name('department-equipment-master-detail');
+        Route::put('/update-master-department-equipment/{id}',[DepartmentEquipmentMasterController::class, 'update'])->name('update-master-department-equipment');
+        Route::get('/spare-instruments/audit-trail/{id}', [DepartmentEquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
+        Route::post('/department-equipment-record-stage/{id}',[DepartmentEquipmentMasterController::class, 'moveStage'])->name('department-equipment-record-stage');
+        Route::post('/department-equipment-record-permission/{id}',[DepartmentEquipmentMasterController::class, 'checkEquipmentMasterRecordPermission'])->name('department-equipment-record-permission');
 
         /* excel import api */
         Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');
