@@ -24,6 +24,8 @@ class RecordActivityService
                 $column = 'instrument_id';
             } elseif ($processId === '6') {
                 $column = 'field_instrument_id';
+            } elseif ($processId === '10') {
+                $column = 'equipment_id';
             } elseif (in_array($processId, $processRecordProcesses, true)) {
                 $column = 'process_record_id';
             }

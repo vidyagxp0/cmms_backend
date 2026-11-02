@@ -28,7 +28,8 @@ class EquipmentMaster extends Model
         'capacity',
         'stage_id',
         'process_id',
-        'initiator_id'
+        'initiator_id',
+        'department_id'
     ];
 
     protected $casts = [
@@ -44,6 +45,7 @@ class EquipmentMaster extends Model
     {
         return $this->belongsTo(Stage::class);
     }
+
 
     public function department()
     {

@@ -205,7 +205,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-master-department-equipment/{id}',[DepartmentEquipmentMasterController::class, 'update'])->name('update-master-department-equipment');
         Route::get('/spare-instruments/audit-trail/{id}', [DepartmentEquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/department-equipment-record-stage/{id}',[DepartmentEquipmentMasterController::class, 'moveStage'])->name('department-equipment-record-stage');
-        Route::post('/department-equipment-record-permission/{id}',[DepartmentEquipmentMasterController::class, 'checkEquipmentMasterRecordPermission'])->name('department-equipment-record-permission');
+        Route::get('/department-equipment-record-permission/{id}',[DepartmentEquipmentMasterController::class, 'checkEquipmentMasterRecordPermission'])->name('department-equipment-record-permission');
 
         /* excel import api */
         Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');

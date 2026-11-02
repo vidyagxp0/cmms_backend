@@ -51,10 +51,9 @@ class DepartmentEquipmentMasterService
                             ->orWhere('equipment_id_no', 'like', "%{$search}%");
                     });
                 })
-                ->with('stage', 'process', 'initiator')
+                ->with('stage', 'process', 'initiator', 'department')
                 ->orderByDesc('id')
                 ->paginate($request->per_page ?? 10);
-
             return ResponseHelper::success(
                 $equipments,
                 'Field instruments fetched successfully.'
@@ -674,7 +673,7 @@ class DepartmentEquipmentMasterService
 
             /* record activity history */
             RecordActivityHistory::create([
-                'field_instrument_id' => $processRecord->id,
+                'equipment_id' => $processRecord->id,
                 'activity_id' => $activity->id,
                 'performed_by' => Auth::id(),
                 'stage_id' => $currentStage->id,

@@ -15,7 +15,8 @@ class RecordActivityHistory extends Model
         'comment',
         'performed_at',
         'instrument_id',
-        'field_instrument_id'
+        'field_instrument_id',
+        'equipment_id'
     ];
 
     protected function casts(): array
