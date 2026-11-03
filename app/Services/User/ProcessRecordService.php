@@ -61,6 +61,11 @@ class ProcessRecordService
         return self::getRecordsByProcessName($request, 'Field Instrument Calibration Addendum');
     }
 
+    public static function getPrevetineAddendumRecords(Request $request)
+    {
+        return self::getRecordsByProcessName($request, 'Preventive Addendum');
+    }
+
     /* fetch non-paginated records for a process, with search + status + date range filters */
     private static function getAllRecordsByProcessName(Request $request, string $processName)
     {
@@ -206,6 +211,11 @@ class ProcessRecordService
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
                     'Reviewed By User Department' => 'User Department Role',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+                11 => [ // Preventive Addendum
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
                     'Pending QA Approval' => 'QA Approver',
                 ],
             ];

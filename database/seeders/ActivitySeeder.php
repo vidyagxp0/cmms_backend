@@ -392,8 +392,44 @@ class ActivitySeeder extends Seeder
                 ],
             ]
         );
+
+
+        /* Preventive Addendum */
+        $this->createActivities(
+            'Preventive Addendum',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Pending QA Approval',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
     }
 
+    
     /* Create Activities */
     private function createActivities(
         string $processName,
@@ -406,21 +442,44 @@ class ActivitySeeder extends Seeder
             return;
         }
 
-        foreach ($forwardActivities as $forwardActivity) {
-            $fromStage = Stage::where('process_id', $process->id)
-                ->where('name', $forwardActivity['from'])
-                ->first();
+        $stages = Stage::where('process_id', $process->id)->get();
 
-            $toStage = Stage::where('process_id', $process->id)
-                ->where('name', $forwardActivity['to'])
-                ->first();
+        $findStage = function (string $stageName) use ($stages) {
+            return $stages->first(
+                fn ($stage) => strcasecmp(trim($stage->name), trim($stageName)) === 0
+            );
+        };
+
+        /* Create cancellation activity independently for every process */
+        $openedStage = $findStage('Opened');
+
+        $cancelledStage = $findStage('Closed - Cancelled')
+            ?? $findStage('Close - Cancelled');
+
+        if ($openedStage && $cancelledStage) {
+            Activity::updateOrCreate(
+                [
+                    'name' => 'Cancel',
+                    'from_stage' => $openedStage->id,
+                    'to_stage' => $cancelledStage->id,
+                ],
+                [
+                    'is_active' => true,
+                    'assigned_role' => null,
+                ]
+            );
+        }
+
+        /* Create forward activities */
+        foreach ($forwardActivities as $forwardActivity) {
+            $fromStage = $findStage($forwardActivity['from']);
+            $toStage = $findStage($forwardActivity['to']);
 
             if (!$fromStage || !$toStage) {
                 continue;
             }
 
-            /* create forward activity without duplicates */
-            Activity::firstOrCreate(
+            Activity::updateOrCreate(
                 [
                     'name' => $forwardActivity['name'],
                     'from_stage' => $fromStage->id,
@@ -431,64 +490,29 @@ class ActivitySeeder extends Seeder
                     'assigned_role' => null,
                 ]
             );
+        }
 
-            /* create cancellation activity from Opened */
-            if ($fromStage->name === 'Opened') {
-                $cancelledStageName = $processName === 'Instrument Master'
-                    ? 'Closed - Cancelled'
-                    : 'Close - Cancelled';
+        /* Create backward activities */
+        foreach ($backwardActivities as $backwardActivity) {
+            $fromStage = $findStage($backwardActivity['from']);
+            $toStage = $findStage($backwardActivity['to']);
 
-                $cancelledStage = Stage::where('process_id', $process->id)
-                    ->where('name', $cancelledStageName)
-                    ->first();
-
-                if ($cancelledStage) {
-                    Activity::firstOrCreate(
-                        [
-                            'name' => 'Cancel',
-                            'from_stage' => $fromStage->id,
-                            'to_stage' => $cancelledStage->id,
-                        ],
-                        [
-                            'is_active' => true,
-                            'assigned_role' => null,
-                        ]
-                    );
-                }
+            if (!$fromStage || !$toStage) {
+                continue;
             }
 
-            /* create backward activity */
-            foreach ($backwardActivities as $backwardActivity) {
-                if ($backwardActivity['from'] !== $forwardActivity['to']) {
-                    continue;
-                }
-
-                $backwardFromStage = Stage::where('process_id', $process->id)
-                    ->where('name', $backwardActivity['from'])
-                    ->first();
-
-                $backwardToStage = Stage::where('process_id', $process->id)
-                    ->where('name', $backwardActivity['to'])
-                    ->first();
-
-                if (!$backwardFromStage || !$backwardToStage) {
-                    continue;
-                }
-
-                Activity::firstOrCreate(
-                    [
-                        'name' => $backwardActivity['name'],
-                        'from_stage' => $backwardFromStage->id,
-                        'to_stage' => $backwardToStage->id,
-                    ],
-                    [
-                        'is_active' => true,
-                        'assigned_role' => null,
-                    ]
-                );
-
-                break;
-            }
+            Activity::updateOrCreate(
+                [
+                    'name' => $backwardActivity['name'],
+                    'from_stage' => $fromStage->id,
+                    'to_stage' => $toStage->id,
+                ],
+                [
+                    'is_active' => true,
+                    'assigned_role' => null,
+                ]
+            );
         }
     }
+
 }

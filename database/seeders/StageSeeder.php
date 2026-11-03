@@ -20,7 +20,7 @@ class StageSeeder extends Seeder
                 'Reviewed By User Department',
                 'Pending QA Approval',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Preventive Maintenance Planner' => [
@@ -29,7 +29,7 @@ class StageSeeder extends Seeder
                 'Pending QA Review',
                 'Pending QA Approval',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Preventive Maintenance' => [
@@ -37,7 +37,7 @@ class StageSeeder extends Seeder
                 'Engineering Department Review',
                 'Pending QA Approval',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Calibration Management' => [
@@ -45,7 +45,7 @@ class StageSeeder extends Seeder
                 'Reviewed By HOD/Designee',
                 'Verified By QA',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Instrument Master' => [
@@ -70,7 +70,7 @@ class StageSeeder extends Seeder
                 'Reviewed By User Department',
                 'Pending QA Approval',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Field Instrument Calibration Addendum' => [
@@ -79,7 +79,7 @@ class StageSeeder extends Seeder
                 'Reviewed By User Department',
                 'Pending QA Approval',
                 'Closed - Done',
-                'Close - Cancelled',
+                'Closed - Cancelled',
             ],
 
             'Spare Instrument Master' => [
@@ -94,6 +94,14 @@ class StageSeeder extends Seeder
                 'Opened',
                 'HOD Review',
                 'QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
+
+            'Preventive Addendum' => [
+                'Opened',
+                'Reviewed By HOD/Designee (Engineering)',
+                'Pending QA Approval',
                 'Closed - Done',
                 'Closed - Cancelled',
             ],

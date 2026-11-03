@@ -80,6 +80,13 @@ class ProcessSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Preventive Addendum',
+                'is_child' => false,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

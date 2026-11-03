@@ -94,8 +94,21 @@ class ProcessRecordController extends Controller
             ], 500);
         }
     }
+
+    /* Addendum Field Instrument Planner Record */
+    public function getPrevetineAddendumRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getPrevetineAddendumRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
     
-        /* generate record number for a process */
+    /* generate record number for a process */
     public function generateRecordNumber($processId)
     {
         try {

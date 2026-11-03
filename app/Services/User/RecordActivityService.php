@@ -17,7 +17,8 @@ class RecordActivityService
                 '4',
                 '5',
                 '7',
-                '8'
+                '8',
+                '11'
             ];
 
             if ($processId === '3') {
