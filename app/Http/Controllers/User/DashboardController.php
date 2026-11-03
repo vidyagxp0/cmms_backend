@@ -54,7 +54,7 @@ class DashboardController extends Controller
                     'required',
                     'string',
                     Rule::in([
-                        'master_instrument',
+                        'instrument_masters',
                         'field_instrument_master',
                         'spare_instrument_master',
                         'equipment_master',
@@ -71,7 +71,7 @@ class DashboardController extends Controller
             }
 
             $tables = [
-                'master_instrument' => 'instrument_masters',
+                'instrument_masters' => 'instrument_masters',
                 'field_instrument_master' => 'field_instrument_masters',
                 'spare_instrument_master' => 'spare_instrument_masters',
                 'equipment_master' => 'equipment_masters',
@@ -91,7 +91,7 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Unable to fetch master data.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
