@@ -37,13 +37,13 @@ class DepartmentEquipmentMasterService
         ];
     }
 
-    /* Master Equipment */
+    /* Equipment listing */
     public static function getEquipments(Request $request)
     {
         try {
             $equipments = EquipmentMaster::query()
-                ->when($request->search, function ($query) use ($request) {
-                    $search = trim($request->search);
+                ->when($request->search, function ($query, $search) {
+                    $search = trim($search);
 
                     $query->where(function ($q) use ($search) {
                         $q->where('equipment_name', 'like', "%{$search}%")
@@ -51,19 +51,14 @@ class DepartmentEquipmentMasterService
                             ->orWhere('equipment_id_no', 'like', "%{$search}%");
                     });
                 })
+                ->when($request->department_id, fn ($query, $departmentId) => $query->where('department_id', $departmentId))
                 ->with('stage', 'process', 'initiator', 'department')
                 ->orderByDesc('id')
                 ->paginate($request->per_page ?? 10);
-            return ResponseHelper::success(
-                $equipments,
-                'Field instruments fetched successfully.'
-            );
 
+            return ResponseHelper::success($equipments, 'Equipments fetched successfully.');
         } catch (\Exception $e) {
-            return ResponseHelper::error(
-                'Failed to retrieve field instruments.',
-                500
-            );
+            return ResponseHelper::error('Failed to retrieve equipments.', 500);
         }
     }
 

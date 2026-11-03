@@ -45,7 +45,7 @@ class EquipmentMasterService
         ];
     }
 
-    /* equipment listing */
+    /* Instrument listing */
     public static function getEquipments(EquipmentMasterRequest $request)
     {
         try {
@@ -62,11 +62,9 @@ class EquipmentMasterService
             $category = $categoryMap[$categoryKey] ?? null;
 
             $equipments = InstrumentMaster::query()
-                ->when($request->search, function ($query) use ($request) {
-                    $search = $request->search;
-
-                    $query->where(function ($query) use ($search) {
-                        $query->where('instrument_name', 'like', "%{$search}%")
+                ->when($request->search, function ($query, $search) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('instrument_name', 'like', "%{$search}%")
                             ->orWhere('instrument_id_no', 'like', "%{$search}%")
                             ->orWhere('make', 'like', "%{$search}%")
                             ->orWhere('sr_no_model_no', 'like', "%{$search}%")
@@ -74,27 +72,18 @@ class EquipmentMasterService
                             ->orWhere('location', 'like', "%{$search}%");
                     });
                 })
-                ->when($category, function ($query) use ($category) {
-                    $query->where('category', $category);
-                })
-                ->when($request->status, function ($query) use ($request) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('name', $request->status);
-                    });
+                ->when($category, fn ($query, $category) => $query->where('category', $category))
+                ->when($request->department_id, fn ($query, $departmentId) => $query->where('department_id', $departmentId))
+                ->when($request->status, function ($query, $status) {
+                    $query->whereHas('stage', fn ($q) => $q->where('name', $status));
                 })
                 ->with('stage', 'process', 'initiator')
-                ->orderBy('id', 'desc')
+                ->orderByDesc('id')
                 ->paginate($request->per_page ?? 10);
 
-            return ResponseHelper::success(
-                $equipments,
-                'Instrument fetched successfully.'
-            );
+            return ResponseHelper::success($equipments, 'Instrument fetched successfully.');
         } catch (\Exception $e) {
-            return ResponseHelper::error(
-                'Failed to retrieve Instrument.',
-                500
-            );
+            return ResponseHelper::error('Failed to retrieve Instrument.', 500);
         }
     }
 
