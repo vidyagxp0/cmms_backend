@@ -214,8 +214,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/preventive-addendum-detail/{id}',[PreventiveAddendumPlannerController::class, 'show'])->name('preventive-addendum-detail');
         Route::put('/update-preventive-addendum/{id}',[PreventiveAddendumPlannerController::class, 'update'])->name('update-preventive-addendum');
         Route::post('/preventive-addendum-record-stage/{id}',[PreventiveAddendumPlannerController::class, 'moveStage'])->name('preventive-addendum-record-stage');
-        // Route::get('/preventive-addendum/audit-trail/{id}', [PreventiveAddendumPlannerController::class, 'prventiveAddendumPlannerAudit'])->name('preventive-addendum.audit.details');
-        // Route::post('/preventive-addendum-report/{id}',[PreventiveAddendumPlannerController::class, 'prevetineAddendumSingleReport'])->name('preventive-addendum-report');
+        Route::post('/preventive-addendum-report/{id}',[PreventiveAddendumPlannerController::class, 'prevetineAddendumSingleReport'])->name('preventive-addendum-report');
+        Route::get('/preventive-addendum/audit-trail/{id}', [PreventiveAddendumPlannerController::class, 'prventiveAddendumPlannerAudit'])->name('preventive-addendum.audit.details');
 
         /* excel import api */
         Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');

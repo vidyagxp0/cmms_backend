@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Services\User\AddendumFieldInstrument\PreventiveAddendumPlannerService;
+use App\Services\User\PreventiveAddendum\PreventiveAddendumPlannerService;
+use App\Services\User\PreventivePlanner\PreventivePlannerAuditService;
+use App\Services\UserReport\PreventiveAddendumPlannerReportService;
 use Illuminate\Http\Request;
 use App\Http\Requests\User\RecordActivityRequest;
 
@@ -67,35 +69,35 @@ class PreventiveAddendumPlannerController extends Controller
         }
     }
 
-    /* get Addendum Field Instrument audit data */
-    // public function prventiveAddendumPlannerAudit(Request $request, $id)
-    // {
-    //     try {
-    //         return AddendumFieldInstrumentAuditService::getProcessRecordAudits(
-    //             $id,
-    //             $request
-    //         );
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve process record audits.',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
     /* Addendum Field Instrument single report */
-    // public function prevetineAddendumSingleReport($id) 
-    // {
-    //     try {
-    //         return AddendumFieldInstrumentReportService::generateReport(
-    //             $id
-    //         );
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to load report.',
-    //         ], 500);
-    //     }
-    // }
+    public function prevetineAddendumSingleReport($id) 
+    {
+        try {
+            return PreventiveAddendumPlannerReportService::generateReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
+            ], 500);
+        }
+    }
+
+    /* get Addendum Field Instrument audit data */
+    public function prventiveAddendumPlannerAudit(Request $request, $id)
+    {
+        try {
+            return PreventivePlannerAuditService::getProcessRecordAudits(
+                $id,
+                $request
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve process record audits.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

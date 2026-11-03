@@ -147,7 +147,7 @@ class AddendumFieldInstrumentReportService
             ];
 
             /* generate PDF */
-            $pdf = Pdf::loadView('Reports.User.AddendumFieldInstrumentPlannerReport', $data);
+            $pdf = Pdf::loadView('Reports.User.PreventiveAddendumPlannerReport', $data);
             $pdf->setPaper('a4', 'landscape');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 

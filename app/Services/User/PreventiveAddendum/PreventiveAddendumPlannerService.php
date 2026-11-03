@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\User\AddendumFieldInstrument;
+namespace App\Services\User\PreventiveAddendum;
 
 use App\Helpers\ResponseHelper;
 use App\Services\User\ProcessRecordService;
