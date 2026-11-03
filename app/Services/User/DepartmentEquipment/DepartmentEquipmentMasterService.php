@@ -597,7 +597,7 @@ class DepartmentEquipmentMasterService
             /* verify process record belongs to Master Equipment */
             if (
                 !$processRecord->process ||
-                $processRecord->process->name !== 'Master Equipment'
+                $processRecord->process->name !== 'Equipment Master'
             ) {
                 DB::rollBack();
 
