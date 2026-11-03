@@ -1,27 +1,29 @@
 <?php
 
 namespace App\Services\UserReport;
+
 use App\Helpers\ResponseHelper;
 use App\Models\SpareInstrumentMaster;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SpareInstrumentMasterReportService
 {
-    /* generate field instrument master report */
+    /* shown in the header row under the title (the spare instrument record has no document number / type of its own) */
+    private const DEFAULT_DOCUMENT_NUMBER = '-';
+    private const DEFAULT_DOCUMENT_TYPE = '-';
+
+    /* generate spare instrument master report */
     public static function generateSpareInstrumentMasterReport($id)
     {
         try {
             $instrument = SpareInstrumentMaster::find($id);
 
             if (!$instrument) {
-                return ResponseHelper::error(
-                    'Field Instrument not found.',
-                    404
-                );
+                return ResponseHelper::error('Spare Instrument not found.', 404);
             }
 
             /* general information */
@@ -29,12 +31,15 @@ class SpareInstrumentMasterReportService
                 ['label' => 'Process Name', 'value' => $instrument->process?->name ?? '-'],
                 ['label' => 'Initiator', 'value' => self::getInitiatorName($instrument)],
                 ['label' => 'Current Stage', 'value' => $instrument->stage?->name ?? '-'],
-                ['label' => 'Created On', 'value' => $instrument->created_at
-                    ? Carbon::parse($instrument->created_at)->format('d-m-Y H:i:s')
-                    : null],
+                [
+                    'label' => 'Created On',
+                    'value' => $instrument->created_at
+                        ? Carbon::parse($instrument->created_at)->format('d-m-Y H:i:s')
+                        : null,
+                ],
             ]);
 
-            /* field instrument details */
+            /* spare instrument details */
             $specFields = self::prepareReportFields([
                 ['label' => 'Instrument Name', 'value' => $instrument->instrument_name],
                 ['label' => 'Instrument ID No.', 'value' => $instrument->instrument_id_no],
@@ -49,13 +54,13 @@ class SpareInstrumentMasterReportService
                 ['label' => 'Calibration Test Points', 'value' => $instrument->calibration_test_points],
             ]);
 
-            /* HOD review */
+            /* HOD review: comments + attachment, printed as one line without a heading */
             $hodFields = self::prepareReportFields([
                 ['label' => 'HOD Review Comments', 'value' => $instrument->hod_review_comments],
                 ['label' => 'HOD Review Attachment', 'value' => self::attachmentLabel($instrument->hod_review_attachment)],
             ]);
 
-            /* QA approver review */
+            /* QA approver review: comments + attachment, printed as one line without a heading */
             $qaFields = self::prepareReportFields([
                 ['label' => 'QA Review Comments', 'value' => $instrument->qa_review_comments],
                 ['label' => 'QA Review Attachment', 'value' => self::attachmentLabel($instrument->qa_review_attachment)],
@@ -72,13 +77,8 @@ class SpareInstrumentMasterReportService
                 $config = [];
             }
 
-            $questionColumns = self::cleanColumns(
-                $config['question_columns'] ?? []
-            );
-
-            $dataColumns = self::cleanColumns(
-                $config['data_columns'] ?? []
-            );
+            $questionColumns = self::cleanColumns($config['question_columns'] ?? []);
+            $dataColumns = self::cleanColumns($config['data_columns'] ?? []);
 
             $rows = [];
             $hasFrequency = false;
@@ -88,13 +88,8 @@ class SpareInstrumentMasterReportService
                     continue;
                 }
 
-                $values = is_array($question['values'] ?? null)
-                    ? $question['values']
-                    : [];
-
-                $cells = is_array($question['data_cells'] ?? null)
-                    ? $question['data_cells']
-                    : [];
+                $values = is_array($question['values'] ?? null) ? $question['values'] : [];
+                $cells = is_array($question['data_cells'] ?? null) ? $question['data_cells'] : [];
 
                 $questionValues = [];
                 $hasQuestionText = false;
@@ -110,6 +105,7 @@ class SpareInstrumentMasterReportService
                     $questionValues[] = $value !== '' ? $value : '-';
                 }
 
+                /* skip completely empty questions */
                 if (!$hasQuestionText) {
                     continue;
                 }
@@ -117,9 +113,7 @@ class SpareInstrumentMasterReportService
                 $cellValues = [];
 
                 foreach ($dataColumns as $column) {
-                    $cellValues[] = self::describeCell(
-                        $cells[$column['id']] ?? null
-                    );
+                    $cellValues[] = self::describeCell($cells[$column['id']] ?? null);
                 }
 
                 $frequencyEnabled = ($question['frequency_enabled'] ?? true) !== false;
@@ -138,29 +132,44 @@ class SpareInstrumentMasterReportService
                 ];
             }
 
+            /* checklist notes */
             $rawNotes = $config['notes'] ?? $config['note'] ?? [];
             $noteItems = [];
 
-            foreach (($rawNotes['items'] ?? []) as $item) {
-                $text = is_array($item)
-                    ? trim((string) ($item['value'] ?? ''))
-                    : trim((string) $item);
+            if (is_array($rawNotes)) {
+                foreach (($rawNotes['items'] ?? []) as $item) {
+                    $text = is_array($item)
+                        ? trim((string) ($item['value'] ?? ''))
+                        : (is_scalar($item) ? trim((string) $item) : '');
 
-                if ($text !== '') {
-                    $noteItems[] = $text;
+                    if ($text !== '') {
+                        $noteItems[] = $text;
+                    }
                 }
             }
 
-            $checklistName = trim(
-                (string) ($config['checklist_name'] ?? '')
-            );
+            $checklistName = trim((string) ($config['checklist_name'] ?? ''));
 
-            $checklistSections = [
+            /* report sections, printed in this order (a section without a title has no heading) */
+            $sections = [
+                [
+                    'type' => 'fields',
+                    'title' => 'General Information',
+                    'fields' => $recordFields,
+                ],
+                [
+                    'type' => 'fields',
+                    'title' => 'Spare Instrument Details',
+                    'fields' => $specFields,
+                ],
+                [
+                    'type' => 'fields',
+                    'title' => null,
+                    'fields' => array_merge($hodFields, $qaFields),
+                ],
                 [
                     'type' => 'checklist',
-                    'title' => $checklistName !== ''
-                        ? $checklistName
-                        : 'Checklist',
+                    'title' => $checklistName !== '' ? $checklistName : 'Checklist',
                     'checklist' => [
                         'include_serial_number' => ($config['include_serial_number'] ?? true) !== false,
                         'question_headers' => array_column($questionColumns, 'column_header'),
@@ -171,92 +180,50 @@ class SpareInstrumentMasterReportService
                 ],
             ];
 
-            if ($noteItems) {
-                $checklistSections[] = [
+            if (!empty($noteItems)) {
+                $sections[] = [
                     'type' => 'notes',
                     'title' => 'Notes',
-                    'include_serial_number' => ($rawNotes['include_serial_number'] ?? true) !== false,
+                    'include_serial_number' => (is_array($rawNotes) ? ($rawNotes['include_serial_number'] ?? true) : true) !== false,
                     'items' => $noteItems,
                 ];
             }
 
-            /* report sections */
-            $tabs = [
-                [
-                    'tab_title' => 'General Information',
-                    'sections' => [
-                        ['type' => 'fields', 'title' => 'General Information', 'fields' => $recordFields],
-                    ],
-                ],
-                [
-                    'tab_title' => 'Field Instrument Details',
-                    'sections' => [
-                        ['type' => 'fields', 'title' => 'Field Instrument Specifications', 'fields' => $specFields],
-                    ],
-                ],
-                [
-                    'tab_title' => 'HOD Review',
-                    'sections' => [
-                        ['type' => 'fields', 'title' => 'HOD Review Details', 'fields' => $hodFields],
-                    ],
-                ],
-                [
-                    'tab_title' => 'QA Approver Review',
-                    'sections' => [
-                        ['type' => 'fields', 'title' => 'QA Review Details', 'fields' => $qaFields],
-                    ],
-                ],
-                [
-                    'tab_title' => 'Checklist',
-                    'sections' => $checklistSections,
-                ],
-            ];
-
+            /* report data */
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
-                    'report_title' => $instrument->process?->name ?? 'Field Instrument Master',
-                    'report_subtitle' => 'Field Instrument Record Report',
-                    'left_logo' => self::logoDataUri(self::LOGO_LEFT_PATHS),
-                    'right_logo' => self::logoDataUri(self::LOGO_RIGHT_PATHS),
+                    'report_title' => 'Spare Instrument Master',
+                    'document_number' => self::DEFAULT_DOCUMENT_NUMBER,
+                    'document_type' => self::DEFAULT_DOCUMENT_TYPE,
                 ],
                 'instrument' => [
                     'id' => $instrument->id,
                     'id_no' => $instrument->instrument_id_no,
                 ],
-                'tabs' => $tabs,
+                'sections' => $sections,
                 'footer' => [
-                    'generated_by' => auth()->user()?->name,
+                    'generated_by' => auth()->user()?->name ?? 'System',
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
             ];
 
-            $pdf = Pdf::loadView(
-                'Reports.User.FieldInstrumentReport',
-                $data
-            );
+            $pdf = Pdf::loadView('Reports.User.SpareInstrumentReport', $data);
+            $pdf->setPaper('a4', 'landscape');
+            $pdf->setOption('defaultFont', 'DejaVu Sans');
 
-            $pdf->setPaper('a4', 'portrait');
-
-            return $pdf->stream(
-                'field-instrument-master-' . $instrument->id . '.pdf'
-            );
-
+            return $pdf->stream('spare-instrument-master-' . $instrument->id . '.pdf');
         } catch (\Throwable $e) {
-            \Log::error('FIELD INSTRUMENT REPORT ERROR', [
+            \Log::error('SPARE INSTRUMENT REPORT ERROR', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
             ]);
 
-            return ResponseHelper::error(
-                'Failed to generate field instrument report.',
-                500
-            );
+            return ResponseHelper::error($e->getMessage(), 500);
         }
     }
 
-    
     /* prepare report fields (empty values become "-") */
     private static function prepareReportFields(array $fields): array
     {
@@ -267,7 +234,7 @@ class SpareInstrumentMasterReportService
 
             if (is_array($value)) {
                 $value = implode(', ', array_filter(array_map(
-                    fn ($v) => is_scalar($v) ? trim((string) $v) : '',
+                    fn ($item) => is_scalar($item) ? trim((string) $item) : '',
                     $value
                 )));
             }
@@ -306,34 +273,7 @@ class SpareInstrumentMasterReportService
         return '-';
     }
 
-    private static function logoDataUri(array $candidates): ?string
-    {
-        foreach ($candidates as $relative) {
-            foreach ([public_path($relative), storage_path('app/public/' . $relative)] as $path) {
-                if (is_file($path)) {
-                    $mime = @mime_content_type($path) ?: 'image/png';
-
-                    return 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private const LOGO_LEFT_PATHS = [
-        'images/shilpa_logo.png',
-        'images/shilpa-logo.png',
-        'images/shilpa.png',
-    ];
-
-    private const LOGO_RIGHT_PATHS = [
-        'images/vidyagxp_logo.png',
-        'vidyagxp_logo.png',
-        'images/vidyagxp.png',
-    ];
-
-        /* describe what a configured data cell looks like (field type + options) */
+    /* describe what a configured data cell looks like (field type + options) */
     private static function describeCell($cell): string
     {
         if (!is_array($cell)) {
@@ -343,15 +283,15 @@ class SpareInstrumentMasterReportService
         $type = $cell['field_type'] ?? 'text';
 
         $labels = [
-            'text'                   => 'Text',
-            'textarea'               => 'Text Area',
-            'number'                 => 'Number',
-            'date'                   => 'Date',
-            'single_select'          => 'Single Select',
-            'multi_select'           => 'Multi Select',
+            'text' => 'Text',
+            'textarea' => 'Text Area',
+            'number' => 'Number',
+            'date' => 'Date',
+            'single_select' => 'Single Select',
+            'multi_select' => 'Multi Select',
             'single_select_checkbox' => 'Single Select (Checkbox)',
-            'multi_select_checkbox'  => 'Multi Select (Checkbox)',
-            'checkbox'               => 'Checkbox',
+            'multi_select_checkbox' => 'Multi Select (Checkbox)',
+            'checkbox' => 'Checkbox',
         ];
 
         $label = $labels[$type] ?? Str::headline((string) $type);
@@ -362,13 +302,18 @@ class SpareInstrumentMasterReportService
         }
 
         $options = [];
+
         foreach (($cell['options'] ?? []) as $option) {
-            $text = is_array($option) ? trim((string) ($option['value'] ?? '')) : trim((string) $option);
+            $text = is_array($option)
+                ? trim((string) ($option['value'] ?? ''))
+                : (is_scalar($option) ? trim((string) $option) : '');
+
             if ($text !== '') {
                 $options[] = $text;
             }
         }
-        if ($options) {
+
+        if (!empty($options)) {
             $label .= ': ' . implode(', ', $options);
         }
 
@@ -387,16 +332,20 @@ class SpareInstrumentMasterReportService
         }
 
         $result = [];
+
         foreach ($columns as $column) {
             if (!is_array($column)) {
                 continue;
             }
+
             $header = trim((string) ($column['column_header'] ?? ''));
+
             if ($header === '') {
                 continue;
             }
+
             $result[] = [
-                'id'            => $column['id'] ?? null,
+                'id' => $column['id'] ?? null,
                 'column_header' => $header,
             ];
         }
@@ -404,7 +353,7 @@ class SpareInstrumentMasterReportService
         return $result;
     }
 
-    /* display stored attachment path */
+    /* display stored attachment filename */
     private static function attachmentLabel($attachment): string
     {
         if (!is_string($attachment) || trim($attachment) === '') {

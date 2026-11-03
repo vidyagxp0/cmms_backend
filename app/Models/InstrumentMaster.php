@@ -26,7 +26,8 @@ class InstrumentMaster extends Model
         'qa_review_attachment',
         'qa_review_comments',
         'initiator_id',
-        'is_imported'
+        'is_imported',
+        'department_id'
     ];
 
     protected $casts = [
