@@ -12,17 +12,9 @@ use Illuminate\Support\Str;
 
 class InstrumentReportService
 {
-    private const LOGO_LEFT_PATHS = [
-        'images/shilpa_logo.png',
-        'images/shilpa-logo.png',
-        'images/shilpa.png',
-    ];
-
-    private const LOGO_RIGHT_PATHS = [
-        'images/vidyagxp_logo.png',
-        'vidyagxp_logo.png',
-        'images/vidyagxp.png',
-    ];
+    /* shown in the header row under the title (the instrument record has no document number / type of its own) */
+    private const DEFAULT_DOCUMENT_NUMBER = '-';
+    private const DEFAULT_DOCUMENT_TYPE = '-';
 
     /* generate instrument master report */
     public static function generateReport($id)
@@ -58,53 +50,20 @@ class InstrumentReportService
 
             /* instrument details */
             $specFields = self::prepareReportFields([
-                [
-                    'label' => 'Instrument Name',
-                    'value' => $instrument->instrument_name,
-                ],
-                [
-                    'label' => 'Instrument ID No.',
-                    'value' => $instrument->instrument_id_no,
-                ],
-                [
-                    'label' => 'Make',
-                    'value' => $instrument->make,
-                ],
-                [
-                    'label' => 'Sr. No. / Model No.',
-                    'value' => $instrument->sr_no_model_no,
-                ],
-                [
-                    'label' => 'Location',
-                    'value' => $instrument->location,
-                ],
-                [
-                    'label' => 'Category',
-                    'value' => $instrument->category,
-                ],
-                [
-                    'label' => 'Least Count',
-                    'value' => $instrument->least_count,
-                ],
-                [
-                    'label' => 'Accuracy',
-                    'value' => $instrument->accuracy,
-                ],
-                [
-                    'label' => 'Instrument Range',
-                    'value' => $instrument->instrument_range,
-                ],
-                [
-                    'label' => 'Operating Range',
-                    'value' => $instrument->operating_range,
-                ],
-                [
-                    'label' => 'Calibration Test Points',
-                    'value' => $instrument->calibration_test_points,
-                ],
+                ['label' => 'Instrument Name', 'value' => $instrument->instrument_name],
+                ['label' => 'Instrument ID No.', 'value' => $instrument->instrument_id_no],
+                ['label' => 'Make', 'value' => $instrument->make],
+                ['label' => 'Sr. No. / Model No.', 'value' => $instrument->sr_no_model_no],
+                ['label' => 'Location', 'value' => $instrument->location],
+                ['label' => 'Category', 'value' => $instrument->category],
+                ['label' => 'Least Count', 'value' => $instrument->least_count],
+                ['label' => 'Accuracy', 'value' => $instrument->accuracy],
+                ['label' => 'Instrument Range', 'value' => $instrument->instrument_range],
+                ['label' => 'Operating Range', 'value' => $instrument->operating_range],
+                ['label' => 'Calibration Test Points', 'value' => $instrument->calibration_test_points],
             ]);
 
-            /* HOD review */
+            /* HOD review: comments + attachment, printed as one line without a heading */
             $hodFields = self::prepareReportFields([
                 [
                     'label' => 'HOD Review Comments',
@@ -112,13 +71,11 @@ class InstrumentReportService
                 ],
                 [
                     'label' => 'HOD Review Attachment',
-                    'value' => self::attachmentLabel(
-                        $instrument->hod_review_attachment
-                    ),
+                    'value' => self::attachmentLabel($instrument->hod_review_attachment),
                 ],
             ]);
 
-            /* QA approver review */
+            /* QA approver review: comments + attachment, printed as one line without a heading */
             $qaFields = self::prepareReportFields([
                 [
                     'label' => 'QA Review Comments',
@@ -126,9 +83,7 @@ class InstrumentReportService
                 ],
                 [
                     'label' => 'QA Review Attachment',
-                    'value' => self::attachmentLabel(
-                        $instrument->qa_review_attachment
-                    ),
+                    'value' => self::attachmentLabel($instrument->qa_review_attachment),
                 ],
             ]);
 
@@ -143,13 +98,8 @@ class InstrumentReportService
                 $config = [];
             }
 
-            $questionColumns = self::cleanColumns(
-                $config['question_columns'] ?? []
-            );
-
-            $dataColumns = self::cleanColumns(
-                $config['data_columns'] ?? []
-            );
+            $questionColumns = self::cleanColumns($config['question_columns'] ?? []);
+            $dataColumns = self::cleanColumns($config['data_columns'] ?? []);
 
             $rows = [];
             $hasFrequency = false;
@@ -159,22 +109,15 @@ class InstrumentReportService
                     continue;
                 }
 
-                $values = is_array($question['values'] ?? null)
-                    ? $question['values']
-                    : [];
-
-                $cells = is_array($question['data_cells'] ?? null)
-                    ? $question['data_cells']
-                    : [];
+                $values = is_array($question['values'] ?? null) ? $question['values'] : [];
+                $cells = is_array($question['data_cells'] ?? null) ? $question['data_cells'] : [];
 
                 $questionValues = [];
                 $hasQuestionText = false;
 
                 foreach ($questionColumns as $column) {
                     $value = $values[$column['id']] ?? '';
-                    $value = is_scalar($value)
-                        ? trim((string) $value)
-                        : '';
+                    $value = is_scalar($value) ? trim((string) $value) : '';
 
                     if ($value !== '') {
                         $hasQuestionText = true;
@@ -191,13 +134,10 @@ class InstrumentReportService
                 $cellValues = [];
 
                 foreach ($dataColumns as $column) {
-                    $cellValues[] = self::describeCell(
-                        $cells[$column['id']] ?? null
-                    );
+                    $cellValues[] = self::describeCell($cells[$column['id']] ?? null);
                 }
 
-                $frequencyEnabled =
-                    ($question['frequency_enabled'] ?? true) !== false;
+                $frequencyEnabled = ($question['frequency_enabled'] ?? true) !== false;
 
                 $frequency = $frequencyEnabled
                     ? trim((string) ($question['frequency'] ?? ''))
@@ -230,27 +170,32 @@ class InstrumentReportService
                 }
             }
 
-            $checklistName = trim(
-                (string) ($config['checklist_name'] ?? '')
-            );
+            $checklistName = trim((string) ($config['checklist_name'] ?? ''));
 
-            $checklistSections = [
+            /* report sections, printed in this order (a section without a title has no heading) */
+            $sections = [
+                [
+                    'type' => 'fields',
+                    'title' => 'General Information',
+                    'fields' => $recordFields,
+                ],
+                [
+                    'type' => 'fields',
+                    'title' => 'Instrument Details',
+                    'fields' => $specFields,
+                ],
+                [
+                    'type' => 'fields',
+                    'title' => null,
+                    'fields' => array_merge($hodFields, $qaFields),
+                ],
                 [
                     'type' => 'checklist',
-                    'title' => $checklistName !== ''
-                        ? $checklistName
-                        : 'Checklist',
+                    'title' => $checklistName !== '' ? $checklistName : 'Checklist',
                     'checklist' => [
-                        'include_serial_number' =>
-                            ($config['include_serial_number'] ?? true) !== false,
-                        'question_headers' => array_column(
-                            $questionColumns,
-                            'column_header'
-                        ),
-                        'data_headers' => array_column(
-                            $dataColumns,
-                            'column_header'
-                        ),
+                        'include_serial_number' => ($config['include_serial_number'] ?? true) !== false,
+                        'question_headers' => array_column($questionColumns, 'column_header'),
+                        'data_headers' => array_column($dataColumns, 'column_header'),
                         'show_frequency' => $hasFrequency,
                         'rows' => $rows,
                     ],
@@ -258,98 +203,38 @@ class InstrumentReportService
             ];
 
             if (!empty($noteItems)) {
-                $checklistSections[] = [
+                $sections[] = [
                     'type' => 'notes',
                     'title' => 'Notes',
-                    'include_serial_number' =>
-                        ($rawNotes['include_serial_number'] ?? true) !== false,
+                    'include_serial_number' => ($rawNotes['include_serial_number'] ?? true) !== false,
                     'items' => $noteItems,
                 ];
             }
-
-            /* report tabs */
-            $tabs = [
-                [
-                    'tab_title' => 'General Information',
-                    'sections' => [
-                        [
-                            'type' => 'fields',
-                            'title' => 'General Information',
-                            'fields' => $recordFields,
-                        ],
-                    ],
-                ],
-                [
-                    'tab_title' => 'Instrument Details',
-                    'sections' => [
-                        [
-                            'type' => 'fields',
-                            'title' => 'Instrument Specifications',
-                            'fields' => $specFields,
-                        ],
-                    ],
-                ],
-                [
-                    'tab_title' => 'HOD Review',
-                    'sections' => [
-                        [
-                            'type' => 'fields',
-                            'title' => 'HOD Review Details',
-                            'fields' => $hodFields,
-                        ],
-                    ],
-                ],
-                [
-                    'tab_title' => 'QA Approver Review',
-                    'sections' => [
-                        [
-                            'type' => 'fields',
-                            'title' => 'QA Review Details',
-                            'fields' => $qaFields,
-                        ],
-                    ],
-                ],
-                [
-                    'tab_title' => 'Checklist',
-                    'sections' => $checklistSections,
-                ],
-            ];
 
             /* report data */
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
-                    'report_title' => $instrument->process?->name
-                        ?? 'Instrument Master',
-                    'report_subtitle' => 'Instrument Record Report',
-                    'left_logo' => self::logoDataUri(
-                        self::LOGO_LEFT_PATHS
-                    ),
-                    'right_logo' => self::logoDataUri(
-                        self::LOGO_RIGHT_PATHS
-                    ),
+                    'report_title' => 'Instrument Master',
+                    'document_number' => self::DEFAULT_DOCUMENT_NUMBER,
+                    'document_type' => self::DEFAULT_DOCUMENT_TYPE,
                 ],
                 'instrument' => [
                     'id' => $instrument->id,
                     'id_no' => $instrument->instrument_id_no,
                 ],
-                'tabs' => $tabs,
+                'sections' => $sections,
                 'footer' => [
-                    'generated_by' => auth()->user()?->name ?? '-',
+                    'generated_by' => auth()->user()?->name ?? 'System',
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
             ];
 
-            $pdf = Pdf::loadView(
-                'Reports.User.InstrumentMasterReport',
-                $data
-            );
+            $pdf = Pdf::loadView('Reports.User.InstrumentMasterReport', $data);
+            $pdf->setPaper('a4', 'landscape');
+            $pdf->setOption('defaultFont', 'DejaVu Sans');
 
-            $pdf->setPaper('a4', 'portrait');
-
-            return $pdf->stream(
-                'instrument-master-' . $instrument->id . '.pdf'
-            );
+            return $pdf->stream('instrument-master-' . $instrument->id . '.pdf');
         } catch (\Throwable $e) {
             \Log::error('INSTRUMENT REPORT ERROR', [
                 'message' => $e->getMessage(),
@@ -358,10 +243,7 @@ class InstrumentReportService
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return ResponseHelper::error(
-                'Failed to generate instrument report.',
-                500
-            );
+            return ResponseHelper::error('Failed to generate instrument report.', 500);
         }
     }
 
@@ -396,35 +278,6 @@ class InstrumentReportService
         return basename(trim($attachment));
     }
 
-    /* embed logo as base64 for DomPDF */
-    private static function logoDataUri(array $candidates): ?string
-    {
-        foreach ($candidates as $relative) {
-            $paths = [
-                public_path($relative),
-                storage_path('app/public/' . $relative),
-            ];
-
-            foreach ($paths as $path) {
-                if (!is_file($path)) {
-                    continue;
-                }
-
-                $content = @file_get_contents($path);
-
-                if ($content === false) {
-                    continue;
-                }
-
-                $mime = @mime_content_type($path) ?: 'image/png';
-
-                return 'data:' . $mime . ';base64,' . base64_encode($content);
-            }
-        }
-
-        return null;
-    }
-
     /* keep only columns that have a header */
     private static function cleanColumns($columns): array
     {
@@ -439,9 +292,7 @@ class InstrumentReportService
                 continue;
             }
 
-            $header = trim(
-                (string) ($column['column_header'] ?? '')
-            );
+            $header = trim((string) ($column['column_header'] ?? ''));
 
             if ($header === '') {
                 continue;
@@ -479,14 +330,10 @@ class InstrumentReportService
 
         $label = $labels[$type] ?? Str::headline((string) $type);
 
-        if (
-            $type === 'checkbox'
-            && ($cell['checkbox_variant'] ?? 'normal') === 'esign'
-        ) {
+        if ($type === 'checkbox' && ($cell['checkbox_variant'] ?? 'normal') === 'esign') {
             $esign = $cell['esign_type'] ?? null;
 
-            $label = 'E-Sign'
-                . ($esign ? ' (' . Str::headline($esign) . ')' : '');
+            $label = 'E-Sign' . ($esign ? ' (' . Str::headline($esign) . ')' : '');
         }
 
         $options = [];
@@ -522,9 +369,7 @@ class InstrumentReportService
 
             if (is_array($value)) {
                 $value = implode(', ', array_filter(array_map(
-                    fn ($item) => is_scalar($item)
-                        ? trim((string) $item)
-                        : '',
+                    fn ($item) => is_scalar($item) ? trim((string) $item) : '',
                     $value
                 )));
             }

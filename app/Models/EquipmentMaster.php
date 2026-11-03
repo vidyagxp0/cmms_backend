@@ -7,18 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class EquipmentMaster extends Model
 {
     protected $fillable = [
-        'instrument_name',
-        'instrument_id_no',
+        'name',
+        'equipment_id',
         'make',
-        'sr_no_model_no',
-        'location',
-        'least_count',
-        'accuracy',
-        'instrument_range',
-        'operating_range',
-        'calibration_test_points',
-        'category',
-        'checklist_config',
+        'model',
+        'equipment_type',
         'equipment_name',
         'equipment_id_no',
         'equipment_make',
@@ -26,10 +19,11 @@ class EquipmentMaster extends Model
         'equipment_location',
         'asset_code',
         'capacity',
+        'checklist_config',
         'stage_id',
         'process_id',
         'initiator_id',
-        'department_id'
+        'department_id',
     ];
 
     protected $casts = [
@@ -45,7 +39,6 @@ class EquipmentMaster extends Model
     {
         return $this->belongsTo(Stage::class);
     }
-
 
     public function department()
     {

@@ -17,6 +17,7 @@ class ExcelImportController extends Controller
     public function import(ExcelImportRequest $request): JsonResponse
     {
         $category = $request->input('euipmentMasterType');
+        $departmentId = (int) $request->input('department_id');
         $file = $request->file('file');
         $storedPath = null;
 
@@ -28,6 +29,7 @@ class ExcelImportController extends Controller
             }
 
             $absolutePath = Storage::disk('local')->path($storedPath);
+
             $reader = IOFactory::createReaderForFile($absolutePath);
             $reader->setReadDataOnly(true);
 
@@ -37,12 +39,17 @@ class ExcelImportController extends Controller
                 throw new \RuntimeException('The workbook contains no worksheets.');
             }
 
-            $firstDataRow = (int) config('cmms-import.first_data_row', 7);
+            $firstDataRow = (int) config(
+                "cmms-import.first_data_rows.{$category}",
+                config('cmms-import.first_data_row', 7)
+            );
+
             $highestRow = (int) ($worksheets[0]['totalRows'] ?? 0);
             $totalRows = max(0, $highestRow - $firstDataRow + 1);
 
             $importId = DB::table('excel_imports')->insertGetId([
                 'category' => $category,
+                'department_id' => $departmentId,
                 'original_filename' => mb_substr(
                     $file->getClientOriginalName(),
                     0,
@@ -76,6 +83,8 @@ class ExcelImportController extends Controller
                     : 'The workbook contains no data rows to import.',
                 'data' => [
                     'import_id' => $importId,
+                    'category' => $category,
+                    'department_id' => $departmentId,
                     'status' => $totalRows > 0 ? 'queued' : 'completed',
                     'total_rows' => $totalRows,
                 ],
@@ -122,6 +131,7 @@ class ExcelImportController extends Controller
             'data' => [
                 'import_id' => (int) $import->id,
                 'category' => $import->category,
+                'department_id' => $import->department_id,
                 'filename' => $import->original_filename,
                 'status' => $import->status,
                 'total_rows' => $totalRows,

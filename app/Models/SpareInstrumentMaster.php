@@ -27,7 +27,8 @@ class SpareInstrumentMaster extends Model
         'qa_review_comments',
         'initiator_id',
         'is_imported',
-        'category'
+        'category',
+        'department_id'
     ];
 
     protected $casts = [
@@ -45,7 +46,7 @@ class SpareInstrumentMaster extends Model
         return $this->belongsTo(Stage::class);
     }
 
-        public function department()
+    public function department()
     {
         return $this->belongsTo(Department::class);
     }
