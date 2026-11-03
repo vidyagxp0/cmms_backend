@@ -182,13 +182,13 @@ class ProcessRecordService
                 1 => [ // Calibration Planner
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Department Role',
+                    'Reviewed By User Department' => 'Engineering Department Role User',
                     'Pending QA Approval' => 'QA Approver',
                 ],
                 2 => [ // Preventive Maintenance Planner
                     'Opened' => 'Initiator',
                     'Pending HOD/Designee Review' => 'HOD/Designee',
-                    'Pending QA Review' => 'QA Reviewer',
+                    'Pending QA Review' => 'Engineering Department Reviewer',
                     'Pending QA Approval' => 'QA Approver',
                 ],
                 4 => [ // Preventive Maintenance
@@ -204,13 +204,13 @@ class ProcessRecordService
                 7 => [ // Field Instrument Planner
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Department Role',
+                    'Reviewed By User Department' => 'Engineering Department Role User',
                     'Pending QA Approval' => 'QA Approver',
                 ],
                 8 => [ // Addendum Field Instrument Planner
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Department Role',
+                    'Reviewed By User Department' => 'Engineering Department Role User',
                     'Pending QA Approval' => 'QA Approver',
                 ],
                 11 => [ // Preventive Addendum

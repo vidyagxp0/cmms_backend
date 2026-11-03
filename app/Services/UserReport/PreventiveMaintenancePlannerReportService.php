@@ -9,12 +9,19 @@ use Carbon\Carbon;
 
 class PreventiveMaintenancePlannerReportService
 {
-    private const FIRST_PAGE_EQUIPMENT = 20;
-    private const EQUIPMENT_PER_PAGE = 10;
+    /*
+     * equipment printed per page of the planner grid (each equipment has a Planned and an Executed row):
+     * - page 1 shares the page with General Information, so it holds fewer equipment
+     * - every following page holds EQUIPMENT_PER_PAGE equipment (the last page holds the remainder)
+     */
+    private const FIRST_PAGE_EQUIPMENT = 8;
+    private const EQUIPMENT_PER_PAGE = 20;
 
+    /* shown in the header row when process_data has no documentNumber / documentType */
     private const DEFAULT_DOCUMENT_NUMBER = '-';
     private const DEFAULT_DOCUMENT_TYPE = '-';
 
+    /* month columns of the planner */
     private const MONTHS = [
         'Jan' => 'January',
         'Feb' => 'February',
@@ -30,14 +37,13 @@ class PreventiveMaintenancePlannerReportService
         'Dec' => 'December',
     ];
 
+    /* generate preventive maintenance planner report */
     public static function generateReport($id)
     {
         try {
-            $record = ProcessRecord::with([
-                'process',
-                'gridRecords',
-            ])->findOrFail($id);
+            $record = ProcessRecord::with(['process', 'gridRecords'])->findOrFail($id);
 
+            /* process data */
             $processFields = [];
 
             foreach (self::decodeArray($record->process_data) as $field) {
@@ -54,29 +60,22 @@ class PreventiveMaintenancePlannerReportService
                 ];
             }
 
+            /* map record attachments to the attachment fields */
             $recordAttachments = self::decodeArray($record->attachments);
 
             foreach ($processFields as $key => &$field) {
                 if (str_contains(strtolower($key), 'attachment')) {
-                    $field['value'] = self::getAttachmentsByField(
-                        $recordAttachments,
-                        $key
-                    );
+                    $field['value'] = self::getAttachmentsByField($recordAttachments, $key);
                 }
             }
 
             unset($field);
 
-            $documentNumber = self::getProcessFieldValue(
-                $processFields,
-                'documentNumber'
-            ) ?: self::DEFAULT_DOCUMENT_NUMBER;
+            /* header values */
+            $documentNumber = self::getProcessFieldValue($processFields, 'documentNumber') ?: self::DEFAULT_DOCUMENT_NUMBER;
+            $documentType = self::getProcessFieldValue($processFields, 'documentType') ?: self::DEFAULT_DOCUMENT_TYPE;
 
-            $documentType = self::getProcessFieldValue(
-                $processFields,
-                'documentType'
-            ) ?: self::DEFAULT_DOCUMENT_TYPE;
-
+            /* general information */
             $shortDescriptionKey = (
                 !isset($processFields['short_description'])
                 && isset($processFields['shortDescription'])
@@ -93,22 +92,16 @@ class PreventiveMaintenancePlannerReportService
                 ])
             );
 
-            // General comments followed by HOD, User Department and QA review fields.
-            $commentAndReviewFields = array_merge(
-                self::getFieldsByKeys($processFields, [
-                    'comment',
-                    'attachment',
-                ]),
-                self::getReviewFields($processFields)
-            );
-
+            /* general comments followed by the HOD, user department and QA review comments / attachments */
             $commentFields = self::prepareReportFields(
-                $commentAndReviewFields
+                array_merge(
+                    self::getFieldsByKeys($processFields, ['comment', 'attachment']),
+                    self::getReviewFields($processFields)
+                )
             );
 
-            $planner = self::preparePlannerGrid(
-                $record->gridRecords ?? []
-            );
+            /* planner grid */
+            $planner = self::preparePlannerGrid($record->gridRecords ?? []);
 
             $tabs = [
                 [
@@ -128,23 +121,18 @@ class PreventiveMaintenancePlannerReportService
                             'tables' => $planner['tables'],
                         ],
                         [
+                            /* no heading: comments and review lines are printed as plain rows */
                             'type' => 'fields',
-                            'title' => 'Comments & Attachments',
+                            'title' => null,
                             'fields' => $commentFields,
                         ],
                     ],
                 ],
             ];
 
-            $cancellationRemark = self::getProcessFieldValue(
-                $processFields,
-                'cancellation_remark'
-            );
-
-            $cancellationAttachment = self::getProcessFieldValue(
-                $processFields,
-                'cancellation_attachment'
-            );
+            /* cancellation tab only when the record was cancelled */
+            $cancellationRemark = self::getProcessFieldValue($processFields, 'cancellation_remark');
+            $cancellationAttachment = self::getProcessFieldValue($processFields, 'cancellation_attachment');
 
             if (
                 !empty($cancellationRemark)
@@ -167,11 +155,11 @@ class PreventiveMaintenancePlannerReportService
                 ];
             }
 
+            /* report data */
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
-                    'report_title' => $record->process?->name
-                        ?? 'Preventive Maintenance Planner',
+                    'report_title' => $record->process?->name ?? 'Preventive Maintenance Planner',
                     'document_number' => $documentNumber,
                     'document_type' => $documentType,
                 ],
@@ -182,27 +170,20 @@ class PreventiveMaintenancePlannerReportService
                 ],
             ];
 
-            $pdf = Pdf::loadView(
-                'Reports.User.PreventiveMaintenancePlannerReport',
-                $data
-            );
-
+            $pdf = Pdf::loadView('Reports.User.PreventiveMaintenancePlannerReport', $data);
             $pdf->setPaper('a4', 'landscape');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 
-            return $pdf->stream(
-                'preventive-maintenance-planner-' . $record->id . '.pdf'
-            );
-
+            return $pdf->stream('preventive-maintenance-planner-' . $record->id . '.pdf');
         } catch (\Throwable $e) {
             return ResponseHelper::error(
-                'Failed to generate preventive maintenance planner report: '
-                . $e->getMessage(),
+                'Failed to generate preventive maintenance planner report: ' . $e->getMessage(),
                 500
             );
         }
     }
 
+    /* HOD, user department and QA review comments / attachments, in that order */
     private static function getReviewFields(array $fields): array
     {
         $groups = [
@@ -212,44 +193,32 @@ class PreventiveMaintenancePlannerReportService
         ];
 
         foreach ($fields as $key => $field) {
-            $searchText = strtolower(
-                str_replace(
-                    ['_', '-', '/', '\\', ' '],
-                    '',
-                    (string) $key . (string) ($field['label'] ?? '')
-                )
-            );
+            $searchText = strtolower(str_replace(
+                ['_', '-', '/', '\\', ' '],
+                '',
+                (string) $key . (string) ($field['label'] ?? '')
+            ));
 
-            $isCommentOrAttachment =
-                str_contains($searchText, 'comment')
-                || str_contains($searchText, 'attachment');
-
-            if (!$isCommentOrAttachment) {
+            if (!str_contains($searchText, 'comment') && !str_contains($searchText, 'attachment')) {
                 continue;
             }
 
-            if (
-                str_contains($searchText, 'hod')
-                || str_contains($searchText, 'designee')
-            ) {
+            if (str_contains($searchText, 'hod') || str_contains($searchText, 'designee')) {
                 $groups['hod'][] = $field;
-            } elseif (
-                str_contains($searchText, 'userdept')
-                || str_contains($searchText, 'userdepartment')
-            ) {
+            } elseif (str_contains($searchText, 'userdept') || str_contains($searchText, 'userdepartment')) {
                 $groups['user_department'][] = $field;
             } elseif (str_contains($searchText, 'qa')) {
                 $groups['qa'][] = $field;
             }
         }
 
-        return array_merge(
-            $groups['hod'],
-            $groups['user_department'],
-            $groups['qa']
-        );
+        return array_merge($groups['hod'], $groups['user_department'], $groups['qa']);
     }
 
+    /*
+     * build the planner as in the form:
+     * every equipment has a Planned row and an Executed row with one date per month
+     */
     private static function preparePlannerGrid($gridRecords): array
     {
         $rows = [];
@@ -261,6 +230,7 @@ class PreventiveMaintenancePlannerReportService
                     continue;
                 }
 
+                /* normalize values such as ['key' => 'location', 'value' => 'IND'] */
                 $normalized = [];
 
                 foreach ($row as $key => $value) {
@@ -271,19 +241,15 @@ class PreventiveMaintenancePlannerReportService
                     }
                 }
 
+                /* planned / executed date of every month (jan_planned, jan_executed, ...) */
                 $planned = [];
                 $executed = [];
 
                 foreach (self::MONTHS as $monthKey => $monthName) {
                     $prefix = strtolower($monthKey);
 
-                    $plannedDate = self::extractGridSimpleValue(
-                        $normalized[$prefix . '_planned'] ?? null
-                    );
-
-                    $executedDate = self::extractGridSimpleValue(
-                        $normalized[$prefix . '_executed'] ?? null
-                    );
+                    $plannedDate = self::extractGridSimpleValue($normalized[$prefix . '_planned'] ?? null);
+                    $executedDate = self::extractGridSimpleValue($normalized[$prefix . '_executed'] ?? null);
 
                     if ($plannedDate !== null) {
                         $year = $year ?? self::extractYear($plannedDate);
@@ -298,9 +264,7 @@ class PreventiveMaintenancePlannerReportService
 
                 $rows[] = [
                     'name' => self::extractGridSimpleValue(
-                        $normalized['equipmentInstrumentName']
-                        ?? $normalized['equipmentName']
-                        ?? null
+                        $normalized['equipmentInstrumentName'] ?? $normalized['equipmentName'] ?? null
                     ),
                     'code' => self::extractGridSimpleValue(
                         $normalized['equipmentInstrumentId']
@@ -308,67 +272,41 @@ class PreventiveMaintenancePlannerReportService
                         ?? $normalized['equipmentCode']
                         ?? null
                     ),
-                    'location' => self::extractGridSimpleValue(
-                        $normalized['location'] ?? null
-                    ),
-                    'remark' => self::extractGridSimpleValue(
-                        $normalized['remark']
-                        ?? $normalized['remarks']
-                        ?? null
-                    ),
+                    'location' => self::extractGridSimpleValue($normalized['location'] ?? null),
+                    'remark' => self::extractGridSimpleValue($normalized['remark'] ?? $normalized['remarks'] ?? null),
                     'planned' => $planned,
                     'executed' => $executed,
                 ];
             }
         }
 
+        /* month columns */
         $months = [];
 
         foreach (self::MONTHS as $monthKey => $monthName) {
-            $months[] = [
-                'key' => $monthKey,
-                'name' => $monthName,
-            ];
+            $months[] = ['key' => $monthKey, 'name' => $monthName];
         }
 
+        /* split the equipment into pages: FIRST_PAGE_EQUIPMENT on page 1, EQUIPMENT_PER_PAGE on every other page */
         $total = count($rows);
         $tables = [];
 
         if ($total > 0) {
-            $firstChunk = array_slice(
-                $rows,
-                0,
-                self::FIRST_PAGE_EQUIPMENT,
-                true
-            );
+            $chunks = [array_slice($rows, 0, self::FIRST_PAGE_EQUIPMENT, true)];
 
-            if (!empty($firstChunk)) {
-                $keys = array_keys($firstChunk);
+            $remainingRows = array_slice($rows, self::FIRST_PAGE_EQUIPMENT, null, true);
 
-                $tables[] = [
-                    'from' => reset($keys) + 1,
-                    'to' => end($keys) + 1,
-                    'equipment' => $firstChunk,
-                ];
+            foreach (array_chunk($remainingRows, self::EQUIPMENT_PER_PAGE, true) as $chunk) {
+                $chunks[] = $chunk;
             }
 
-            $remainingRows = array_slice(
-                $rows,
-                self::FIRST_PAGE_EQUIPMENT,
-                null,
-                true
-            );
-
-            foreach (
-                array_chunk($remainingRows, self::EQUIPMENT_PER_PAGE, true)
-                as $equipmentChunk
-            ) {
-                $keys = array_keys($equipmentChunk);
+            foreach ($chunks as $chunk) {
+                $keys = array_keys($chunk);
 
                 $tables[] = [
                     'from' => reset($keys) + 1,
                     'to' => end($keys) + 1,
-                    'equipment' => $equipmentChunk,
+                    'equipment' => $chunk,
                 ];
             }
         }
@@ -381,18 +319,17 @@ class PreventiveMaintenancePlannerReportService
         ];
     }
 
+    /* year found inside a date value */
     private static function extractYear($date): ?string
     {
-        if (
-            is_string($date)
-            && preg_match('/\b(20\d{2})\b/', $date, $match)
-        ) {
+        if (is_string($date) && preg_match('/\b(20\d{2})\b/', $date, $match)) {
             return $match[1];
         }
 
         return null;
     }
 
+    /* date as dd/mm/yyyy (same as the form), anything that is not a date is returned as it is */
     private static function formatPlannerDate($date): ?string
     {
         if ($date === null || $date === '') {
@@ -403,10 +340,7 @@ class PreventiveMaintenancePlannerReportService
 
         try {
             if (preg_match('/^\d{1,2}[\/-]\d{1,2}[\/-]\d{4}$/', $date)) {
-                return Carbon::createFromFormat(
-                    'd/m/Y',
-                    str_replace('-', '/', $date)
-                )->format('d/m/Y');
+                return Carbon::createFromFormat('d/m/Y', str_replace('-', '/', $date))->format('d/m/Y');
             }
 
             if (preg_match('/^\d{4}-\d{2}-\d{2}/', $date)) {
@@ -419,6 +353,7 @@ class PreventiveMaintenancePlannerReportService
         return $date;
     }
 
+    /* decode json string / array safely */
     private static function decodeArray($value): array
     {
         if (is_string($value)) {
@@ -467,6 +402,7 @@ class PreventiveMaintenancePlannerReportService
         return $result;
     }
 
+    /* prepare report fields (empty values become "-") */
     private static function prepareReportFields($fields): array
     {
         $result = [];
@@ -489,10 +425,7 @@ class PreventiveMaintenancePlannerReportService
                 } elseif (empty($value)) {
                     $value = '-';
                 } else {
-                    $value = json_encode(
-                        $value,
-                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                    );
+                    $value = json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 }
             }
 
@@ -519,23 +452,13 @@ class PreventiveMaintenancePlannerReportService
         $result = [];
 
         foreach ($attachments as $attachment) {
-            if (
-                !is_array($attachment)
-                || ($attachment['attachment_field'] ?? null) !== $attachmentField
-            ) {
+            if (!is_array($attachment) || ($attachment['attachment_field'] ?? null) !== $attachmentField) {
                 continue;
             }
 
             $result[] = [
-                'attachment_field' => $attachmentField,
-                'name' => $attachment['name']
-                    ?? $attachment['file_name']
-                    ?? 'Attachment',
-                'file_name' => $attachment['file_name'] ?? null,
-                'path' => $attachment['path'] ?? null,
+                'name' => $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment',
                 'url' => $attachment['url'] ?? null,
-                'mime_type' => $attachment['mime_type'] ?? null,
-                'size' => $attachment['size'] ?? null,
             ];
         }
 

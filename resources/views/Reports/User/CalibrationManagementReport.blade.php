@@ -11,7 +11,7 @@
         /* ---------- page ---------- */
         @page {
             size: A4 landscape;
-            margin: 4mm 0 15mm 0;
+            margin: 10mm 0 15mm 0;
         }
 
         /* left / right margin lives here so it works even if @page margins are ignored */
@@ -179,6 +179,35 @@
             text-align: center;
         }
 
+        /* ---------- comments and review rows ---------- */
+        .review-row-section { margin-top: 9px; }
+        .review-row-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 0 0 7px 0;
+            page-break-inside: avoid;
+        }
+        .review-row-table td {
+            border: 1px solid #d3dfec;
+            font-size: 8px;
+            padding: 8px 7px;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .review-row-table .review-label {
+            width: 24%;
+            background: #f4f8fc;
+            color: #1f3f66;
+            font-weight: bold;
+        }
+        .review-row-table .review-value {
+            width: 26%;
+            background: #ffffff;
+            color: #2a3a4d;
+        }
+
         /* ---------- attachments ---------- */
         .attachment-item { margin: 0 0 2px 0; padding: 0; }
         .attachment-link { color: #246da8; text-decoration: underline; word-wrap: break-word; }
@@ -311,6 +340,55 @@
                     </div>
                 @endif
             @endforeach
+
+            {{-- normal comments and attachment stay before the calibration grids --}}
+            @if($tabTitle === 'General Information' && !empty($commentsRow))
+                @php
+                    $comment = $commentsRow['comment'] ?? [];
+                    $attachment = $commentsRow['attachment'] ?? [];
+                    $commentValue = $comment['value'] ?? '-';
+                    $attachmentValue = $attachment['value'] ?? '-';
+                @endphp
+
+                <div class="review-row-section">
+                    <table class="review-row-table">
+                        <tbody>
+                            <tr>
+                                <td class="review-label">{{ $comment['label'] ?? 'Comments' }}</td>
+                                <td class="review-value">
+                                    {{ is_scalar($commentValue) && $commentValue !== '' ? $commentValue : '-' }}
+                                </td>
+                                <td class="review-label">{{ $attachment['label'] ?? 'Attachment' }}</td>
+                                <td class="review-value">
+                                    @if(is_array($attachmentValue) && !empty($attachmentValue))
+                                        @foreach($attachmentValue as $file)
+                                            @if(is_array($file))
+                                                @php
+                                                    $fileName = $file['name'] ?? $file['file_name'] ?? 'Attachment';
+                                                    $fileUrl = $file['url'] ?? null;
+                                                @endphp
+                                                <div class="attachment-item">
+                                                    @if($fileUrl)
+                                                        <a href="{{ $fileUrl }}" target="_blank" class="attachment-link">{{ $fileName }}</a>
+                                                    @else
+                                                        {{ $fileName }}
+                                                    @endif
+                                                </div>
+                                            @elseif(is_scalar($file))
+                                                <div class="attachment-item">{{ $file }}</div>
+                                            @endif
+                                        @endforeach
+                                    @elseif(is_scalar($attachmentValue))
+                                        {{ $attachmentValue !== '' ? $attachmentValue : '-' }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @endif
 
             {{-- calibration grids --}}
             @if($tabTitle === 'General Information')
@@ -473,6 +551,57 @@
                     </div>
                 @endif
 
+            @endif
+
+            {{-- HOD and QA review rows appear after all calibration grids --}}
+            @if($tabTitle === 'General Information' && !empty($reviewRows))
+                <div class="review-row-section">
+                    @foreach($reviewRows as $reviewRow)
+                        @php
+                            $comment = $reviewRow['comment'] ?? [];
+                            $attachment = $reviewRow['attachment'] ?? [];
+                            $commentValue = $comment['value'] ?? '-';
+                            $attachmentValue = $attachment['value'] ?? '-';
+                        @endphp
+
+                        <table class="review-row-table">
+                            <tbody>
+                                <tr>
+                                    <td class="review-label">{{ $comment['label'] ?? 'Comments' }}</td>
+                                    <td class="review-value">
+                                        {{ is_scalar($commentValue) && $commentValue !== '' ? $commentValue : '-' }}
+                                    </td>
+                                    <td class="review-label">{{ $attachment['label'] ?? 'Attachment' }}</td>
+                                    <td class="review-value">
+                                        @if(is_array($attachmentValue) && !empty($attachmentValue))
+                                            @foreach($attachmentValue as $file)
+                                                @if(is_array($file))
+                                                    @php
+                                                        $fileName = $file['name'] ?? $file['file_name'] ?? 'Attachment';
+                                                        $fileUrl = $file['url'] ?? null;
+                                                    @endphp
+                                                    <div class="attachment-item">
+                                                        @if($fileUrl)
+                                                            <a href="{{ $fileUrl }}" target="_blank" class="attachment-link">{{ $fileName }}</a>
+                                                        @else
+                                                            {{ $fileName }}
+                                                        @endif
+                                                    </div>
+                                                @elseif(is_scalar($file))
+                                                    <div class="attachment-item">{{ $file }}</div>
+                                                @endif
+                                            @endforeach
+                                        @elseif(is_scalar($attachmentValue))
+                                            {{ $attachmentValue !== '' ? $attachmentValue : '-' }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    @endforeach
+                </div>
             @endif
         @endforeach
 

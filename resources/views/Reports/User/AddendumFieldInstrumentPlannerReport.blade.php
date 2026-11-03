@@ -11,7 +11,7 @@
         /* ---------- page ---------- */
         @page {
             size: A4 landscape;
-            margin: 4mm 0 15mm 0;
+            margin: 10mm 0 15mm 0;
         }
 
         html, body {
@@ -274,8 +274,26 @@
                     {{-- ================= field section ================= --}}
                     @elseif(!empty($section['fields']))
                         <div class="section">
-                            {{-- skip the section heading when it only repeats the tab title --}}
-                            @if(strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0)
+                            {{-- hide review/comment headings while keeping their field rows --}}
+                            @php
+                                $hiddenSectionHeadings = [
+                                    'Comments & Attachments',
+                                    'HOD / Designee Review (Engineering Dept)',
+                                    'User Department Review (User Dept)',
+                                    'QA Approval Review',
+                                ];
+
+                                $hideSectionHeading = in_array(
+                                    trim($sectionTitle),
+                                    $hiddenSectionHeadings,
+                                    true
+                                );
+                            @endphp
+
+                            @if(
+                                strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0
+                                && !$hideSectionHeading
+                            )
                                 <div class="section-heading">{{ $sectionTitle }}</div>
                             @endif
 

@@ -5,8 +5,6 @@
     <meta charset="UTF-8">
     <title>{{ $header['report_title'] ?? 'Preventive Maintenance Planner' }}</title>
     <style>
-        {!! file_get_contents(resource_path('views/Reports/CSS/PreventiveReport.css')) !!}
-
         /* ---------- page ---------- */
         /* top / bottom margin here; left / right margin is on .page-wrap because the @page side margins are ignored */
         @page {
@@ -14,28 +12,26 @@
             margin: 8mm 0 16mm 0;
         }
 
+        * {
+            box-sizing: border-box;
+        }
+
         html,
         body {
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #fff !important;
-            color: #2a3a4d !important;
-            font-family: DejaVu Sans, sans-serif !important;
-            font-size: 8.5px !important;
-            line-height: 1.35 !important;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            color: #2a3a4d;
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 8.5px;
+            line-height: 1.35;
         }
 
         .page-wrap {
             width: auto;
             margin: 0;
             padding: 0 8mm;
-        }
-
-        .report-content {
-            width: 100%;
-            margin: 0;
-            padding: 0;
         }
 
         /* ---------- header (first page only) ---------- */
@@ -45,7 +41,6 @@
             background: #f4f8fc;
             text-align: center;
             padding: 13px 10px;
-            margin: 0;
         }
 
         .company-name {
@@ -54,8 +49,6 @@
             font-weight: bold;
             letter-spacing: 1px;
             text-transform: uppercase;
-            margin: 0;
-            padding: 0;
         }
 
         .report-banner {
@@ -66,8 +59,7 @@
             font-weight: bold;
             letter-spacing: .6px;
             text-transform: uppercase;
-            padding: 10px 10px;
-            margin: 0;
+            padding: 10px;
         }
 
         .meta-table {
@@ -89,7 +81,6 @@
 
         .meta-table td strong {
             color: #1f3f66;
-            font-weight: bold;
         }
 
         /* ---------- footer (every page) ---------- */
@@ -112,7 +103,6 @@
         }
 
         .footer-table td {
-            border: 0;
             padding: 0;
             vertical-align: top;
             font-size: 7.5px;
@@ -135,14 +125,12 @@
         }
 
         .footer-meta {
-            color: #5b6b7e;
             font-size: 7px;
         }
 
         /* ---------- section headings / field tables ---------- */
         .section {
             margin: 0 0 16px;
-            padding: 0;
             page-break-inside: avoid;
         }
 
@@ -163,8 +151,6 @@
 
         .data-table {
             width: 100%;
-            margin: 0;
-            padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
         }
@@ -196,16 +182,14 @@
             color: #1f3f66;
             font-size: 8.5px;
             font-weight: bold;
-            margin: 0 0 7px;
+            margin: 0 0 6px;
             padding: 0 2px;
             page-break-after: avoid;
         }
 
+        /* every block holds one page of equipment: the next block always starts on a new page */
         .planner-chunk {
-            width: 100%;
-            margin: 0 0 16px;
-            padding: 0;
-            page-break-inside: auto;
+            margin: 0 0 12px;
         }
 
         .planner-chunk.planner-next {
@@ -214,11 +198,8 @@
 
         .planner-table {
             width: 100%;
-            margin: 0;
-            padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
-            page-break-inside: auto;
         }
 
         .planner-table th,
@@ -226,39 +207,38 @@
             border: 1px solid #c5d3e3;
             text-align: center;
             vertical-align: middle;
-            overflow-wrap: break-word;
             word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .planner-table th {
             background: #254870;
             color: #fff;
-            font-size: 6.5px;
-            line-height: 1.2;
+            font-size: 6px;
+            line-height: 1.15;
             font-weight: bold;
-            padding: 6px 2px;
+            padding: 5px 2px;
             text-transform: uppercase;
         }
 
         .planner-table th.month-head {
             text-transform: none;
-            letter-spacing: .2px;
+            letter-spacing: 0;
         }
 
         .planner-table td {
             background: #fff;
             color: #2a3a4d;
             font-size: 6px;
-            line-height: 1.2;
-            padding: 5px 1px;
+            line-height: 1.1;
+            padding: 3px 1px;
         }
 
         /* Sr. No., equipment name, code, location and remark span the Planned + Executed rows */
         .planner-table td.info-cell {
             background: #f4f8fc;
             color: #1f3f66;
-            font-size: 6.5px;
-            padding: 5px 4px;
+            padding: 3px 3px;
         }
 
         .planner-table td.info-cell.left {
@@ -266,7 +246,6 @@
         }
 
         .planner-table td.label-cell {
-            font-size: 6.5px;
             font-weight: bold;
         }
 
@@ -292,6 +271,7 @@
             font-weight: bold;
         }
 
+        .planner-table tbody,
         .planner-table tr,
         .data-table tr {
             page-break-inside: avoid;
@@ -313,7 +293,6 @@
         /* ---------- attachments ---------- */
         .attachment-item {
             margin: 0 0 2px;
-            padding: 0;
         }
 
         .attachment-link {
@@ -332,8 +311,7 @@
                 <tr>
                     <td class="footer-left">
                         <div class="footer-company">{{ $header['company_name'] ?? 'Shilpa Medicare Pvt Ltd' }}</div>
-                        <div class="footer-meta">{{ $header['report_title'] ?? '-' }} &nbsp;|&nbsp; Controlled Document
-                        </div>
+                        <div class="footer-meta">{{ $header['report_title'] ?? '-' }} &nbsp;|&nbsp; Controlled Document</div>
                     </td>
                     <td class="footer-right">
                         <div>Generated By: <strong>{{ $footer['generated_by'] ?? 'System' }}</strong></div>
@@ -357,192 +335,151 @@
             </tr>
         </table>
 
-        <div class="report-content">
-            @foreach($tabs ?? [] as $tab)
-                @php $tabTitle = $tab['tab_title'] ?? '-'; @endphp
-                <div class="section-heading">{{ $tabTitle }}</div>
+        @foreach($tabs ?? [] as $tab)
+            @php $tabTitle = $tab['tab_title'] ?? '-'; @endphp
+            <div class="section-heading">{{ $tabTitle }}</div>
 
-                @foreach($tab['sections'] ?? [] as $section)
-                    @php
-                        $sectionType = $section['type'] ?? 'fields';
-                        $sectionTitle = $section['title'] ?? '-';
-                    @endphp
+            @foreach($tab['sections'] ?? [] as $section)
+                @php
+                    $sectionType = $section['type'] ?? 'fields';
+                    $sectionTitle = $section['title'] ?? null;
+                @endphp
 
-                    {{-- ================= planner grid section ================= --}}
-                    @if($sectionType === 'planner')
-                        @if(!empty($section['tables']))
-                            @php
-                                $plannerMonths = $section['months'] ?? [];
+                {{-- ================= planner grid ================= --}}
+                @if($sectionType === 'planner')
+                    @if(!empty($section['tables']))
+                        @php
+                            $plannerMonths = $section['months'] ?? [];
 
-                                /* column widths (%): the header cells carry the widths, dompdf ignores <col> widths */
-                                $srWidth = 3;
-                                $nameWidth = 11;
-                                $codeWidth = 8;
-                                $locationWidth = 9;
-                                $labelWidth = 7;
-                                $remarkWidth = 9;
-                                $fixedWidth = $srWidth + $nameWidth + $codeWidth + $locationWidth + $labelWidth + $remarkWidth;
-                                $monthWidth = round((100 - $fixedWidth) / max(count($plannerMonths), 1), 3);
-                            @endphp
+                            /* column widths (%): the header cells carry the widths */
+                            $srWidth = 3;
+                            $nameWidth = 14;
+                            $codeWidth = 8;
+                            $locationWidth = 7;
+                            $labelWidth = 7;
+                            $remarkWidth = 7;
+                            $fixedWidth = $srWidth + $nameWidth + $codeWidth + $locationWidth + $labelWidth + $remarkWidth;
+                            $monthWidth = round((100 - $fixedWidth) / max(count($plannerMonths), 1), 3);
+                        @endphp
 
-                            @foreach($section['tables'] as $tableIndex => $table)
-                                @php $tableEquipment = $table['equipment'] ?? []; @endphp
+                        @foreach($section['tables'] as $tableIndex => $table)
+                            <div class="planner-chunk {{ $tableIndex > 0 ? 'planner-next' : '' }}">
+                                @if($tableIndex === 0)
+                                    <div class="section-heading">{{ $sectionTitle }}</div>
+                                @endif
 
-                                <div class="planner-chunk {{ $tableIndex > 0 ? 'planner-next' : '' }}">
-                                    @if($tableIndex === 0)
-                                        <div class="section-heading">{{ $sectionTitle }}</div>
+                                <div class="planner-caption">
+                                    Preventive Maintenance Planner
+                                    @if(!empty($section['year']))
+                                        &nbsp;|&nbsp; For the Year {{ $section['year'] }}
                                     @endif
-
-                                    <div class="planner-caption">
-                                        Preventive Maintenance Planner
-                                        @if(!empty($section['year']))
-                                            &nbsp;|&nbsp; For the Year {{ $section['year'] }}
-                                        @endif
-                                        @if(count($section['tables']) > 1)
-                                            &nbsp;|&nbsp; Equipment {{ $table['from'] }} - {{ $table['to'] }} of {{ $section['total'] }}
-                                        @endif
-                                    </div>
-
-                                    <table class="planner-table">
-                                        <colgroup>
-                                            <col style="width: {{ $srWidth }}%">
-                                            <col style="width: {{ $nameWidth }}%">
-                                            <col style="width: {{ $codeWidth }}%">
-                                            <col style="width: {{ $locationWidth }}%">
-                                            <col style="width: {{ $labelWidth }}%">
-                                            @foreach($plannerMonths as $month)
-                                                <col style="width: {{ $monthWidth }}%">
-                                            @endforeach
-                                            <col style="width: {{ $remarkWidth }}%">
-                                        </colgroup>
-
-                                        <thead>
-                                            <tr>
-                                                <th style="width: {{ $srWidth }}%">Sr. No.</th>
-                                                <th style="width: {{ $nameWidth }}%">Equipment Name</th>
-                                                <th style="width: {{ $codeWidth }}%">Equipment Code</th>
-                                                <th style="width: {{ $locationWidth }}%">Location</th>
-                                                <th style="width: {{ $labelWidth }}%">Calibration Dates</th>
-                                                @foreach($plannerMonths as $month)
-                                                    <th class="month-head" style="width: {{ $monthWidth }}%">{{ $month['name'] }}</th>
-                                                @endforeach
-                                                <th style="width: {{ $remarkWidth }}%">Remark</th>
-                                            </tr>
-                                        </thead>
-
-                                        @foreach($tableEquipment as $equipmentKey => $equipment)
-                                            {{-- every equipment has a Planned row and an Executed row --}}
-                                            <tbody>
-                                                <tr>
-                                                    <td class="info-cell" rowspan="2">{{ str_pad($equipmentKey + 1, 2, '0', STR_PAD_LEFT) }}</td>
-                                                    <td class="info-cell left" rowspan="2">{{ ($equipment['name'] ?? null) ?: '-' }}</td>
-                                                    <td class="info-cell left" rowspan="2">{{ ($equipment['code'] ?? null) ?: '-' }}</td>
-                                                    <td class="info-cell left" rowspan="2">{{ ($equipment['location'] ?? null) ?: '-' }}</td>
-
-                                                    <td class="label-cell label-planned">Planned</td>
-                                                    @foreach($plannerMonths as $month)
-                                                        @php $plannedDate = $equipment['planned'][$month['key']] ?? null; @endphp
-                                                        <td class="date-planned {{ $plannedDate ? 'has-value' : '' }}">{!! $plannedDate ? e($plannedDate) : '&nbsp;' !!}</td>
-                                                    @endforeach
-
-                                                    <td class="info-cell left" rowspan="2">{{ ($equipment['remark'] ?? null) ?: '-' }}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td class="label-cell label-executed">Executed</td>
-                                                    @foreach($plannerMonths as $month)
-                                                        @php $executedDate = $equipment['executed'][$month['key']] ?? null; @endphp
-                                                        <td class="date-executed {{ $executedDate ? 'has-value' : '' }}">{!! $executedDate ? e($executedDate) : '&nbsp;' !!}</td>
-                                                    @endforeach
-                                                </tr>
-                                            </tbody>
-                                        @endforeach
-                                    </table>
+                                    @if(count($section['tables']) > 1)
+                                        &nbsp;|&nbsp; Equipment {{ $table['from'] }} - {{ $table['to'] }} of {{ $section['total'] }}
+                                    @endif
                                 </div>
-                            @endforeach
-                        @else
-                            <div class="section">
-                                <div class="section-heading">{{ $sectionTitle }}</div>
-                                <div class="empty-grid">No records available.</div>
-                            </div>
-                        @endif
 
-                        {{-- ================= field section ================= --}}
-                    @elseif(!empty($section['fields']))
-                        <div class="section">
-                            @php
-                                $isCommentAttachmentSection = strcasecmp(
-                                    trim($sectionTitle),
-                                    'Comments & Attachments'
-                                ) === 0;
-                            @endphp
-
-                            @if(!$isCommentAttachmentSection && strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0)
-                                <div class="section-heading">{{ $sectionTitle }}</div>
-                            @endif
-
-                            <table class="data-table">
-                                <tbody>
-                                    @foreach(array_chunk($section['fields'], 2) as $fieldPair)
+                                <table class="planner-table">
+                                    <thead>
                                         <tr>
-                                            @foreach($fieldPair as $field)
-                                                @php
-                                                    $value = $field['value'] ?? null;
-                                                    $fieldKey = strtolower((string) ($field['key'] ?? ''));
-                                                    $fieldLabel = strtolower((string) ($field['label'] ?? ''));
-                                                    $isAttachment = str_contains($fieldKey, 'attachment') || str_contains($fieldLabel, 'attachment');
-                                                @endphp
-
-                                                <td class="field-name">{{ $field['label'] ?? '-' }}</td>
-                                                <td class="field-value">
-                                                    @if($isAttachment)
-                                                        @if(is_array($value) && !empty($value))
-                                                            @foreach($value as $attachment)
-                                                                @if(is_array($attachment))
-                                                                    @php
-                                                                        $attachmentName = $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment';
-                                                                        $attachmentUrl = $attachment['url'] ?? null;
-                                                                    @endphp
-                                                                    <div class="attachment-item">
-                                                                        @if($attachmentUrl)
-                                                                            <a href="{{ $attachmentUrl }}" target="_blank" class="attachment-link">{{ $attachmentName }}</a>
-                                                                        @else
-                                                                            {{ $attachmentName }}
-                                                                        @endif
-                                                                    </div>
-                                                                @elseif(is_string($attachment) && $attachment !== '')
-                                                                    <div class="attachment-item">{{ $attachment }}</div>
-                                                                @endif
-                                                            @endforeach
-                                                        @else
-                                                            -
-                                                        @endif
-                                                    @elseif(is_array($value))
-                                                        @if(isset($value['name']))
-                                                            {{ $value['name'] }}
-                                                        @elseif(empty($value))
-                                                            -
-                                                        @else
-                                                            {{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
-                                                        @endif
-                                                    @else
-                                                        {{ $value !== null && $value !== '' ? $value : '-' }}
-                                                    @endif
-                                                </td>
+                                            <th style="width: {{ $srWidth }}%">Sr. No.</th>
+                                            <th style="width: {{ $nameWidth }}%">Equipment Name</th>
+                                            <th style="width: {{ $codeWidth }}%">Equipment Code</th>
+                                            <th style="width: {{ $locationWidth }}%">Location</th>
+                                            <th style="width: {{ $labelWidth }}%">Calibration Dates</th>
+                                            @foreach($plannerMonths as $month)
+                                                <th class="month-head" style="width: {{ $monthWidth }}%">{{ $month['name'] }}</th>
                                             @endforeach
-
-                                            @if(count($fieldPair) === 1)
-                                                <td class="field-name"></td>
-                                                <td class="field-value"></td>
-                                            @endif
+                                            <th style="width: {{ $remarkWidth }}%">Remark</th>
                                         </tr>
+                                    </thead>
+
+                                    {{-- every equipment has a Planned row and an Executed row --}}
+                                    @foreach($table['equipment'] ?? [] as $equipmentKey => $equipment)
+                                        <tbody>
+                                            <tr>
+                                                <td class="info-cell" rowspan="2">{{ str_pad($equipmentKey + 1, 2, '0', STR_PAD_LEFT) }}</td>
+                                                <td class="info-cell left" rowspan="2">{{ ($equipment['name'] ?? null) ?: '-' }}</td>
+                                                <td class="info-cell left" rowspan="2">{{ ($equipment['code'] ?? null) ?: '-' }}</td>
+                                                <td class="info-cell left" rowspan="2">{{ ($equipment['location'] ?? null) ?: '-' }}</td>
+
+                                                <td class="label-cell label-planned">Planned</td>
+                                                @foreach($plannerMonths as $month)
+                                                    @php $plannedDate = $equipment['planned'][$month['key']] ?? null; @endphp
+                                                    <td class="date-planned {{ $plannedDate ? 'has-value' : '' }}">{!! $plannedDate ? e($plannedDate) : '&nbsp;' !!}</td>
+                                                @endforeach
+
+                                                <td class="info-cell left" rowspan="2">{{ ($equipment['remark'] ?? null) ?: '-' }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="label-cell label-executed">Executed</td>
+                                                @foreach($plannerMonths as $month)
+                                                    @php $executedDate = $equipment['executed'][$month['key']] ?? null; @endphp
+                                                    <td class="date-executed {{ $executedDate ? 'has-value' : '' }}">{!! $executedDate ? e($executedDate) : '&nbsp;' !!}</td>
+                                                @endforeach
+                                            </tr>
+                                        </tbody>
                                     @endforeach
-                                </tbody>
-                            </table>
+                                </table>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="section">
+                            <div class="section-heading">{{ $sectionTitle }}</div>
+                            <div class="empty-grid">No records available.</div>
                         </div>
                     @endif
-                @endforeach
+
+                {{-- ================= field section (label | value | label | value) ================= --}}
+                @elseif(!empty($section['fields']))
+                    <div class="section">
+                        {{-- a section without a title (comments / review lines) is printed without a heading --}}
+                        @if(!empty($sectionTitle) && strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0)
+                            <div class="section-heading">{{ $sectionTitle }}</div>
+                        @endif
+
+                        <table class="data-table">
+                            <tbody>
+                                @foreach(array_chunk($section['fields'], 2) as $fieldPair)
+                                    <tr>
+                                        @foreach($fieldPair as $field)
+                                            @php
+                                                $value = $field['value'] ?? null;
+                                                $isAttachment = str_contains(strtolower((string) ($field['key'] ?? '')), 'attachment')
+                                                    || str_contains(strtolower((string) ($field['label'] ?? '')), 'attachment');
+                                            @endphp
+
+                                            <td class="field-name">{{ $field['label'] ?? '-' }}</td>
+                                            <td class="field-value">
+                                                @if($isAttachment && is_array($value) && !empty($value))
+                                                    @foreach($value as $attachment)
+                                                        <div class="attachment-item">
+                                                            @if(!empty($attachment['url']))
+                                                                <a href="{{ $attachment['url'] }}" target="_blank" class="attachment-link">{{ $attachment['name'] ?? 'Attachment' }}</a>
+                                                            @else
+                                                                {{ $attachment['name'] ?? 'Attachment' }}
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                @elseif(is_array($value))
+                                                    -
+                                                @else
+                                                    {{ $value !== null && $value !== '' ? $value : '-' }}
+                                                @endif
+                                            </td>
+                                        @endforeach
+
+                                        @if(count($fieldPair) === 1)
+                                            <td class="field-name"></td>
+                                            <td class="field-value"></td>
+                                        @endif
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             @endforeach
-        </div>
+        @endforeach
     </div>
 </body>
 

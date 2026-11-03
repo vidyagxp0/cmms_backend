@@ -216,6 +216,24 @@
             color: #263449;
         }
 
+        .single-row-review {
+            margin-bottom: 7px;
+        }
+
+        .single-row-review th,
+        .single-row-review td {
+            padding: 7px 9px;
+            vertical-align: middle;
+        }
+
+        .single-row-review th {
+            width: 24%;
+        }
+
+        .single-row-review td {
+            width: 26%;
+        }
+
         .empty-message {
             border: 1px solid #d8e0e9;
             padding: 12px;
@@ -486,69 +504,52 @@
     </tbody>
 </table>
 
-{{-- Comments and Attachment are displayed below the instrument grid --}}
-@if (count($commentFields) > 0)
-    <div class="section-title">Comments &amp; Attachments</div>
+@php
+    $reviewTabs = array_slice($tabs ?? [], 1, 3);
 
-    <table class="review-table">
-        @foreach ($commentFields as $field)
-            <tr>
-                <th>{{ $field['label'] ?? '-' }}</th>
-                <td>
-                    @php
-                        $value = $field['value'] ?? null;
-                    @endphp
+    $reviewGroups = [
+        [
+            'fields' => $commentFields,
+        ],
+        [
+            'fields' => $reviewTabs[0]['sections'][0]['fields'] ?? [],
+        ],
+        [
+            'fields' => $reviewTabs[1]['sections'][0]['fields'] ?? [],
+        ],
+        [
+            'fields' => $reviewTabs[2]['sections'][0]['fields'] ?? [],
+        ],
+    ];
+@endphp
 
-                    @if (is_array($value))
-                        @if (count($value) > 0)
-                            @foreach ($value as $attachment)
-                                @if (is_array($attachment))
-                                    {{ $attachment['name'] ?? $attachment['filename'] ?? $attachment['original_name'] ?? '-' }}
-                                @elseif (is_scalar($attachment))
-                                    {{ $attachment }}
-                                @else
-                                    -
-                                @endif
-                                @if (!$loop->last)
-                                    ,
-                                @endif
-                            @endforeach
-                        @else
-                            -
-                        @endif
-                    @elseif (is_scalar($value))
-                        {{ ($value !== '' && $value !== null) ? $value : '-' }}
-                    @else
-                        -
+@foreach ($reviewGroups as $group)
+    @php
+        $fields = array_values(array_filter(
+            $group['fields'],
+            fn ($field) => is_array($field)
+        ));
+    @endphp
+
+    @if (count($fields) > 0)
+        <table class="review-table single-row-review">
+            <tbody>
+                <tr>
+                    @foreach (array_slice($fields, 0, 2) as $field)
+                        <th>{{ $field['label'] ?? '-' }}</th>
+                        <td>
+                            {{ is_scalar($field['value'] ?? null) && ($field['value'] ?? '') !== '' ? $field['value'] : '-' }}
+                        </td>
+                    @endforeach
+
+                    @if (count($fields) === 1)
+                        <th></th>
+                        <td></td>
                     @endif
-                </td>
-            </tr>
-        @endforeach
-    </table>
-@endif
-
-{{-- Existing review sections remain unchanged --}}
-@foreach (array_slice($tabs ?? [], 1) as $tab)
-    @foreach ($tab['sections'] ?? [] as $section)
-        <div class="section-title">
-            {{ $section['title'] ?? $tab['tab_title'] ?? 'Review' }}
-        </div>
-
-        <table class="review-table">
-            @forelse ($section['fields'] ?? [] as $field)
-                <tr>
-                    <th>{{ $field['label'] ?? '-' }}</th>
-                    <td>
-                        {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
-                    </td>
                 </tr>
-            @empty
-                <tr>
-                    <td colspan="2">No review information available.</td>
-                </tr>
-            @endforelse
+            </tbody>
         </table>
-    @endforeach
+    @endif
 @endforeach
 
 <div class="footer">

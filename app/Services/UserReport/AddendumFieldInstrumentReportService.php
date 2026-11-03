@@ -13,7 +13,7 @@ class AddendumFieldInstrumentReportService
     public static function generateReport($id)
     {
         try {
-            $record = ProcessRecord::with(['process', 'stage', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
+            $record = ProcessRecord::with(['process', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
 
             /* process data */
             $processFields = [];
@@ -90,31 +90,38 @@ class AddendumFieldInstrumentReportService
                 ],
             ];
 
-            $tabs[] = [
-                'tab_title' => 'HOD / Designee Review (Engineering Dept)',
-                'sections' => [[
-                    'type' => 'fields',
-                    'title' => 'HOD / Designee Review (Engineering Dept)',
-                    'fields' => self::prepareReportFields(self::getFieldsByKeys($processFields, ['hod_review_comments', 'hod_review_attachment'])),
-                ]],
+            /* review comments and attachments without separate review tabs */
+            $tabs[0]['sections'][] = [
+                'type' => 'fields',
+                'title' => 'HOD / Designee Review (Engineering Dept)',
+                'fields' => self::prepareReportFields(
+                    self::getFieldsByKeys($processFields, [
+                        'hod_review_comments',
+                        'hod_review_attachment',
+                    ])
+                ),
             ];
 
-            $tabs[] = [
-                'tab_title' => 'User Department Review (User Dept)',
-                'sections' => [[
-                    'type' => 'fields',
-                    'title' => 'User Department Review (User Dept)',
-                    'fields' => self::prepareReportFields(self::getFieldsByKeys($processFields, ['user_dept_review_comments', 'user_dept_review_attachment'])),
-                ]],
+            $tabs[0]['sections'][] = [
+                'type' => 'fields',
+                'title' => 'User Department Review (User Dept)',
+                'fields' => self::prepareReportFields(
+                    self::getFieldsByKeys($processFields, [
+                        'user_dept_review_comments',
+                        'user_dept_review_attachment',
+                    ])
+                ),
             ];
 
-            $tabs[] = [
-                'tab_title' => 'QA Approval Review',
-                'sections' => [[
-                    'type' => 'fields',
-                    'title' => 'QA Approval Review',
-                    'fields' => self::prepareReportFields(self::getFieldsByKeys($processFields, ['qa_review_comments', 'qa_review_attachment'])),
-                ]],
+            $tabs[0]['sections'][] = [
+                'type' => 'fields',
+                'title' => 'QA Approval Review',
+                'fields' => self::prepareReportFields(
+                    self::getFieldsByKeys($processFields, [
+                        'qa_review_comments',
+                        'qa_review_attachment',
+                    ])
+                ),
             ];
 
             /* cancellation tab only when the record was cancelled */
@@ -147,7 +154,7 @@ class AddendumFieldInstrumentReportService
             ];
 
             /* generate PDF */
-            $pdf = Pdf::loadView('Reports.User.PreventiveAddendumPlannerReport', $data);
+            $pdf = Pdf::loadView('Reports.User.AddendumFieldInstrumentPlannerReport', $data);
             $pdf->setPaper('a4', 'landscape');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 

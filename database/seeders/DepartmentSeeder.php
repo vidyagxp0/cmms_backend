@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\Department;
 
@@ -13,13 +12,22 @@ class DepartmentSeeder extends Seeder
      */
     public function run(): void
     {
-        Department::firstOrCreate(
-            [
-                'name' => 'Admin',
-            ],
-            [
-                'name' => 'Admin',
-            ]
-        );
+        $departments = [
+            'Admin',
+            'ENG',
+            'HRD',
+            'MIC',
+            'PDI',
+            'PDO',
+            'PP2',
+            'PP3',
+            'QAD',
+            'QCD',
+            'WHD',
+        ];
+
+        foreach ($departments as $name) {
+            Department::firstOrCreate(['name' => $name]);
+        }
     }
 }
