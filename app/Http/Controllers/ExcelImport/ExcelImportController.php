@@ -17,6 +17,7 @@ class ExcelImportController extends Controller
     public function import(ExcelImportRequest $request): JsonResponse
     {
         $category = $request->input('euipmentMasterType');
+        $departmentId = (int) $request->input('department_id');
         $file = $request->file('file');
         $storedPath = null;
 
@@ -45,10 +46,6 @@ class ExcelImportController extends Controller
 
             $highestRow = (int) ($worksheets[0]['totalRows'] ?? 0);
             $totalRows = max(0, $highestRow - $firstDataRow + 1);
-
-            $departmentId = $category === 'equipment_master'
-                ? (int) $request->input('department_id')
-                : null;
 
             $importId = DB::table('excel_imports')->insertGetId([
                 'category' => $category,
@@ -134,7 +131,7 @@ class ExcelImportController extends Controller
             'data' => [
                 'import_id' => (int) $import->id,
                 'category' => $import->category,
-                'department_id' => $import->department_id ?? null,
+                'department_id' => $import->department_id,
                 'filename' => $import->original_filename,
                 'status' => $import->status,
                 'total_rows' => $totalRows,

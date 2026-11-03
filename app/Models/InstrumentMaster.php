@@ -46,7 +46,7 @@ class InstrumentMaster extends Model
         return $this->belongsTo(Stage::class);
     }
 
-        public function department()
+    public function department()
     {
         return $this->belongsTo(Department::class);
     }

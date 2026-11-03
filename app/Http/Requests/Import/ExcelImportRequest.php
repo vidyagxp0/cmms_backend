@@ -26,10 +26,7 @@ class ExcelImportRequest extends FormRequest
                 ]),
             ],
             'department_id' => [
-                Rule::requiredIf(
-                    fn () => $this->input('euipmentMasterType') === 'equipment_master'
-                ),
-                'nullable',
+                'required',
                 'integer',
                 Rule::exists('departments', 'id'),
             ],
@@ -47,7 +44,7 @@ class ExcelImportRequest extends FormRequest
         return [
             'euipmentMasterType.required' => 'Please select an equipment master category.',
             'euipmentMasterType.in' => 'The selected equipment master category is invalid.',
-            'department_id.required' => 'Please select a department for equipment master import.',
+            'department_id.required' => 'Please select a department.',
             'department_id.integer' => 'The department ID must be a valid number.',
             'department_id.exists' => 'The selected department does not exist.',
             'file.required' => 'Please upload an Excel file.',

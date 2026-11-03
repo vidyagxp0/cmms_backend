@@ -216,5 +216,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* user department listing */        
         Route::get('/user-departments-listing', [DepartmentController::class, 'index'])->name('user-departments-listing');
+        Route::get('/get-master-data/{departmentId}/{type}', [ExcelImportController::class, 'getMasterData'])->name('get-master-data');
     });
 });

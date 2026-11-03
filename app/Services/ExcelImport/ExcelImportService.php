@@ -73,6 +73,11 @@ class ExcelImportService
         $columnMap = self::COLUMN_MAP[$category] ?? null;
         $table = config('cmms-import.tables.' . $category);
         $processId = config('cmms-import.process_ids.' . $category);
+        $departmentId = (int) ($import->department_id ?? 0);
+
+        if (!$departmentId) {
+            throw new RuntimeException('Department ID is missing from this import.');
+        }
 
         if (!$columnMap || !$table || !$processId) {
             throw new RuntimeException('The import category is not configured correctly.');
@@ -122,9 +127,14 @@ class ExcelImportService
                         : (string) $value;
                 }
 
-                $hasData = collect($mapped)->contains(
-                    fn ($value) => $value !== null && trim((string) $value) !== ''
-                );
+                $hasData = false;
+
+                foreach ($mapped as $value) {
+                    if ($value !== null && trim((string) $value) !== '') {
+                        $hasData = true;
+                        break;
+                    }
+                }
 
                 if (!$hasData) {
                     continue;
@@ -155,6 +165,7 @@ class ExcelImportService
                 $mapped['stage_id'] = null;
                 $mapped['process_id'] = (int) $processId;
                 $mapped['initiator_id'] = (int) $import->created_by;
+                $mapped['department_id'] = $departmentId;
                 $mapped['is_imported'] = true;
                 $mapped['created_at'] = now();
                 $mapped['updated_at'] = now();
@@ -249,9 +260,7 @@ class ExcelImportService
         }
 
         $path = $disk->path($relativePath);
-
         $headers = $this->getEquipmentMasterHeaders($path);
-
         $columnMap = $this->buildEquipmentMasterColumnMap($headers);
 
         if (!isset($columnMap['equipment_name'])) {
@@ -283,9 +292,9 @@ class ExcelImportService
                         Coordinate::stringFromColumnIndex($excelColumn) . $rowNumber
                     );
 
-                    $value = $cell->getFormattedValue();
-
-                    $mapped[$dbColumn] = $this->normalizeExcelValue($value);
+                    $mapped[$dbColumn] = $this->normalizeExcelValue(
+                        $cell->getFormattedValue()
+                    );
                 }
 
                 $hasData = false;
@@ -337,11 +346,6 @@ class ExcelImportService
                     'row_number' => $rowNumber,
                     'equipment_id_no' => $equipmentId,
                     'data' => [
-                        'name' => null,
-                        'equipment_id' => null,
-                        'make' => null,
-                        'model' => null,
-                        'equipment_type' => null,
                         'equipment_name' => $equipmentName,
                         'equipment_id_no' => $equipmentId,
                         'equipment_make' => $mapped['equipment_make'] ?? null,
@@ -469,24 +473,11 @@ class ExcelImportService
                 'instrument code number',
                 'equipment id no',
             ],
-            'asset_code' => [
-                'asset code',
-            ],
-            'equipment_make' => [
-                'make',
-                'equipment make',
-            ],
-            'equipment_model' => [
-                'model',
-                'equipment model',
-            ],
-            'capacity' => [
-                'capacity',
-            ],
-            'equipment_location' => [
-                'location',
-                'equipment location',
-            ],
+            'asset_code' => ['asset code'],
+            'equipment_make' => ['make', 'equipment make'],
+            'equipment_model' => ['model', 'equipment model'],
+            'capacity' => ['capacity'],
+            'equipment_location' => ['location', 'equipment location'],
         ];
 
         $map = [];
