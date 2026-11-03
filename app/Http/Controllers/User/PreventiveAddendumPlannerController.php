@@ -68,7 +68,7 @@ class PreventiveAddendumPlannerController extends Controller
     }
 
     /* get Addendum Field Instrument audit data */
-    // public function addendumFieldInstrumentAudit(Request $request, $id)
+    // public function prventiveAddendumPlannerAudit(Request $request, $id)
     // {
     //     try {
     //         return AddendumFieldInstrumentAuditService::getProcessRecordAudits(
@@ -85,7 +85,7 @@ class PreventiveAddendumPlannerController extends Controller
     // }
 
     /* Addendum Field Instrument single report */
-    // public function addendumFieldInstrumentSingleReport($id) 
+    // public function prevetineAddendumSingleReport($id) 
     // {
     //     try {
     //         return AddendumFieldInstrumentReportService::generateReport(

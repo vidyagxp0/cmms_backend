@@ -3,6 +3,7 @@
 use App\Http\Controllers\ExcelImport\ExcelImportController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\DepartmentEquipmentMasterController;
+use App\Http\Controllers\User\PreventiveAddendumPlannerController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -206,6 +207,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/spare-instruments/audit-trail/{id}', [DepartmentEquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/department-equipment-record-stage/{id}',[DepartmentEquipmentMasterController::class, 'moveStage'])->name('department-equipment-record-stage');
         Route::get('/department-equipment-record-permission/{id}',[DepartmentEquipmentMasterController::class, 'checkEquipmentMasterRecordPermission'])->name('department-equipment-record-permission');
+
+        /* preventive addendum routes */
+        Route::get('/preventive-addendum-listing',[ProcessRecordController::class, 'getPrevetineAddendumRecords'])->name('preventive-addendum-listing');
+        Route::post('/store-preventive-addendum',[PreventiveAddendumPlannerController::class, 'store'])->name('store-preventive-addendum');
+        Route::get('/preventive-addendum-detail/{id}',[PreventiveAddendumPlannerController::class, 'show'])->name('preventive-addendum-detail');
+        Route::put('/update-preventive-addendum/{id}',[PreventiveAddendumPlannerController::class, 'update'])->name('update-preventive-addendum');
+        Route::post('/preventive-addendum-record-stage/{id}',[PreventiveAddendumPlannerController::class, 'moveStage'])->name('preventive-addendum-record-stage');
+        // Route::get('/preventive-addendum/audit-trail/{id}', [PreventiveAddendumPlannerController::class, 'prventiveAddendumPlannerAudit'])->name('preventive-addendum.audit.details');
+        // Route::post('/preventive-addendum-report/{id}',[PreventiveAddendumPlannerController::class, 'prevetineAddendumSingleReport'])->name('preventive-addendum-report');
 
         /* excel import api */
         Route::post('/instrment-excel-import', [ExcelImportController::class, 'import'])->name('instrment-excel-import');
