@@ -246,7 +246,7 @@ class AuthService
 
             $qaReviewers = User::where('is_active', true)
                 ->whereHas('roles', function ($query) {
-                    $query->where('name', 'Engineering Department Role User')
+                    $query->where('name', 'User Checker/Reviewer')
                         ->where('is_active', true);
                 })
                 ->orderBy('name')

@@ -24,6 +24,7 @@ class DepartmentSeeder extends Seeder
             'QAD',
             'QCD',
             'WHD',
+            'EHS',
         ];
 
         foreach ($departments as $name) {

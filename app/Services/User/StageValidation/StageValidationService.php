@@ -10,7 +10,7 @@ class StageValidationService
     private const RULES = [
         /* Calibration Planner */
         1 => [
-            1 => [
+            2 => [
                 'process_fields' => [
                     'year' => 'Year',
                     'block' => 'Block',
@@ -20,19 +20,20 @@ class StageValidationService
                 ],
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
+                    // 'plannedDate' => 'Planned Date',
                 ],
             ],
-            4 => [
+            3 => [
                 'process_fields' => [
                     'hod_review_comments' => 'HOD / Designee Review Comments',
                 ],
             ],
-            6 => [
+            4 => [
                 'process_fields' => [
                     'user_dept_review_comments' => 'User Dept Review Comments',
                 ],
             ],
-            8 => [
+            5 => [
                 'process_fields' => [
                     'qa_review_comments' => 'QA Review Comments',
                 ],
@@ -152,21 +153,19 @@ class StageValidationService
             return null;
         }
 
+        /* Validate process fields */
         $processData = self::normalize($processRecord->process_data);
 
         foreach ($rules['process_fields'] ?? [] as $key => $label) {
-            if (!self::hasProcessValue($processData, $key)) {
-                \Log::warning('Stage validation failed', [
-                    'process_id' => $processId,
-                    'activity_id' => $activityId,
-                    'missing_field' => $key,
-                ]);
+            $value = self::getProcessFieldValue($processData, $key);
 
+            if (!self::hasValue($value)) {
                 return "Please enter {$label} before proceeding.";
             }
         }
 
-        if (!empty($rules['grid_fields'])) {
+        /* Validate grid fields */
+        if (!empty($rules['grid_fields']) || !empty($rules['week_dates_required'])) {
             $gridRecords = GridRecord::where(
                 'process_record_id',
                 $processRecord->id
@@ -176,50 +175,75 @@ class StageValidationService
                 return 'Please add at least one grid record before proceeding.';
             }
 
-            foreach ($gridRecords as $index => $gridRecord) {
+            $rowNumber = 0;
+
+            foreach ($gridRecords as $gridRecord) {
                 $gridData = self::normalize($gridRecord->grid_data);
 
-                foreach ($rules['grid_fields'] as $key => $label) {
-                    if (!self::hasGridValue($gridData, $key)) {
-                        return "{$label} is required in grid row " . ($index + 1) . '.';
-                    }
-                }
-
-                if (!empty($rules['week_dates_required'])) {
-                    $weekDates = self::normalize($gridRecord->week_dates_data);
-
-                    if (empty($weekDates)) {
-                        return 'Weekly preventive dates are required in grid row ' . ($index + 1) . '.';
+                foreach ($gridData as $row) {
+                    if (!is_array($row)) {
+                        continue;
                     }
 
-                    $weeklyPreventive = self::getGridFieldValue(
-                        $gridData,
-                        'weeklyPreventive'
-                    );
+                    $rowNumber++;
 
-                    foreach ([
-                        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-                    ] as $month) {
-                        if (
-                            !isset($weekDates[$month]) ||
-                            !is_array($weekDates[$month])
-                        ) {
-                            return "Weekly preventive dates for {$month} are missing in grid row " . ($index + 1) . '.';
+                    /* Validate each configured grid column */
+                    foreach ($rules['grid_fields'] ?? [] as $key => $label) {
+                        $value = self::getGridFieldValue($row, $key);
+
+                        if (!self::hasValue($value)) {
+                            $instrumentName = self::getGridFieldValue(
+                                $row,
+                                'equipmentInstrumentName'
+                            );
+
+                            $rowLabel = self::hasValue($instrumentName)
+                                ? " ({$instrumentName})"
+                                : '';
+
+                            return "{$label} is required in grid row {$rowNumber}{$rowLabel}.";
+                        }
+                    }
+
+                    /* Validate weekly preventive dates */
+                    if (!empty($rules['week_dates_required'])) {
+                        $weekDates = self::normalize(
+                            $gridRecord->week_dates_data
+                        );
+
+                        if (empty($weekDates)) {
+                            return 'Weekly preventive dates are required in grid row ' . $rowNumber . '.';
                         }
 
-                        $monthlyPlanned = is_array($weeklyPreventive)
-                            ? ($weeklyPreventive[$month] ?? [])
-                            : [];
+                        $weeklyPreventive = self::getGridFieldValue(
+                            $row,
+                            'weeklyPreventive'
+                        );
 
-                        foreach ($weekDates[$month] as $weekIndex => $date) {
-                            $planned = $monthlyPlanned[$weekIndex]['planned'] ?? null;
-
+                        foreach ([
+                            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+                        ] as $month) {
                             if (
-                                self::hasValue($planned) &&
-                                !self::hasValue($date)
+                                !isset($weekDates[$month]) ||
+                                !is_array($weekDates[$month])
                             ) {
-                                return "A weekly preventive date is missing for {$month}, grid row " . ($index + 1) . '.';
+                                return "Weekly preventive dates for {$month} are missing in grid row {$rowNumber}.";
+                            }
+
+                            $monthlyPlanned = is_array($weeklyPreventive)
+                                ? ($weeklyPreventive[$month] ?? [])
+                                : [];
+
+                            foreach ($weekDates[$month] as $weekIndex => $date) {
+                                $planned = $monthlyPlanned[$weekIndex]['planned'] ?? null;
+
+                                if (
+                                    self::hasValue($planned) &&
+                                    !self::hasValue($date)
+                                ) {
+                                    return "A weekly preventive date is missing for {$month}, grid row {$rowNumber}.";
+                                }
                             }
                         }
                     }
@@ -230,57 +254,46 @@ class StageValidationService
         return null;
     }
 
-    private static function hasProcessValue(
-        array $data,
-        string $key
-    ): bool {
-        foreach ($data as $field) {
-            if (
-                is_array($field) &&
-                ($field['key'] ?? null) === $key
-            ) {
-                return self::hasValue($field['value'] ?? null);
-            }
-        }
-
-        return false;
-    }
-
-    private static function hasGridValue(
-        array $data,
-        string $key
-    ): bool {
-        $value = self::getGridFieldValue($data, $key);
-
-        return self::hasValue($value);
-    }
-
-    private static function getGridFieldValue(
+    private static function getProcessFieldValue(
         array $data,
         string $key
     ) {
-        foreach ($data as $entry) {
-            if (!is_array($entry)) {
+        foreach ($data as $field) {
+            if (!is_array($field)) {
                 continue;
             }
 
-            if (
-                isset($entry[$key]) &&
-                is_array($entry[$key])
-            ) {
-                return $entry[$key]['value'] ?? null;
-            }
-
-            if (($entry['key'] ?? null) === $key) {
-                return $entry['value'] ?? null;
+            if (($field['key'] ?? null) === $key) {
+                return $field['value'] ?? null;
             }
         }
 
         return null;
     }
 
+    private static function getGridFieldValue(
+        array $row,
+        string $key
+    ) {
+        if (!array_key_exists($key, $row)) {
+            return null;
+        }
+
+        $field = $row[$key];
+
+        if (is_array($field) && array_key_exists('value', $field)) {
+            return $field['value'];
+        }
+
+        return $field;
+    }
+
     private static function normalize($data): array
     {
+        if ($data instanceof \Illuminate\Support\Collection) {
+            $data = $data->toArray();
+        }
+
         if (is_string($data)) {
             $decoded = json_decode($data, true);
 
@@ -288,7 +301,9 @@ class StageValidationService
         }
 
         if (is_object($data)) {
-            $data = (array) $data;
+            $data = method_exists($data, 'toArray')
+                ? $data->toArray()
+                : (array) $data;
         }
 
         return is_array($data) ? $data : [];
@@ -296,8 +311,18 @@ class StageValidationService
 
     private static function hasValue($value): bool
     {
-        return $value !== null
-            && !(is_string($value) && trim($value) === '')
-            && !(is_array($value) && empty($value));
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_string($value) && trim($value) === '') {
+            return false;
+        }
+
+        if (is_array($value) && empty($value)) {
+            return false;
+        }
+
+        return true;
     }
 }
