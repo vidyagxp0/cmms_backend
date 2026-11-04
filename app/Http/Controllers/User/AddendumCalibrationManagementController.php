@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\AddendumCalibrationManagementService\AddendumCalibrationManagementRecord;
 use App\Services\User\CalibrationPlanner\CalibrationManagementAuditService;
+use App\Services\UserReport\AddendumCalibrationManagementReport;
 use App\Services\UserReport\CalibrationManagementReportService;
 use Illuminate\Http\Request;
 
@@ -73,7 +74,7 @@ class AddendumCalibrationManagementController extends Controller
     public function calibrationManagementSingleReport($id) 
     {
         try {
-            return CalibrationManagementReportService::generateReport(
+            return AddendumCalibrationManagementReport::generateReport(
                 $id
             );
         } catch (\Exception $e) {

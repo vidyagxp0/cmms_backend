@@ -4,6 +4,7 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Services\User\AddendumPreventiveManagementService\AddendumPreventiveManagementRecord;
+use App\Services\UserReport\AddendumPreventiveManagementReport;
 use App\Services\UserReport\PreventiveMaintenanceReportService;
 use Illuminate\Http\Request;
 use App\Http\Requests\User\RecordActivityRequest;
@@ -72,7 +73,7 @@ class AddendumPreventiveManagementController extends Controller
     public function preventiveMaintenanceReport($id) 
     {
         try {
-            return PreventiveMaintenanceReportService::generateReport(
+            return AddendumPreventiveManagementReport::generateReport(
                 $id
             );
         } catch (\Exception $e) {
