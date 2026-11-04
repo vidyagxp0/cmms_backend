@@ -41,24 +41,27 @@ class DashboardController extends Controller
     public function getMasterData($departmentId, $type)
     {
         try {
+            /* types that are NOT department wise (fetch all records) */
+            $globalTypes = ['instrument_masters', 'spare_instrument_master'];
+
+            /* types that are department wise */
+            $departmentWiseTypes = ['field_instrument_master', 'equipment_master'];
+
             $validator = Validator::make([
                 'department_id' => $departmentId,
                 'type' => $type,
             ], [
-                'department_id' => [
-                    'required',
-                    'integer',
-                    Rule::exists('departments', 'id'),
-                ],
                 'type' => [
                     'required',
                     'string',
-                    Rule::in([
-                        'instrument_masters',
-                        'field_instrument_master',
-                        'spare_instrument_master',
-                        'equipment_master',
-                    ]),
+                    Rule::in(array_merge($globalTypes, $departmentWiseTypes)),
+                ],
+                /* department is mandatory only for department wise masters */
+                'department_id' => [
+                    Rule::requiredIf(in_array($type, $departmentWiseTypes, true)),
+                    'nullable',
+                    'integer',
+                    Rule::exists('departments', 'id'),
                 ],
             ]);
 
@@ -78,7 +81,10 @@ class DashboardController extends Controller
             ];
 
             $data = DB::table($tables[$type])
-                ->where('department_id', $departmentId)
+                /* apply department filter only for department wise masters */
+                ->when(in_array($type, $departmentWiseTypes, true), function ($query) use ($departmentId) {
+                    $query->where('department_id', $departmentId);
+                })
                 ->orderByDesc('id')
                 ->get();
 
