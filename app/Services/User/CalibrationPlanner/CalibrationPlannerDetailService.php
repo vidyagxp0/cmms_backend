@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class CalibrationPlannerDetailService
 {
-
     private const QA_VERIFIED_ACTIVITY = 'QA Verification Complete';
     private const CLOSED_DONE_STAGE = 'Closed - Done';
 
@@ -27,7 +26,6 @@ class CalibrationPlannerDetailService
                 'gridRecords',
                 'checklistRecords',
             ])->findOrFail($id);
-
             self::addChildDatesToGrid($processRecord);
             return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
         } catch (ModelNotFoundException $e) {
@@ -42,7 +40,22 @@ class CalibrationPlannerDetailService
         }
     }
 
-    /* add the calculated dates to every grid row (response only, nothing is saved) */
+    /* recalculate and store the dates of a record and of the planners it was generated from */
+    public static function syncPlannerDates($id): void
+    {
+        $seen = [];
+        while ($id && !in_array($id, $seen, true)) {
+            $seen[] = $id;
+            $record = ProcessRecord::with('gridRecords')->find($id);
+            if (!$record) {
+                return;
+            }
+            self::addChildDatesToGrid($record);
+            $id = $record->parent_id;
+        }
+    }
+
+    /* add the calculated dates to every grid row and store them when they changed */
     private static function addChildDatesToGrid(ProcessRecord $planner): void
     {
         $calibrationChildren = ProcessRecord::with('stage')
@@ -58,17 +71,30 @@ class CalibrationPlannerDetailService
                 ->get();
         $verifiedDates = self::findQaVerifiedDates($calibrationChildren->concat($followUpChildren));
         foreach ($planner->gridRecords as $gridRecord) {
-            $rows = self::decodeGridData($gridRecord->grid_data);
+            $original = self::decodeGridData($gridRecord->grid_data);
+            $rows = $original;
             foreach ($rows as $index => $row) {
                 if (is_array($row)) {
                     $rows[$index] = self::buildGridRow($row, $index, $calibrationChildren, $followUpPlanners, $followUpChildren, $verifiedDates);
                 }
             }
-            if (!empty($rows)) {
-                $gridRecord->setAttribute('grid_data', $rows);
+            if (empty($rows)) {
+                continue;
             }
+            if ($rows !== $original) {
+                self::storeGridData($gridRecord->id, $rows);
+            }
+            $gridRecord->setAttribute('grid_data', $rows);
         }
         $planner->setAttribute('child_records', self::summarizeChildren($calibrationChildren, $verifiedDates));
+    }
+
+    private static function storeGridData($gridRecordId, array $rows): void
+    {
+        DB::table('grid_records')->where('id', $gridRecordId)->update([
+            'grid_data' => json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'updated_at' => now(),
+        ]);
     }
 
     private static function buildGridRow(array $row, $index, Collection $calibrationChildren, Collection $followUpPlanners, Collection $followUpChildren, array $verifiedDates): array
@@ -133,7 +159,7 @@ class CalibrationPlannerDetailService
         return $followUps;
     }
 
-    /* record id => latest "Verified By QA" date, closed children only */
+    /* record id => latest QA verification date, closed children only */
     private static function findQaVerifiedDates(Collection $children): array
     {
         $closedIds = $children->filter(fn($child) => self::isClosedDone($child))->pluck('id')->all();
@@ -169,8 +195,14 @@ class CalibrationPlannerDetailService
     private static function sortChildren(Collection $children): Collection
     {
         return $children
-            ->sort(fn($a, $b) => [(string) $a->initiation_date, $a->id] <=> [(string) $b->initiation_date, $b->id])
+            ->sort(fn($a, $b) => [self::initiatedAt($a), $a->id] <=> [self::initiatedAt($b), $b->id])
             ->values();
+    }
+
+    /* stored value, the model formats initiation_date for display and that format does not sort */
+    private static function initiatedAt($child): string
+    {
+        return (string) ($child->getRawOriginal('initiation_date') ?? $child->created_at);
     }
 
     private static function summarizeChildren(Collection $children, array $verifiedDates): array

@@ -20,32 +20,40 @@ use Illuminate\Support\Facades\Hash;
 
 class CalibrationPlannerService
 {
-
-    private const QA_VERIFIED_ACTIVITY = 'Verified By QA';
-    private const CLOSED_DONE_STAGE = 'Closed - Done';
-
     /* create a new process record */
     public static function storeCalibrationProcessData(Request $request)
     {
         DB::beginTransaction();
+
         try {
-            /* stage must belong to the chosen process */
             $stageExists = Stage::where('id', $request->stage_id)
-                ->where('process_id', $request->process_id)->exists();
+                ->where('process_id', $request->process_id)
+                ->exists();
 
             if (!$stageExists) {
                 DB::rollBack();
-                return ResponseHelper::error('Selected stage does not belong to the selected process.', 422);
+
+                return ResponseHelper::error(
+                    'Selected stage does not belong to the selected process.',
+                    422
+                );
             }
 
-            /* auto generate record number */
-            $recordNumber = ProcessRecordService::getGeneratedRecordNumber($request->process_id);
-            $processData = is_array($request->process_data) ? $request->process_data : [];
+            $recordNumber = ProcessRecordService::getGeneratedRecordNumber(
+                $request->process_id
+            );
+
+            $processData = is_array($request->process_data)
+                ? $request->process_data
+                : [];
+
             $recordNumberFound = false;
 
-            /* inject record number into existing process_data field if present */
             foreach ($processData as &$field) {
-                if (is_array($field) && ($field['key'] ?? null) === 'recordNumber') {
+                if (
+                    is_array($field) &&
+                    ($field['key'] ?? null) === 'recordNumber'
+                ) {
                     $field['value'] = $recordNumber;
                     $recordNumberFound = true;
                     break;
@@ -53,9 +61,12 @@ class CalibrationPlannerService
             }
             unset($field);
 
-            /* otherwise append a new record number field */
             if (!$recordNumberFound) {
-                $processData[] = ['key' => 'recordNumber', 'label' => 'Record Number', 'value' => $recordNumber];
+                $processData[] = [
+                    'key' => 'recordNumber',
+                    'label' => 'Record Number',
+                    'value' => $recordNumber,
+                ];
             }
 
             $processRecord = ProcessRecord::create([
@@ -70,32 +81,33 @@ class CalibrationPlannerService
                 'process_data' => $processData,
             ]);
 
-            /* store grid rows if provided */
-            if ($request->has('gridData') && is_array($request->gridData) && !empty($request->gridData)) {
-                /* strip temp row identifiers before saving */
-                $gridData = array_map(function ($row) {
-                    unset($row['_rowId'], $row['row_id']);
-                    return $row;
-                }, $request->gridData);
+            /* Store grid rows with row_id */
+            if (
+                $request->has('gridData') &&
+                is_array($request->gridData) &&
+                !empty($request->gridData)
+            ) {
+                $gridData = $request->gridData;
 
                 $gridRecord = GridRecord::create([
                     'process_record_id' => $processRecord->id,
                     'grid_data' => $gridData,
                 ]);
 
-                /* audit: grid created */
                 UserAuditHelper::log(
                     'Grid Record',
                     'Created',
                     'Grid data created successfully.',
                     $gridRecord->id,
                     null,
-                    ['process_record_id' => $gridRecord->process_record_id, 'grid_data' => $gridRecord->grid_data],
+                    [
+                        'process_record_id' => $gridRecord->process_record_id,
+                        'grid_data' => $gridRecord->grid_data,
+                    ],
                     GridRecord::class
                 );
             }
 
-            /* audit: process record created */
             UserAuditHelper::log(
                 'Process Record',
                 'Created',
@@ -107,20 +119,36 @@ class CalibrationPlannerService
             );
 
             DB::commit();
-            $processRecord->load(['process', 'stage', 'department', 'initiator']);
 
-            return ResponseHelper::success($processRecord, 'Process record created successfully.', 201);
+            $processRecord->load([
+                'process',
+                'stage',
+                'department',
+                'initiator',
+            ]);
+
+            return ResponseHelper::success(
+                $processRecord,
+                'Process record created successfully.',
+                201
+            );
         } catch (\Exception $e) {
             DB::rollBack();
-            return ResponseHelper::error('Failed to create process record.', 500);
+
+            info('Error in CalibrationPlannerService@storeCalibrationProcessData', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return ResponseHelper::error(
+                'Failed to create process record.',
+                500
+            );
         }
     }
 
     /* update an existing process record and log the diff */
-    public static function updateCalibrationPlannerRecord(
-        Request $request,
-        $id
-    ) {
+    public static function updateCalibrationPlannerRecord(Request $request, $id)
+    {
         DB::beginTransaction();
 
         try {
@@ -153,11 +181,10 @@ class CalibrationPlannerService
                 ? $request->process_data
                 : [];
 
-            $hasShortDescriptionInProcessData =
-                self::processDataHasKey(
-                    $requestProcessData,
-                    'short_description'
-                );
+            $hasShortDescriptionInProcessData = self::processDataHasKey(
+                $requestProcessData,
+                'short_description'
+            );
 
             $scalarFieldsMap = [
                 'process_id' => [
@@ -166,14 +193,12 @@ class CalibrationPlannerService
                     'resolver' => fn($value) =>
                         \App\Models\Process::where('id', $value)->value('name'),
                 ],
-
                 'department_id' => [
                     'key' => 'department_id',
                     'label' => 'Department',
                     'resolver' => fn($value) =>
                         \App\Models\Department::where('id', $value)->value('name'),
                 ],
-
                 'initiator_id' => [
                     'key' => 'initiator_id',
                     'label' => 'Initiator',
@@ -198,7 +223,7 @@ class CalibrationPlannerService
                     'key' => $meta['key'],
                     'label' => $meta['label'],
                     'value' => $oldFieldValue
-                        ? $meta['resolver']($oldFieldValue)
+                        ? ($meta['resolver'])($oldFieldValue)
                         : null,
                 ];
 
@@ -206,7 +231,7 @@ class CalibrationPlannerService
                     'key' => $meta['key'],
                     'label' => $meta['label'],
                     'value' => $newFieldValue
-                        ? $meta['resolver']($newFieldValue)
+                        ? ($meta['resolver'])($newFieldValue)
                         : null,
                 ];
 
@@ -217,8 +242,7 @@ class CalibrationPlannerService
                 $request->has('short_description') &&
                 $request->short_description != $processRecord->short_description
             ) {
-                $updateData['short_description'] =
-                    $request->short_description;
+                $updateData['short_description'] = $request->short_description;
 
                 if (!$hasShortDescriptionInProcessData) {
                     $oldValue['process_data'][] = [
@@ -235,17 +259,12 @@ class CalibrationPlannerService
                 }
             }
 
-            /* process data */
+            /* Process data */
             if ($request->has('process_data')) {
                 $oldProcessData = is_array($processRecord->process_data)
                     ? $processRecord->process_data
                     : [];
 
-                /*
-                 * Attachment fields are managed by the attachment endpoint.
-                 * Do not clear an existing attachment when another stage sends
-                 * process data with an empty attachment value.
-                 */
                 $newProcessData = self::preserveExistingAttachmentValues(
                     $oldProcessData,
                     $requestProcessData
@@ -280,6 +299,7 @@ class CalibrationPlannerService
                 $processRecord->update($updateData);
             }
 
+            /* Process record audit */
             if (!empty($newValue) || !empty($oldValue)) {
                 UserAuditHelper::log(
                     'Process Record',
@@ -292,7 +312,7 @@ class CalibrationPlannerService
                 );
             }
 
-            /* grid data */
+            /* Grid data */
             if ($request->has('gridData')) {
                 $gridData = is_array($request->gridData)
                     ? $request->gridData
@@ -308,16 +328,13 @@ class CalibrationPlannerService
                         ? $gridRecord->grid_data
                         : [];
 
-                    /*
-                    * Compare rows before removing row identifiers.
-                    * This allows the audit logic to detect the correct row.
-                    */
+                    /* Compare grid rows before saving */
                     $gridChanges = self::getGridDataChanges(
                         $oldGridData,
                         $gridData
                     );
 
-                    /* deleted rows */
+                    /* Deleted rows */
                     if (!empty($gridChanges['deleted'])) {
                         UserAuditHelper::log(
                             'Grid Record',
@@ -333,7 +350,7 @@ class CalibrationPlannerService
                         );
                     }
 
-                    /* updated rows */
+                    /* Updated rows */
                     if (
                         !empty($gridChanges['updated_old']) ||
                         !empty($gridChanges['updated_new'])
@@ -355,7 +372,7 @@ class CalibrationPlannerService
                         );
                     }
 
-                    /* created rows */
+                    /* Created rows */
                     if (!empty($gridChanges['created'])) {
                         UserAuditHelper::log(
                             'Grid Record',
@@ -371,15 +388,8 @@ class CalibrationPlannerService
                         );
                     }
 
-                    /* remove technical fields only before saving */
-                    $gridDataForSave = array_map(function ($row) {
-                        unset(
-                            $row['_rowId'],
-                            $row['row_id']
-                        );
-
-                        return $row;
-                    }, $gridData);
+                    /* Preserve row_id in database JSON */
+                    $gridDataForSave = $gridData;
 
                     if ($oldGridData != $gridDataForSave) {
                         $gridRecord->update([
@@ -387,14 +397,8 @@ class CalibrationPlannerService
                         ]);
                     }
                 } elseif (!empty($gridData)) {
-                    $gridDataForSave = array_map(function ($row) {
-                        unset(
-                            $row['_rowId'],
-                            $row['row_id']
-                        );
-
-                        return $row;
-                    }, $gridData);
+                    /* Preserve row_id for newly created grid records */
+                    $gridDataForSave = $gridData;
 
                     $gridRecord = GridRecord::create([
                         'process_record_id' => $processRecord->id,
