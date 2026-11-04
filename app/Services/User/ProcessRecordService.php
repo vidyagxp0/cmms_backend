@@ -115,7 +115,7 @@ class ProcessRecordService
         }
     }
 
-    /* fetch paginated records for one or more processes, with search + status + date range filters */
+    /* fetch paginated records for one or more processes, with search + status + child_type + date range filters */
     private static function getRecordsByProcessName(Request $request, string|array $processNames)
     {
         try {
@@ -141,6 +141,10 @@ class ProcessRecordService
                 })
                 ->when($request->status, function ($query) use ($request) {
                     $query->whereHas('stage', fn($q) => $q->where('name', $request->status));
+                })
+                /* filter by child_type column on process_records (single value or array) */
+                ->when($request->filled('child_type'), function ($query) use ($request) {
+                    $query->whereIn('child_type', (array) $request->child_type);
                 })
                 ->when($request->from_date, fn($query) => $query->whereDate('initiation_date', '>=', $request->from_date))
                 ->when($request->to_date, fn($query) => $query->whereDate('initiation_date', '<=', $request->to_date))

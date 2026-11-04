@@ -28,6 +28,7 @@ class DepartmentEquipmentMasterService
             'equipment_make',
             'equipment_model',
             'equipment_location',
+            'checklist_config',
             'asset_code',
             'capacity',            
             'stage_id',
@@ -93,6 +94,10 @@ class DepartmentEquipmentMasterService
         try {
             $data = $request->only(self::instrumentFields());
 
+            if (isset($data['checklist_config']) && is_string($data['checklist_config'])) {
+                $data['checklist_config'] = json_decode($data['checklist_config'], true);
+            }
+
             $equipment = EquipmentMaster::create($data);
 
             /* audit data */
@@ -144,21 +149,13 @@ class DepartmentEquipmentMasterService
 
             /* identify changed fields */
             foreach ($updateData as $field => $value) {
+                if ($field === 'checklist_config' && is_string($value)) {
+                    $value = json_decode($value, true);
+                }
                 $currentValue = $equipment->getAttribute($field);
-
-                /* compare checklist configuration */
-                if ($field === 'checklist_config') {
-                    if (is_string($value)) {
-                        $value = json_decode($value, true);
-                    }
-
-                    if ($value == $currentValue) {
-                        continue;
-                    }
-                } elseif ((string) $value === (string) $currentValue) {
+                if (!self::isChanged($value, $currentValue)) {
                     continue;
                 }
-
                 $oldValue[$field] = $currentValue;
                 $newValue[$field] = $value;
                 $changedData[$field] = $value;
@@ -201,6 +198,33 @@ class DepartmentEquipmentMasterService
                 500
             );
         }
+    }
+
+    private static function isChanged($new, $current): bool
+    {
+        $new = self::normalizeForCompare($new);
+        $current = self::normalizeForCompare($current);
+        if (is_array($new) || is_array($current)) {
+            return json_encode($new) !== json_encode($current);
+        }
+        return (string) $new !== (string) $current;
+    }
+
+    private static function normalizeForCompare($value)
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (is_array($decoded)) {
+                $value = $decoded;
+            }
+        }
+        if (is_array($value)) {
+            $value = array_map(fn ($item) => self::normalizeForCompare($item), $value);
+            if (!array_is_list($value)) {
+                ksort($value);
+            }
+        }
+        return $value;
     }
 
     /* get all field instruments */
