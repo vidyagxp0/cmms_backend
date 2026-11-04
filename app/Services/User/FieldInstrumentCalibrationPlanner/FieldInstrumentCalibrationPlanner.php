@@ -827,9 +827,17 @@ class FieldInstrumentCalibrationPlanner
             $user = User::find($request->user_id);
 
             /* re-verify the acting user's credentials before moving stage */
-            if (!$user || $user->username !== $request->username || !Hash::check($request->password, $user->password)) {
+            if (
+                !$user ||
+                mb_strtolower(trim($user->username)) !== mb_strtolower(trim($request->username)) ||
+                !Hash::check($request->password, $user->password)
+            ) {
                 DB::rollBack();
-                return ResponseHelper::error('Invalid username or password.', 422);
+
+                return ResponseHelper::error(
+                    'Invalid username or password.',
+                    422
+                );
             }
 
             /* record the activity performed */

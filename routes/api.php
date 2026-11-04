@@ -229,6 +229,7 @@ Route::middleware('auth:sanctum')->group(function () {
         /* user department listing */        
         Route::get('/user-departments-listing', [DepartmentController::class, 'index'])->name('user-departments-listing');
         Route::get('/get-master-data/{departmentId}/{type}', [DashboardController::class, 'getMasterData'])->name('get-master-data');
+        Route::get('/get-master-data-global/{type}', [DashboardController::class, 'getMasterData'])->name('get-master-data-global');
 
         /* calibration addendum management routes */
         Route::get('/addendum-calibration-management-records', [ProcessRecordController::class, 'getCalibrationManagementAddendumRecords'])->name('addendum-calibration-management-records');

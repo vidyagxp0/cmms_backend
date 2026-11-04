@@ -38,7 +38,7 @@ class DashboardController extends Controller
         }
     }
 
-    public function getMasterData($departmentId, $type)
+    public function getMasterData($type, $departmentId = null)
     {
         try {
             /* types that are NOT department wise (fetch all records) */

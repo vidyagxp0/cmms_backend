@@ -671,7 +671,7 @@ class SpareInstrumentMasterService
 
             if (
                 !$user ||
-                $user->username !== $request->username ||
+                mb_strtolower(trim($user->username)) !== mb_strtolower(trim($request->username)) ||
                 !Hash::check($request->password, $user->password)
             ) {
                 DB::rollBack();
