@@ -20,7 +20,7 @@ class StageValidationService
                 ],
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
-                    // 'plannedDate' => 'Planned Date',
+                    'plannedDate' => 'Planned Date',
                 ],
             ],
             3 => [
@@ -42,17 +42,17 @@ class StageValidationService
 
         /* Calibration Management */
         5 => [
-            23 => [
+            24 => [
                 'process_fields' => [
                     'comments' => 'Comments',
                 ],
             ],
-            26 => [
+            25 => [
                 'process_fields' => [
                     'implementorComments' => 'Implementor Comments',
                 ],
             ],
-            28 => [
+            26 => [
                 'process_fields' => [
                     'qaReviewComments' => 'QA Review Comments',
                 ],
@@ -61,23 +61,22 @@ class StageValidationService
 
         /* Preventive Maintenance Planner */
         2 => [
-            9 => [
+            10 => [
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
                 ],
-                'week_dates_required' => true,
             ],
-            12 => [
+            11 => [
                 'process_fields' => [
                     'hod_review_comments' => 'HOD / Designee Review Comments',
                 ],
             ],
-            14 => [
+            12 => [
                 'process_fields' => [
                     'user_dept_review_comments' => 'QA Review Comments',
                 ],
             ],
-            16 => [
+            13 => [
                 'process_fields' => [
                     'qa_review_comments' => 'QA Approver Comments',
                 ],
@@ -86,7 +85,7 @@ class StageValidationService
 
         /* Preventive Maintenance */
         4 => [
-            17 => [
+            18 => [
                 'process_fields' => [
                     'equipmentInstrumentName' => 'Equipment Name',
                     'equipmentInstrumentId' => 'Equipment Code',
@@ -97,12 +96,12 @@ class StageValidationService
                     'remark' => 'Remark',
                 ],
             ],
-            20 => [
+            19 => [
                 'process_fields' => [
                     'engineer_review_comments' => 'Engineer Department Review Comments',
                 ],
             ],
-            22 => [
+            20 => [
                 'process_fields' => [
                     'qa_approval_comments' => 'QA Approval Comments',
                 ],
@@ -111,7 +110,7 @@ class StageValidationService
 
         /* Field Instrument Calibration Addendum */
         8 => [
-            48 => [
+            50 => [
                 'process_fields' => [
                     'year' => 'Year',
                     'block' => 'Block',
@@ -128,12 +127,12 @@ class StageValidationService
                     'hod_review_comments' => 'HOD / Designee Review Comments',
                 ],
             ],
-            53 => [
+            52 => [
                 'process_fields' => [
                     'user_dept_review_comments' => 'User Dept Review Comments',
                 ],
             ],
-            55 => [
+            53 => [
                 'process_fields' => [
                     'qa_review_comments' => 'QA Review Comments',
                 ],
