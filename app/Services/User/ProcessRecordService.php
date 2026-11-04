@@ -33,7 +33,10 @@ class ProcessRecordService
 
     public static function getCalibrationManagementRecords(Request $request)
     {
-        return self::getRecordsByProcessName($request, 'Calibration Management');
+        return self::getRecordsByProcessName($request, [
+            'Calibration Management',
+            'Addendum Calibration Management',
+        ]);
     }
 
     public static function getPreventiveMaintenancePlannerRecords(Request $request)
@@ -43,7 +46,10 @@ class ProcessRecordService
 
     public static function getPreventiveMaintenanceRecords(Request $request)
     {
-        return self::getRecordsByProcessName($request, 'Preventive Maintenance');
+        return self::getRecordsByProcessName($request, [
+            'Preventive Maintenance',
+            'Addendum Preventive Management',
+        ]);
     }
 
     public static function getFieldInstrumentPlannerRecords(Request $request)
@@ -109,12 +115,16 @@ class ProcessRecordService
         }
     }
 
-    /* fetch paginated records for a process, with search + status + date range filters */
-    private static function getRecordsByProcessName(Request $request, string $processName)
+    /* fetch paginated records for one or more processes, with search + status + date range filters */
+    private static function getRecordsByProcessName(Request $request, string|array $processNames)
     {
         try {
+            $processNames = (array) $processNames;
+
+            $perPage = min(max((int) ($request->per_page ?? 10), 1), 100);
+
             $records = ProcessRecord::with(['process', 'department', 'initiator', 'stage'])
-                ->whereHas('process', fn($query) => $query->where('name', $processName))
+                ->whereHas('process', fn($query) => $query->whereIn('name', $processNames))
                 ->when($request->search, function ($query) use ($request) {
                     $search = $request->search;
 
@@ -135,11 +145,12 @@ class ProcessRecordService
                 ->when($request->from_date, fn($query) => $query->whereDate('initiation_date', '>=', $request->from_date))
                 ->when($request->to_date, fn($query) => $query->whereDate('initiation_date', '<=', $request->to_date))
                 ->orderBy('id', 'desc')
-                ->paginate($request->per_page ?? 10);
+                ->paginate($perPage);
 
             return ResponseHelper::success($records, 'Process records fetched successfully.');
         } catch (\Exception $e) {
-            return ResponseHelper::error($e->getMessage(), 500);
+            \Log::error('getRecordsByProcessName failed', ['error' => $e->getMessage()]);
+            return ResponseHelper::error('Unable to fetch process records.', 500);
         }
     }
 
