@@ -228,6 +228,16 @@ class ProcessRecordService
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
                     'Pending QA Approval' => 'QA Approver',
                 ],
+                12 => [ // Addendum Calibration Management
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee' => 'HOD/Designee',
+                    'Verified By QA' => 'QA Approver',
+                ],
+                13 => [ // Addendum Preventive Management
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee' => 'HOD/Designee',
+                    'Verified By QA' => 'QA Approver',
+                ],
             ];
 
             $stageName = $record->stage?->name;
