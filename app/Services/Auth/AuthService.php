@@ -13,16 +13,19 @@ class AuthService
 {
     public function login(array $data): array
     {
+        /* normalize username so Initiator / INITIATOR / initiator all match */
+        $username = mb_strtolower(trim($data['username']));
+
         $user = User::with([
             'roles' => function ($query) {
                 $query->where('is_active', true)
                     ->with('permissions');
             }
         ])
-        ->where('username', $data['username'])
+        ->whereRaw('LOWER(username) = ?', [$username])
         ->first();
 
-        /* check password */
+        /* check password (stays case-sensitive) */
         if (!$user || !Hash::check($data['password'], $user->password)) {
             throw new \Exception('Invalid username or password.');
         }
