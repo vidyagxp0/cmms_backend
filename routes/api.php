@@ -231,6 +231,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/get-master-data/{departmentId}/{type}', [DashboardController::class, 'getMasterData'])->name('get-master-data');
 
         /* calibration addendum management routes */
+        Route::get('/addendum-calibration-management-records', [ProcessRecordController::class, 'getCalibrationManagementAddendumRecords'])->name('addendum-calibration-management-records');
         Route::post('/store-addendum-calibration-management-record', [AddendumCalibrationManagementController::class, 'store'])->name('store-addendum-calibration-management-record');
         Route::get('/show-addendum-calibration-management-record/{id}', [AddendumCalibrationManagementController::class, 'show'])->name('show-addendum-calibration-management-record');
         Route::put('/update-addendum-calibration-management-record/{id}', [AddendumCalibrationManagementController::class, 'update'])->name('update-addendum-calibration-management-record');
@@ -239,6 +240,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/addendum-calibration-management-audit/{id}', [AddendumCalibrationManagementController::class, 'calibrationManagementAudit'])->name('addendum-calibration-management-audit');
 
         /* preventive addendum management routes */
+        Route::get('/addendum-preventive-management-records', [ProcessRecordController::class, 'getPrevetiveManagementAddendumRecords'])->name('addendum-preventive-management-records');
         Route::post('/store-addendum-peventive-management-record', [AddendumPreventiveManagementController::class, 'store'])->name('store-addendum-peventive-management-record');
         Route::get('/show-addendum-peventive-management-record/{id}', [AddendumPreventiveManagementController::class, 'show'])->name('show-addendum-peventive-management-record');
         Route::put('/update-addendum-peventive-management-record/{id}', [AddendumPreventiveManagementController::class, 'update'])->name('update-addendum-peventive-management-record');
