@@ -38,9 +38,13 @@ class DashboardController extends Controller
         }
     }
 
-    public function getMasterData($type, $departmentId = null)
+    public function getMasterData(Request $request)
     {
         try {
+            /* read route parameters by name, so URL order doesn't matter */
+            $type = $request->route('type');
+            $departmentId = $request->route('departmentId');
+
             /* types that are NOT department wise (fetch all records) */
             $globalTypes = ['instrument_masters', 'spare_instrument_master'];
 
