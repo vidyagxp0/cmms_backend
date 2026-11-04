@@ -61,6 +61,8 @@ class PreventiveAddendumPlannerService
                 'initiator_id' => $request->initiator_id,
                 'short_description' => $request->short_description,
                 'initiation_date' => $request->initiation_date,
+                'row_id' => $request->row_id,
+                'child_type' => $request->childType,
                 'process_data' => $processData,
             ]);
 

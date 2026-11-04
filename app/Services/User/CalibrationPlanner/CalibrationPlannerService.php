@@ -20,6 +20,10 @@ use Illuminate\Support\Facades\Hash;
 
 class CalibrationPlannerService
 {
+
+    private const QA_VERIFIED_ACTIVITY = 'Verified By QA';
+    private const CLOSED_DONE_STAGE = 'Closed - Done';
+
     /* create a new process record */
     public static function storeCalibrationProcessData(Request $request)
     {
@@ -61,6 +65,8 @@ class CalibrationPlannerService
                 'initiator_id' => $request->initiator_id,
                 'short_description' => $request->short_description,
                 'initiation_date' => $request->initiation_date,
+                'row_id' => $request->row_id,
+                'child_type' => $request->childType,
                 'process_data' => $processData,
             ]);
 
@@ -107,25 +113,6 @@ class CalibrationPlannerService
         } catch (\Exception $e) {
             DB::rollBack();
             return ResponseHelper::error('Failed to create process record.', 500);
-        }
-    }
-
-    /* fetch a single process record with related data */
-    public static function getCalibrationPlannerRecord($id)
-    {
-        try {
-            $processRecord = ProcessRecord::with([
-                'process',
-                'stage',
-                'department',
-                'initiator',
-                'gridRecords',
-                'checklistRecords',
-            ])->findOrFail($id);
-
-            return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
-        } catch (\Exception $e) {
-            return ResponseHelper::error('Process record not found.', 404);
         }
     }
 

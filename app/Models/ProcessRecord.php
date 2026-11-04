@@ -16,7 +16,9 @@ class ProcessRecord extends Model
         'process_data',
         'parent_id',
         'is_child',
-        'attachments'
+        'attachments',
+        'child_type',
+        'row_id'
     ];
 
     protected function casts(): array

@@ -66,6 +66,16 @@ class ProcessRecordService
         return self::getRecordsByProcessName($request, 'Preventive Addendum');
     }
 
+    public static function getCalibrationManagementAddendumRecords(Request $request)
+    {
+        return self::getRecordsByProcessName($request, 'Addendum Calibration Management');
+    }
+
+    public static function getPrevetiveManagementAddendumRecords(Request $request)
+    {
+        return self::getRecordsByProcessName($request, 'Addendum Preventive Management');
+    }
+
     /* fetch non-paginated records for a process, with search + status + date range filters */
     private static function getAllRecordsByProcessName(Request $request, string $processName)
     {

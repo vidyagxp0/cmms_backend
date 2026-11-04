@@ -107,6 +107,32 @@ class ProcessRecordController extends Controller
             ], 500);
         }
     }
+
+    /* calibration management addendum */
+    public function getCalibrationManagementAddendumRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getCalibrationManagementAddendumRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
+
+    /* preventive management addendum */
+    public function getPrevetiveManagementAddendumRecords(Request $request)
+    {
+        try {
+            return ProcessRecordService::getPrevetiveManagementAddendumRecords($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Records.',
+            ], 500);
+        }
+    }
     
     /* generate record number for a process */
     public function generateRecordNumber($processId)

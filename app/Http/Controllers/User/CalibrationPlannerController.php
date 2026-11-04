@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProcessRecordRequest;
 use App\Http\Requests\User\RecordActivityRequest;
+use App\Services\User\CalibrationPlanner\CalibrationPlannerDetailService;
 use App\Services\User\CalibrationPlanner\CalibrationPlannerService;
 use App\Services\UserReport\CalibrationReportService;
 use Illuminate\Http\Request;
@@ -28,7 +29,7 @@ class CalibrationPlannerController extends Controller
     public function show($id)
     {
         try {
-            return CalibrationPlannerService::getCalibrationPlannerRecord($id);
+            return CalibrationPlannerDetailService::getCalibrationPlannerRecord($id);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

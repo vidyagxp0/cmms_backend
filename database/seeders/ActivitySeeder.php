@@ -427,6 +427,74 @@ class ActivitySeeder extends Seeder
                 ],
             ]
         );
+
+        /* Addendum Calibration Management */
+        $this->createActivities(
+            'Addendum Calibration Management',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'Start Calibration',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Verified By QA',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Verification Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
+
+        /* Addendum Preventive Management */
+        $this->createActivities(
+            'Addendum Preventive Management',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'Start Calibration',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Verified By QA',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Verification Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
     }
 
     
