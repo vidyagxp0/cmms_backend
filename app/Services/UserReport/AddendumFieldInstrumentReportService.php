@@ -142,7 +142,7 @@ class AddendumFieldInstrumentReportService
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
-                    'report_title' => $record->process?->name ?? 'Field Instrument Calibration Addendum',
+                    'report_title' => 'Calibration Addendum',
                     'document_number' => $documentNumber ?: '-',
                     'document_type' => $documentType ?: '-',
                 ],

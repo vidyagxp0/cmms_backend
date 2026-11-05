@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{{ $header['report_title'] ?? 'Field Instrument Calibration Addendum' }}</title>
+    <title>{{ $header['report_title'] ?? 'Calibration Addendum' }}</title>
 
     <style>
         {!! file_get_contents(resource_path('views/Reports/CSS/Report.css')) !!}

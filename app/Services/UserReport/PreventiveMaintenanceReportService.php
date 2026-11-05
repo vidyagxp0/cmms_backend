@@ -87,7 +87,7 @@ class PreventiveMaintenanceReportService
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Limited',
-                    'report_title' => $record->process?->name ?? 'Preventive Maintenance Report',
+                    'report_title' => $record->process?->name,
                     'document_number' => $documentNumber ?: '-',
                     'document_type' => $documentType ?: '-',
                 ],

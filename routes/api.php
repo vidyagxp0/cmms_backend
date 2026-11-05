@@ -8,6 +8,7 @@ use App\Http\Controllers\User\DepartmentEquipmentMasterController;
 use App\Http\Controllers\User\PreventiveAddendumPlannerController;
 use App\Http\Controllers\User\UnplannedCalibrationController;
 use App\Http\Controllers\User\UnplannedCalibrationManagmentController;
+use App\Services\UserReport\PreventiveMaintenanceReportService;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -219,7 +220,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/preventive-addendum-detail/{id}',[PreventiveAddendumPlannerController::class, 'show'])->name('preventive-addendum-detail');
         Route::put('/update-preventive-addendum/{id}',[PreventiveAddendumPlannerController::class, 'update'])->name('update-preventive-addendum');
         Route::post('/preventive-addendum-record-stage/{id}',[PreventiveAddendumPlannerController::class, 'moveStage'])->name('preventive-addendum-record-stage');
-        Route::post('/preventive-addendum-report/{id}',[PreventiveAddendumPlannerController::class, 'prevetineAddendumSingleReport'])->name('preventive-addendum-report');
+        Route::get('/preventive-addendum-report/{id}',[PreventiveAddendumPlannerController::class, 'prevetineAddendumSingleReport'])->name('preventive-addendum-report');
         Route::get('/preventive-addendum/audit-trail/{id}', [PreventiveAddendumPlannerController::class, 'prventiveAddendumPlannerAudit'])->name('preventive-addendum.audit.details');
 
         /* excel import api */
@@ -249,7 +250,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/show-addendum-peventive-management-record/{id}', [AddendumPreventiveManagementController::class, 'show'])->name('show-addendum-peventive-management-record');
         Route::put('/update-addendum-peventive-management-record/{id}', [AddendumPreventiveManagementController::class, 'update'])->name('update-addendum-peventive-management-record');
         Route::post('/addendumpeventiveManagement-record-stage/{id}',[AddendumPreventiveManagementController::class, 'moveStage'])->name('peventiveManagement-record-stage');
-        Route::get('/addendum-peventive-management-singleReport/{id}', [AddendumPreventiveManagementController::class, 'peventiveManagementSingleReport'])->name('addendum-peventive-management-singleReport');
+        Route::get('/addendum-peventive-management-singleReport/{id}', [PreventiveMaintenanceController::class, 'preventiveMaintenanceReport'])->name('addendum-peventive-management-singleReport');
         Route::get('/addendum-peventive-management-audit/{id}', [UserAuditController::class, 'preventiveMaintenanceAudit'])->name('addendum-peventive-management-audit');
 
         /* unplanned calibratin routes */
