@@ -252,6 +252,25 @@ class DepartmentEquipmentMasterService
         }
     }
 
+    /* get all equipment with no imported filter */
+    public static function getAllEquipmentsData()
+    {
+        try {
+            $equipments = EquipmentMaster::orderBy('id', 'asc')
+                ->get();
+
+            return ResponseHelper::success(
+                $equipments,
+                'Field instruments fetched successfully.'
+            );
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Failed to retrieve field instruments.',
+                500
+            );
+        }
+    }
+
     /* Fields that should never appear in the audit table */
     private const AUDIT_HIDDEN_FIELDS = [
         'id',
