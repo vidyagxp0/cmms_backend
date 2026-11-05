@@ -5,6 +5,7 @@ namespace App\Services\User;
 use App\Helpers\ResponseHelper;
 use App\Helpers\UserAuditHelper;
 use App\Http\Requests\User\EquipmentMasterRequest;
+use App\Models\EquipmentMaster;
 use App\Models\FieldInstrumentMaster;
 use App\Models\InstrumentMaster;
 use Illuminate\Support\Facades\DB;
@@ -246,12 +247,12 @@ class EquipmentMasterService
             );
         }
     }
-    /* Get Instrument Master checklist by frequency */
+    
     /* Get Instrument Master checklist by frequency */
     public static function getChecklistByFrequency($equipmentId, $frequency)
     {
         try {
-            $equipment = InstrumentMaster::find($equipmentId);
+            $equipment = EquipmentMaster::find($equipmentId);
 
             if (!$equipment) {
                 return ResponseHelper::error(
