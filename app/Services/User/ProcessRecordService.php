@@ -36,6 +36,7 @@ class ProcessRecordService
         return self::getRecordsByProcessName($request, [
             'Calibration Management',
             'Addendum Calibration Management',
+            'Unplanned Calibration Management'
         ]);
     }
 
