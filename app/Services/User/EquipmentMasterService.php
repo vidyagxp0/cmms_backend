@@ -246,7 +246,7 @@ class EquipmentMasterService
             );
         }
     }
-
+    /* Get Instrument Master checklist by frequency */
     /* Get Instrument Master checklist by frequency */
     public static function getChecklistByFrequency($equipmentId, $frequency)
     {
@@ -260,25 +260,17 @@ class EquipmentMasterService
                 );
             }
 
-            $allowedFrequencies = [
-                'Q' => ['quarterly'],
-                'H' => ['quarterly', 'half yearly'],
-                'Y' => ['quarterly', 'half yearly', 'yearly'],
-            ];
-
-            $selectedFrequency = strtoupper(trim((string) $frequency));
-
-            if (!isset($allowedFrequencies[$selectedFrequency])) {
-                return ResponseHelper::error(
-                    'Invalid frequency. Allowed values are Q, H and Y.',
-                    422
-                );
-            }
-
             $checklistConfig = $equipment->checklist_config;
 
             if (is_string($checklistConfig)) {
                 $checklistConfig = json_decode($checklistConfig, true);
+            }
+
+            if (is_object($checklistConfig)) {
+                $checklistConfig = json_decode(
+                    json_encode($checklistConfig),
+                    true
+                );
             }
 
             if (!is_array($checklistConfig)) {
@@ -288,13 +280,39 @@ class EquipmentMasterService
                 );
             }
 
+            $allowedFrequencies = [
+                'monthly' => ['Monthly'],
+                'quarterly' => ['Monthly', 'Quarterly'],
+                'half-yearly' => ['Monthly', 'Quarterly', 'Half Yearly'],
+                'yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly'],
+                'two-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly'],
+                'five-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly', 'Five Yearly'],
+            ];
+
+            $selectedFrequency = ucwords(
+                strtolower(
+                    str_replace(
+                        ['_', '-'],
+                        ' ',
+                        trim((string) $frequency)
+                    )
+                )
+            );
+
+            if (!isset($allowedFrequencies[$selectedFrequency])) {
+                return ResponseHelper::error(
+                    'Invalid frequency. Allowed values are Monthly, Quarterly, Half Yearly, Yearly, Two Yearly and Five Yearly.',
+                    422
+                );
+            }
+
             $frequencies = $allowedFrequencies[$selectedFrequency];
 
             $questions = array_values(array_filter(
                 $checklistConfig['questions'] ?? [],
                 function ($question) use ($frequencies) {
-                    $questionFrequency = strtolower(
-                        trim($question['frequency'] ?? '')
+                    $questionFrequency = trim(
+                        (string) ($question['frequency'] ?? '')
                     );
 
                     return in_array(
@@ -311,7 +329,16 @@ class EquipmentMasterService
                 $checklistConfig,
                 'Checklist fetched successfully.'
             );
-        } catch (\Exception $e) {
+
+        } catch (\Throwable $e) {
+            \Log::error('GET INSTRUMENT CHECKLIST ERROR', [
+                'equipment_id' => $equipmentId,
+                'frequency' => $frequency,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+
             return ResponseHelper::error(
                 'Failed to retrieve Instrument checklist.',
                 500
