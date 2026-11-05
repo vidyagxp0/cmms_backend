@@ -20,7 +20,9 @@ class RecordActivityService
                 '8',
                 '11',
                 '12',
-                '13'
+                '13',
+                '14',
+                '15'
             ];
 
             if ($processId === '3') {

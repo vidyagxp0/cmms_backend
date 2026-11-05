@@ -263,6 +263,17 @@ class ProcessRecordService
                     'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',
                 ],
+                14 => [ // Unplanned Calibration Planner
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Reviewed By User Department' => 'User Checker/Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+                15 => [ // Unplanned Calibration Management
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee' => 'HOD/Designee',
+                    'Verified By QA' => 'QA Approver',
+                ],
             ];
 
             $stageName = $record->stage?->name;
