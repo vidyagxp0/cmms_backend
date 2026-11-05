@@ -77,6 +77,19 @@ class DepartmentEquipmentMasterController extends Controller
         }
     }
 
+    /* get all equipment with no imported filter */
+    public function getAllEquipmentData()
+    {
+        try {
+            return DepartmentEquipmentMasterService::getAllEquipmentsData();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve Equipmentn.',
+            ], 500);
+        }
+    }
+
     /* Equipmentn audit trail function */
     public function getInstrumentAuditTrail(Request $request, $id)
     {

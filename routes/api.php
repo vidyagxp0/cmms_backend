@@ -204,6 +204,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* Equipment Master routes */
         Route::get('/all-department-equipment-masters', [DepartmentEquipmentMasterController::class, 'getAllEquipments'])->name('all-department-equipment-masters');
+        Route::get('/all-department-equipment-masters-data', [DepartmentEquipmentMasterController::class, 'getAllEquipmentData'])->name('all-department-equipment-masters-data');
         Route::get('/department-equipment-master-listing',[DepartmentEquipmentMasterController::class, 'index'])->name('department-equipment-master-listing');
         Route::post('/store-department-equipment-master',[DepartmentEquipmentMasterController::class, 'store'])->name('store-department-equipment-master');
         Route::get('/department-equipment-master-detail/{id}',[DepartmentEquipmentMasterController::class, 'show'])->name('department-equipment-master-detail');
