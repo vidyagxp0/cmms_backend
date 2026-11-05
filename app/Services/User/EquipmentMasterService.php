@@ -249,103 +249,98 @@ class EquipmentMasterService
     }
     
     /* Get Instrument Master checklist by frequency */
-    public static function getChecklistByFrequency($equipmentId, $frequency)
-    {
-        try {
-            $equipment = EquipmentMaster::find($equipmentId);
+    /* Get Instrument Master checklist by frequency */
+public static function getChecklistByFrequency($equipmentId, $frequency)
+{
+    try {
+        $equipment = EquipmentMaster::find($equipmentId);
 
-            if (!$equipment) {
-                return ResponseHelper::error(
-                    'Instrument not found.',
-                    404
+        if (!$equipment) {
+            return ResponseHelper::error(
+                'Instrument not found.',
+                404
+            );
+        }
+
+        $checklistConfig = $equipment->checklist_config;
+
+        if (is_string($checklistConfig)) {
+            $checklistConfig = json_decode($checklistConfig, true);
+        }
+
+        if (is_object($checklistConfig)) {
+            $checklistConfig = json_decode(
+                json_encode($checklistConfig),
+                true
+            );
+        }
+
+        if (!is_array($checklistConfig)) {
+            return ResponseHelper::error(
+                'Checklist configuration not found.',
+                404
+            );
+        }
+
+        $allowedFrequencies = [
+            'monthly' => ['Monthly'],
+            'quarterly' => ['Monthly', 'Quarterly'],
+            'half-yearly' => ['Monthly', 'Quarterly', 'Half Yearly'],
+            'yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly'],
+            'two-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly'],
+            'five-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly', 'Five Yearly'],
+        ];
+
+        $selectedFrequency = strtolower(
+            trim(str_replace('_', '-', (string) $frequency))
+        );
+
+        if (!isset($allowedFrequencies[$selectedFrequency])) {
+            return ResponseHelper::error(
+                'Invalid frequency. Allowed values are monthly, quarterly, half-yearly, yearly, two-yearly and five-yearly.',
+                422
+            );
+        }
+
+        $frequencies = $allowedFrequencies[$selectedFrequency];
+
+        $questions = array_values(array_filter(
+            $checklistConfig['questions'] ?? [],
+            function ($question) use ($frequencies) {
+                $questionFrequency = trim(
+                    (string) ($question['frequency'] ?? '')
                 );
-            }
 
-            $checklistConfig = $equipment->checklist_config;
-
-            if (is_string($checklistConfig)) {
-                $checklistConfig = json_decode($checklistConfig, true);
-            }
-
-            if (is_object($checklistConfig)) {
-                $checklistConfig = json_decode(
-                    json_encode($checklistConfig),
+                return in_array(
+                    $questionFrequency,
+                    $frequencies,
                     true
                 );
             }
+        ));
 
-            if (!is_array($checklistConfig)) {
-                return ResponseHelper::error(
-                    'Checklist configuration not found.',
-                    404
-                );
-            }
+        $checklistConfig['questions'] = $questions;
 
-            $allowedFrequencies = [
-                'monthly' => ['Monthly'],
-                'quarterly' => ['Monthly', 'Quarterly'],
-                'half-yearly' => ['Monthly', 'Quarterly', 'Half Yearly'],
-                'yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly'],
-                'two-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly'],
-                'five-yearly' => ['Monthly', 'Quarterly', 'Half Yearly', 'Yearly', 'Two Yearly', 'Five Yearly'],
-            ];
+        return ResponseHelper::success(
+            $checklistConfig,
+            'Checklist fetched successfully.'
+        );
 
-            $selectedFrequency = ucwords(
-                strtolower(
-                    str_replace(
-                        ['_', '-'],
-                        ' ',
-                        trim((string) $frequency)
-                    )
-                )
-            );
+    } catch (\Throwable $e) {
+        \Log::error('GET INSTRUMENT CHECKLIST ERROR', [
+            'equipment_id' => $equipmentId,
+            'frequency' => $frequency,
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+        ]);
 
-            if (!isset($allowedFrequencies[$selectedFrequency])) {
-                return ResponseHelper::error(
-                    'Invalid frequency. Allowed values are Monthly, Quarterly, Half Yearly, Yearly, Two Yearly and Five Yearly.',
-                    422
-                );
-            }
-
-            $frequencies = $allowedFrequencies[$selectedFrequency];
-
-            $questions = array_values(array_filter(
-                $checklistConfig['questions'] ?? [],
-                function ($question) use ($frequencies) {
-                    $questionFrequency = trim(
-                        (string) ($question['frequency'] ?? '')
-                    );
-
-                    return in_array(
-                        $questionFrequency,
-                        $frequencies,
-                        true
-                    );
-                }
-            ));
-
-            $checklistConfig['questions'] = $questions;
-
-            return ResponseHelper::success(
-                $checklistConfig,
-                'Checklist fetched successfully.'
-            );
-
-        } catch (\Throwable $e) {
-            \Log::error('GET INSTRUMENT CHECKLIST ERROR', [
-                'equipment_id' => $equipmentId,
-                'frequency' => $frequency,
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
-            return ResponseHelper::error(
-                'Failed to retrieve Instrument checklist.',
-                500
-            );
-        }
+        return ResponseHelper::error(
+            'Failed to retrieve Instrument checklist.',
+            500
+        );
     }
+}
 
     /* Fields that should never appear in the audit table */
     private const AUDIT_HIDDEN_FIELDS = [

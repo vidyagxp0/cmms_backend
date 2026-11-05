@@ -73,6 +73,8 @@ class PreventiveMaintenanceService
                 'row_id' => $request->row_id,
                 'child_type' => $request->childType,
                 'process_data' => $processData,
+                'equipment_id' => $request->equipment_id,
+                'frequency' => $request->frequency,
             ]);
 
             /* Store grid data */
