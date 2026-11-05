@@ -6,6 +6,8 @@ use App\Http\Controllers\User\AddendumPreventiveManagementController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\DepartmentEquipmentMasterController;
 use App\Http\Controllers\User\PreventiveAddendumPlannerController;
+use App\Http\Controllers\User\UnplannedCalibrationController;
+use App\Http\Controllers\User\UnplannedCalibrationManagmentController;
 use Illuminate\Support\Facades\Route;
 
 /* common controller */
@@ -248,5 +250,26 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/addendumpeventiveManagement-record-stage/{id}',[AddendumPreventiveManagementController::class, 'moveStage'])->name('peventiveManagement-record-stage');
         Route::get('/addendum-peventive-management-singleReport/{id}', [AddendumPreventiveManagementController::class, 'peventiveManagementSingleReport'])->name('addendum-peventive-management-singleReport');
         Route::get('/addendum-peventive-management-audit/{id}', [UserAuditController::class, 'preventiveMaintenanceAudit'])->name('addendum-peventive-management-audit');
+
+        /* unplanned calibratin routes */
+        Route::get('/unplanned-calibration-records', [ProcessRecordController::class, 'getUnplannedCalibrationRecords'])->name('unplanned-calibration-records');
+        Route::post('/store-unplanned-calibration-record', [UnplannedCalibrationController::class, 'store'])->name('store-unplanned-calibration-record');
+        Route::get('/show-unplanned-calibration-record/{id}', [UnplannedCalibrationController::class, 'show'])->name('show-unplanned-calibration-record');
+        Route::put('/update-unplanned-calibration-record/{id}', [UnplannedCalibrationController::class, 'update'])->name('update-unplanned-calibration-record');
+        Route::post('/unplanned-calibration-record-stage/{id}',[UnplannedCalibrationController::class, 'moveStage'])->name('unplanned-calibration-record-stage');
+        Route::get('/unplanned-calibration-singleReport/{id}', [UnplannedCalibrationController::class, 'unplannedCalibrationSingleReport'])->name('unplanned-calibration-singleReport');
+        Route::get('/unplanned-calibration-audit/{id}', [UnplannedCalibrationController::class, 'unplannedCalibrationAuditListing'])->name('unplanned-calibration-audit');
+
+        /* unplanned calibratin management routes */
+        Route::get('/unplanned-calibration-management-records', [ProcessRecordController::class, 'getUnplannedCalibrationManagementRecords'])->name('unplanned-calibration-management-records');
+        Route::post('/store-unplanned-calibration-management-record', [UnplannedCalibrationManagmentController::class, 'store'])->name('store-unplanned-calibration-management-record');
+        Route::get('/show-unplanned-calibration-management-record/{id}', [UnplannedCalibrationManagmentController::class, 'show'])->name('show-unplanned-calibration-management-record');
+        Route::put('/update-unplanned-calibration-management-record/{id}', [UnplannedCalibrationManagmentController::class, 'update'])->name('update-unplanned-calibration-management-record');
+        Route::post('/unplanned-calibration-management-record-stage/{id}',[UnplannedCalibrationManagmentController::class, 'moveStage'])->name('unplanned-calibration-management-record-stage');
+        Route::get('/unplanned-calibration-management-singleReport/{id}', [UnplannedCalibrationManagmentController::class, 'unplannedCalibrationManagementSingleReport'])->name('unplanned-calibration-management-singleReport');
+        Route::get('/unplanned-calibration-management-audit/{id}', [UnplannedCalibrationManagmentController::class, 'unplannedCalibrationManagementAudit'])->name('unplanned-calibration-management-audit');
+
+        /* get notification listing */
+         Route::get('/record-notifications', [DashboardController::class, 'getNotificationList'])->name('record-notification');
     });
 });

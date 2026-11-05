@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use App\Models\RecordNotification;
+use Illuminate\Support\Facades\Auth;
 
 
 class DashboardController extends Controller
@@ -102,6 +104,62 @@ class DashboardController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /* get notifications matching the logged-in user's roles */
+    public function getNotificationList(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            /* get all roles assigned to the logged-in user */
+            $roleNames = $user->roles()
+                ->pluck('name')
+                ->toArray();
+
+            if (empty($roleNames)) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'No roles assigned to this user.',
+                    'data' => [],
+                ]);
+            }
+
+            /* match notifications with the user's roles */
+            $notifications = RecordNotification::with(['user'])
+                ->where('user_id', $user->id)
+                ->whereIn('role_name', $roleNames)
+                ->when($request->filled('status'), function ($query) use ($request) {
+                    $query->where('status', $request->status);
+                })
+                ->latest()
+                ->paginate($request->integer('per_page', 15));
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Notifications fetched successfully.',
+                'roles' => $roleNames,
+                'data' => $notifications,
+            ]);
+
+        } catch (\Throwable $e) {
+            \Log::error('RECORD NOTIFICATION FETCH ERROR', [
+                'user_id' => Auth::id(),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status' => false,
+                'message' => 'Unable to fetch notifications.',
             ], 500);
         }
     }

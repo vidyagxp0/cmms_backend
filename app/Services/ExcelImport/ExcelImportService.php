@@ -368,6 +368,7 @@ class ExcelImportService
                         'stage_id' => (int) config('cmms-import.equipment_master_stage_id', 50),
                         'process_id' => 10,
                         'initiator_id' => (int) $import->created_by,
+                        'is_imported' => true,
                         'department_id' => $departmentId,
                         'created_at' => now(),
                         'updated_at' => now(),

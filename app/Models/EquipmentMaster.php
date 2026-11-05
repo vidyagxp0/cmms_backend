@@ -24,6 +24,7 @@ class EquipmentMaster extends Model
         'process_id',
         'initiator_id',
         'department_id',
+        'is_imported'
     ];
 
     protected $casts = [

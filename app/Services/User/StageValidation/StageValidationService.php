@@ -20,7 +20,7 @@ class StageValidationService
                 ],
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
-                    'plannedDate' => 'Planned Date',
+                    // 'plannedDate' => 'Planned Date',
                 ],
             ],
             3 => [

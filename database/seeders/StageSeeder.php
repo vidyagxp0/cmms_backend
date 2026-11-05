@@ -121,6 +121,23 @@ class StageSeeder extends Seeder
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
+
+            'Unplanned Calibration Planner' => [
+                'Opened',
+                'Reviewed By HOD/Designee (Engineering)',
+                'Reviewed By User Department',
+                'Pending QA Approval',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
+
+            'Unplanned Calibration Management' => [
+                'Opened',
+                'Reviewed By HOD/Designee',
+                'Verified By QA',
+                'Closed - Done',
+                'Closed - Cancelled',
+            ],
         ];
 
         foreach ($stageData as $processName => $stages) {

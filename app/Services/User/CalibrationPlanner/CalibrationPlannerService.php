@@ -3,6 +3,8 @@
 namespace App\Services\User\CalibrationPlanner;
 
 use App\Helpers\ResponseHelper;
+use App\Helpers\StageMoveLogHelper;
+use App\Services\Notification\ActivityNotificationService;
 use App\Services\User\StageValidation\StageValidationService;
 use App\Services\User\ProcessRecordService;
 use App\Http\Requests\User\RecordActivityRequest;
@@ -877,6 +879,7 @@ class CalibrationPlannerService
 
             if (!$activity) {
                 DB::rollBack();
+                StageMoveLogHelper::activityUnavailable($processRecord, $request->activity_id);
                 return ResponseHelper::error('Selected activity is not available for the current stage.', 422);
             }
 
@@ -961,6 +964,16 @@ class CalibrationPlannerService
             );
 
             DB::commit();
+
+            /* complete notification for the stage being left */
+            StageMoveLogHelper::completeNotifications(
+                $processRecord,
+                (int) $currentStage->id,
+                (int) $targetStage->id,
+                Auth::id()
+            );
+
+            ActivityNotificationService::notify($processRecord, $activity, $request->comment);
             $processRecord->load(['process', 'stage', 'department', 'initiator']);
 
             return ResponseHelper::success([

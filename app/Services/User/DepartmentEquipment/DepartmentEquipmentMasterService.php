@@ -34,7 +34,8 @@ class DepartmentEquipmentMasterService
             'stage_id',
             'process_id',
             'initiator_id',
-            'department_id'
+            'department_id',
+            'is_imported'
         ];
     }
 

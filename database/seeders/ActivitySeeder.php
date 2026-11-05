@@ -495,6 +495,84 @@ class ActivitySeeder extends Seeder
                 ],
             ]
         );
+
+        /* Unplanned Calibration Planner */
+        $this->createActivities(
+            'Unplanned Calibration Planner',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'Submit',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Reviewed By User Department',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Reviewed By User Department',
+                    'to' => 'Pending QA Approval',
+                    'name' => 'User Department Review Complete',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Approval Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Reviewed By User Department',
+                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Pending QA Approval',
+                    'to' => 'Reviewed By User Department',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
+
+        /* Unplanned Calibration Management */
+        $this->createActivities(
+            'Unplanned Calibration Management',
+            [
+                [
+                    'from' => 'Opened',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'Start Calibration',
+                ],
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Verified By QA',
+                    'name' => 'HOD Review Complete',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Closed - Done',
+                    'name' => 'QA Verification Complete',
+                ],
+            ],
+            [
+                [
+                    'from' => 'Reviewed By HOD/Designee',
+                    'to' => 'Opened',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Verified By QA',
+                    'to' => 'Reviewed By HOD/Designee',
+                    'name' => 'More Info Required',
+                ],
+            ]
+        );
     }
 
     
