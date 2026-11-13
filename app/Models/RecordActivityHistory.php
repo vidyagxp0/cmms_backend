@@ -53,6 +53,6 @@ class RecordActivityHistory extends Model
     /* target stage */
     public function targetStage()
     {
-        return $this->belongsTo(Stage::class,'target_stage_id');
+        return $this->belongsTo(Stage::class,'target_stage');
     }
 }
