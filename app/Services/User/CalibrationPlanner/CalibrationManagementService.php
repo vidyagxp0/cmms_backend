@@ -61,6 +61,7 @@ class CalibrationManagementService
                 'row_id' => $request->row_id,
                 'child_type' => $request->childType,
                 'process_data' => $processData,
+                'master_data' => $request->allMasterData ?? null,
             ]);
 
             /* Store grid data */

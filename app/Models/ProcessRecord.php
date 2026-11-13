@@ -20,7 +20,8 @@ class ProcessRecord extends Model
         'child_type',
         'row_id',
         'equipment_id',
-        'frequency'
+        'frequency',
+        'master_data',
     ];
 
     protected function casts(): array
@@ -28,6 +29,7 @@ class ProcessRecord extends Model
         return [
             'process_data' => 'array',
             'attachments'  => 'array',
+            'master_data'  => 'array',
         ];
     }
 
