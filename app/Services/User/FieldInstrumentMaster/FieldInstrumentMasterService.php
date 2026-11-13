@@ -240,7 +240,7 @@ class FieldInstrumentMasterService
                         });
                 })
                 ->orderBy('id', 'asc')
-                ->get();
+                ->paginate(25);
 
             return ResponseHelper::success(
                 $equipments,
