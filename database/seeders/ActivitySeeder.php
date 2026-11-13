@@ -17,39 +17,39 @@ class ActivitySeeder extends Seeder
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'to' => 'Reviewed By (HOD/Designee)',
                     'name' => 'Submit',
                 ],
                 [
-                    'from' => 'Reviewed By HOD/Designee (Engineering)',
-                    'to' => 'Reviewed By User Department',
+                    'from' => 'Reviewed By (HOD/Designee)',
+                    'to' => 'User Department Review (User HOD/Designee)',
                     'name' => 'HOD Review Complete',
                 ],
                 [
-                    'from' => 'Reviewed By User Department',
-                    'to' => 'Pending QA Approval',
+                    'from' => 'User Department Review (User HOD/Designee)',
+                    'to' => 'QA Approval',
                     'name' => 'User Department Review Complete',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
+                    'from' => 'QA Approval',
                     'to' => 'Closed - Done',
                     'name' => 'QA Approval Complete',
                 ],
             ],
             [
                 [
-                    'from' => 'Reviewed By HOD/Designee (Engineering)',
+                    'from' => 'Reviewed By (HOD/Designee)',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Reviewed By User Department',
-                    'to' => 'Reviewed By HOD/Designee (Engineering)',
+                    'from' => 'User Department Review (User HOD/Designee)',
+                    'to' => 'Reviewed By (HOD/Designee)',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
-                    'to' => 'Reviewed By User Department',
+                    'from' => 'QA Approval',
+                    'to' => 'User Department Review (User HOD/Designee)',
                     'name' => 'More Info Required',
                 ],
             ]
@@ -61,39 +61,39 @@ class ActivitySeeder extends Seeder
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Pending HOD/Designee Review',
+                    'to' => 'Reviewed By (HOD/Designee)',
                     'name' => 'Submit',
                 ],
                 [
-                    'from' => 'Pending HOD/Designee Review',
-                    'to' => 'Pending QA Review',
-                    'name' => 'HOD Review Complete',
+                    'from' => 'Reviewed By (HOD/Designee)',
+                    'to' => 'User Department Review (HOD/Designee)',
+                    'name' => 'Reviewed By HOD/Designee',
                 ],
                 [
-                    'from' => 'Pending QA Review',
-                    'to' => 'Pending QA Approval',
-                    'name' => 'QA Review Complete',
+                    'from' => 'User Department Review (HOD/Designee)',
+                    'to' => 'QA Approval',
+                    'name' => 'User Department Review Complete',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
+                    'from' => 'QA Approval',
                     'to' => 'Closed - Done',
                     'name' => 'QA Approval Complete',
                 ],
             ],
             [
                 [
-                    'from' => 'Pending HOD/Designee Review',
+                    'from' => 'Reviewed By (HOD/Designee)',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Review',
-                    'to' => 'Pending HOD/Designee Review',
+                    'from' => 'User Department Review (HOD/Designee)',
+                    'to' => 'Reviewed By (HOD/Designee)',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
-                    'to' => 'Pending QA Review',
+                    'from' => 'QA Approval',
+                    'to' => 'User Department Review (HOD/Designee)',
                     'name' => 'More Info Required',
                 ],
             ]
@@ -105,29 +105,39 @@ class ActivitySeeder extends Seeder
             [
                 [
                     'from' => 'Opened',
-                    'to' => 'Engineering Department Review',
+                    'to' => 'Reviewed By (User Department)',
                     'name' => 'Start Maintenance',
                 ],
                 [
-                    'from' => 'Engineering Department Review',
-                    'to' => 'Pending QA Approval',
-                    'name' => 'Engineering Review Complete',
+                    'from' => 'Reviewed By (User Department)',
+                    'to' => 'Reviewed By (Engineering Department)',
+                    'name' => 'User Department Review Complete',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
+                    'from' => 'Reviewed By (Engineering Department)',
+                    'to' => 'Approved By QA',
+                    'name' => 'Engineering Department Review Complete',
+                ],
+                [
+                    'from' => 'Approved By QA',
                     'to' => 'Closed - Done',
                     'name' => 'QA Approval Complete',
                 ],
             ],
             [
                 [
-                    'from' => 'Engineering Department Review',
+                    'from' => 'Reviewed By (User Department)',
                     'to' => 'Opened',
                     'name' => 'More Info Required',
                 ],
                 [
-                    'from' => 'Pending QA Approval',
-                    'to' => 'Engineering Department Review',
+                    'from' => 'Reviewed By (Engineering Department)',
+                    'to' => 'Reviewed By (User Department)',
+                    'name' => 'More Info Required',
+                ],
+                [
+                    'from' => 'Approved By QA',
+                    'to' => 'Reviewed By (Engineering Department)',
                     'name' => 'More Info Required',
                 ],
             ]
