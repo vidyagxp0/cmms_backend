@@ -7,6 +7,16 @@ use App\Models\ProcessRecord;
 
 class StageValidationService
 {
+    private const BYPASS_VALIDATION_ACTIVITY_IDS = [
+        /* cancel activity IDs */
+        1, 9, 17, 25, 31, 37, 43, 51, 59, 65, 71, 77, 83, 89, 97,
+
+        /* more info activity IDs */
+        6, 7, 8, 14, 15, 16, 22, 23, 24, 29, 30, 35, 36, 41, 42,
+        48, 49, 50, 56, 57, 58, 63, 64, 69, 70, 75, 76, 81, 82,
+        87, 88, 94, 95, 96, 101, 102,
+    ];
+
     private const RULES = [
         /* Calibration Planner */
         1 => [
@@ -20,7 +30,7 @@ class StageValidationService
                 ],
                 'grid_fields' => [
                     'equipmentInstrumentName' => 'Instrument Name',
-                    // 'plannedDate' => 'Planned Date',
+                    'plannedDate' => 'Planned Date',
                 ],
             ],
             3 => [
@@ -42,17 +52,17 @@ class StageValidationService
 
         /* Calibration Management */
         5 => [
-            24 => [
+            26 => [
                 'process_fields' => [
                     'comments' => 'Comments',
                 ],
             ],
-            25 => [
+            27 => [
                 'process_fields' => [
                     'implementorComments' => 'Implementor Comments',
                 ],
             ],
-            26 => [
+            28 => [
                 'process_fields' => [
                     'qaReviewComments' => 'QA Review Comments',
                 ],
@@ -106,11 +116,16 @@ class StageValidationService
                     'qa_approval_comments' => 'QA Approval Comments',
                 ],
             ],
+            21 => [
+                'process_fields' => [
+                    'qa_approval_comments' => 'QA Approval Comments',
+                ],
+            ],
         ],
 
         /* Field Instrument Calibration Addendum */
         8 => [
-            50 => [
+            52 => [
                 'process_fields' => [
                     'year' => 'Year',
                     'block' => 'Block',
@@ -122,17 +137,17 @@ class StageValidationService
                     'calibrationNextDueDate' => 'Calibration Next Due Date',
                 ],
             ],
-            51 => [
+            53 => [
                 'process_fields' => [
                     'hod_review_comments' => 'HOD / Designee Review Comments',
                 ],
             ],
-            52 => [
+            54 => [
                 'process_fields' => [
                     'user_dept_review_comments' => 'User Dept Review Comments',
                 ],
             ],
-            53 => [
+            55 => [
                 'process_fields' => [
                     'qa_review_comments' => 'QA Review Comments',
                 ],
@@ -144,6 +159,12 @@ class StageValidationService
         ProcessRecord $processRecord,
         int $activityId
     ): ?string {
+
+        /* Skip all validations for Cancel and More Info Required */
+        if (in_array($activityId, self::BYPASS_VALIDATION_ACTIVITY_IDS, true)) {
+            return null;
+        }
+
         $processId = (int) $processRecord->process_id;
 
         $rules = self::RULES[$processId][$activityId] ?? null;
@@ -186,7 +207,6 @@ class StageValidationService
 
                     $rowNumber++;
 
-                    /* Validate each configured grid column */
                     foreach ($rules['grid_fields'] ?? [] as $key => $label) {
                         $value = self::getGridFieldValue($row, $key);
 

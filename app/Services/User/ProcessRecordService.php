@@ -215,62 +215,84 @@ class ProcessRecordService
 
             /* stage => required role, per process id */
             $stageRoles = [
-                1 => [ // Calibration Planner
+                /* Calibration Planner */
+                1 => [
                     'Opened' => 'Initiator',
-                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Checker/Reviewer',
-                    'Pending QA Approval' => 'QA Approver',
+                    'Reviewed By (HOD/Designee)' => 'HOD/Designee',
+                    'User Department Review (User HOD/Designee)' => 'User Department Reviewer',
+                    'QA Approval' => 'QA Approver',
                 ],
-                2 => [ // Preventive Maintenance Planner
+
+                /* Preventive Maintenance Planner */
+                2 => [
                     'Opened' => 'Initiator',
-                    'Pending HOD/Designee Review' => 'HOD/Designee',
-                    'Pending QA Review' => 'Engineering Department Reviewer',
-                    'Pending QA Approval' => 'QA Approver',
+                    'Reviewed By (HOD/Designee)' => 'HOD/Designee',
+                    'User Department Review (HOD/Designee)' => 'User Department Reviewer',
+                    'QA Approval' => 'QA Approver',
                 ],
-                4 => [ // Preventive Maintenance
+
+                /* Preventive Maintenance */
+                4 => [
                     'Opened' => 'Initiator',
-                    'Engineering Department Review' => 'HOD/Designee',
-                    'Pending QA Approval' => 'QA Approver',
+                    'Reviewed By (User Department)' => 'User Department Reviewer',
+                    'Reviewed By (Engineering Department)' => 'Engineering Department Reviewer',
+                    'Approved By QA' => 'QA Approver',
                 ],
-                5 => [ // Calibration Management
-                    'Opened' => 'Initiator',
-                    'Reviewed By HOD/Designee' => 'HOD/Designee',
-                    'Verified By QA' => 'QA Approver',
-                ],
-                7 => [ // Field Instrument Planner
-                    'Opened' => 'Initiator',
-                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Checker/Reviewer',
-                    'Pending QA Approval' => 'QA Approver',
-                ],
-                8 => [ // Addendum Field Instrument Planner
-                    'Opened' => 'Initiator',
-                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Checker/Reviewer',
-                    'Pending QA Approval' => 'QA Approver',
-                ],
-                11 => [ // Preventive Addendum
-                    'Opened' => 'Initiator',
-                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Pending QA Approval' => 'QA Approver',
-                ],
-                12 => [ // Addendum Calibration Management
+
+                /* Calibration Management */
+                5 => [
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',
                 ],
-                13 => [ // Addendum Preventive Management
+
+                /* Field Instrument Planner */
+                7 => [
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Reviewed By User Department' => 'User Department Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
+                /* Addendum Field Instrument Planner */
+                8 => [
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Reviewed By User Department' => 'User Department Reviewer',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
+                /* Preventive Addendum */
+                11 => [
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
+                    'Pending QA Approval' => 'QA Approver',
+                ],
+
+                /* Addendum Calibration Management */
+                12 => [
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',
                 ],
-                14 => [ // Unplanned Calibration Planner
+
+                /* Addendum Preventive Management */
+                13 => [
+                    'Opened' => 'Initiator',
+                    'Reviewed By HOD/Designee' => 'HOD/Designee',
+                    'Verified By QA' => 'QA Approver',
+                ],
+
+                /* Unplanned Calibration Planner */
+                14 => [
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee (Engineering)' => 'HOD/Designee',
-                    'Reviewed By User Department' => 'User Checker/Reviewer',
+                    'Reviewed By User Department' => 'User Department Reviewer',
                     'Pending QA Approval' => 'QA Approver',
                 ],
-                15 => [ // Unplanned Calibration Management
+
+                /* Unplanned Calibration Management */
+                15 => [
                     'Opened' => 'Initiator',
                     'Reviewed By HOD/Designee' => 'HOD/Designee',
                     'Verified By QA' => 'QA Approver',

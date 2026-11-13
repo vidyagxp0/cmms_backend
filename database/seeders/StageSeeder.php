@@ -16,26 +16,27 @@ class StageSeeder extends Seeder
 
             'Calibration Planner' => [
                 'Opened',
-                'Reviewed By HOD/Designee (Engineering)',
-                'Reviewed By User Department',
-                'Pending QA Approval',
+                'Reviewed By (HOD/Designee)',
+                'User Department Review (User HOD/Designee)',
+                'QA Approval',
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
 
             'Preventive Maintenance Planner' => [
                 'Opened',
-                'Pending HOD/Designee Review',
-                'Pending QA Review',
-                'Pending QA Approval',
+                'Reviewed By (HOD/Designee)',
+                'User Department Review (HOD/Designee)',
+                'QA Approval',
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
 
             'Preventive Maintenance' => [
                 'Opened',
-                'Engineering Department Review',
-                'Pending QA Approval',
+                'Reviewed By (User Department)',
+                'Reviewed By (Engineering Department)',
+                'Approved By QA',
                 'Closed - Done',
                 'Closed - Cancelled',
             ],
