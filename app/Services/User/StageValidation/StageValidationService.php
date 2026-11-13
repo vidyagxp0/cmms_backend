@@ -108,12 +108,12 @@ class StageValidationService
             ],
             19 => [
                 'process_fields' => [
-                    'engineer_review_comments' => 'Engineer Department Review Comments',
+                    'user_dept_review_comment' => 'User Department Review Comments',
                 ],
             ],
             20 => [
                 'process_fields' => [
-                    'qa_approval_comments' => 'QA Approval Comments',
+                    'engineer_review_comments' => 'Engineering Department Review Comments',
                 ],
             ],
             21 => [
