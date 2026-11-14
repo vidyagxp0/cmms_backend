@@ -224,6 +224,54 @@ class StageValidationService
                 ],
             ],
         ],
+
+        /* Addendum Preventive Maintenance Planner */
+        11 => [
+            72 => [
+                'process_fields' => [
+                    'year' => 'Year',
+                    'block' => 'Block',
+                    // 'instrumentType' => 'Instrument Type',
+                    'comment' => 'Comment',
+                ],
+                'grid_fields' => [
+                    'equipmentInstrumentName' => 'Instrument Name',
+                    'frequency' => 'Frequency',
+                ],
+            ],
+            73 => [
+                'process_fields' => [
+                    'hod_review_comments' => 'HOD/Designee Comment',
+                ],
+            ],
+            74 => [
+                'process_fields' => [
+                    'qa_review_comments' => 'QA Approver Comments',
+                ],
+            ],
+        ],
+
+        /* Addendm Preventive Management */
+        13 => [
+            84 => [
+                'process_fields' => [
+                    'block' => 'Block',
+                    'department' => 'Department',
+                    'location' => 'Location',
+                    'remark' => 'Remark',
+                ],
+            ],
+            85 => [
+                'process_fields' => [
+                    'engineer_review_comments' => 'HOD/Designee Review Comments',
+                ],
+            ],
+            86 => [
+                'process_fields' => [
+                    'qa_approval_comments' => 'QA Approval Review Comments',
+                ],
+            ],
+        ],
     ];
 
     public static function validateActivity(

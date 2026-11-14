@@ -3,6 +3,8 @@
 namespace App\Services\User\PreventiveAddendum;
 
 use App\Helpers\ResponseHelper;
+use App\Helpers\StageMoveLogHelper;
+use App\Services\Notification\ActivityNotificationService;
 use App\Services\User\ProcessRecordService;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Models\ProcessRecord;
@@ -955,6 +957,17 @@ class PreventiveAddendumPlannerService
             );
 
             DB::commit();
+
+            /* complete notification for the stage being left */
+            StageMoveLogHelper::completeNotifications(
+                $processRecord,
+                (int) $currentStage->id,
+                (int) $targetStage->id,
+                Auth::id()
+            );
+
+            ActivityNotificationService::notify($processRecord, $activity, $request->comment);
+
             $processRecord->load(['process', 'stage', 'department', 'initiator']);
 
             return ResponseHelper::success([
