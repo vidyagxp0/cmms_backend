@@ -59,7 +59,7 @@ class StageValidationService
             ],
             27 => [
                 'process_fields' => [
-                    'implementorComments' => 'Implementor Comments',
+                    'implementorComments' => 'HOD/Designee Comments',
                 ],
             ],
             28 => [
@@ -150,6 +150,77 @@ class StageValidationService
             55 => [
                 'process_fields' => [
                     'qa_review_comments' => 'QA Review Comments',
+                ],
+            ],
+        ],
+
+        /* Addendum Calibration Management */
+        12 => [
+            78 => [
+                'process_fields' => [
+                    'comments' => 'Comments',
+                ],
+            ],
+            79 => [
+                'process_fields' => [
+                    'implementorComments' => 'HOD/Designee Comment',
+                ],
+            ],
+            80 => [
+                'process_fields' => [
+                    'qaReviewComments' => 'QA Review Comments',
+                ],
+            ],
+        ],
+
+        /* Unplanned Calibration Planner */
+        14 => [
+            90 => [
+                'process_fields' => [
+                    'year' => 'Year',
+                    'block' => 'Block',
+                    'area' => 'Area',
+                    'comment' => 'Comments',
+                    'instrumentType' => 'Instrument Type',
+                ],
+                'grid_fields' => [
+                    'equipmentInstrumentName' => 'Instrument Name',
+                    'plannedDate' => 'Planned Date',
+                ],
+            ],
+            91 => [
+                'process_fields' => [
+                    'hod_review_comments' => 'HOD / Designee Review Comments',
+                ],
+            ],
+            92 => [
+                'process_fields' => [
+                    'user_dept_review_comments' => 'User Dept Review Comments',
+                    'user_dept_selected_department' => 'User Deptartment',
+                ],
+            ],
+            93 => [
+                'process_fields' => [
+                    'qa_review_comments' => 'QA Review Comments',
+                ],
+            ],
+        ],
+
+        /* Unplanned Calibration Management */
+        15 => [
+            98 => [
+                'process_fields' => [
+                    'comments' => 'Comments',
+                ],
+            ],
+            99 => [
+                'process_fields' => [
+                    'implementorComments' => 'HOD/Designee Comments',
+                ],
+            ],
+            100 => [
+                'process_fields' => [
+                    'qaReviewComments' => 'QA Review Comments',
                 ],
             ],
         ],
