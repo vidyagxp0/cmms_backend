@@ -108,7 +108,7 @@ class StageValidationService
             ],
             19 => [
                 'process_fields' => [
-                    'user_dept_review_comment' => 'User Department Review Comments',
+                    'user_dept_review_comments' => 'User Department Review Comments',
                 ],
             ],
             20 => [
