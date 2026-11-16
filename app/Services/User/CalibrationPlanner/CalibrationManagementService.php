@@ -131,7 +131,8 @@ class CalibrationManagementService
             DB::rollBack();
 
             return ResponseHelper::error(
-                'Failed to create process record.',
+                // 'Failed to create process record.',
+                $e->getMessage(),
                 500
             );
         }
