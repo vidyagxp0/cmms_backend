@@ -73,9 +73,14 @@ class ExcelImportService
         $columnMap = self::COLUMN_MAP[$category] ?? null;
         $table = config('cmms-import.tables.' . $category);
         $processId = config('cmms-import.process_ids.' . $category);
-        $departmentId = (int) ($import->department_id ?? 0);
+        $departmentId = $import->department_id ? (int) $import->department_id : null;
 
-        if (!$departmentId) {
+        $departmentRequired = !in_array($category, [
+            'master_instrument',
+            'spare_instrument_master',
+        ], true);
+
+        if ($departmentRequired && !$departmentId) {
             throw new RuntimeException('Department ID is missing from this import.');
         }
 
@@ -246,9 +251,18 @@ class ExcelImportService
         $lastDataRow = $firstDataRow + (int) $import->total_rows - 1;
         $endRow = min($startRow + $chunkSize - 1, $lastDataRow);
 
-        $departmentId = (int) ($import->department_id ?? 0);
+        $category = strtolower(trim((string) ($import->euipment_master_type ?? '')));
 
-        if (!$departmentId) {
+        $departmentId = !empty($import->department_id)
+            ? (int) $import->department_id
+            : null;
+
+        $departmentRequired = !in_array($category, [
+            'master_instrument',
+            'spare_instrument_master',
+        ], true);
+
+        if ($departmentRequired && !$departmentId) {
             throw new RuntimeException('Department ID is missing from this import.');
         }
 
