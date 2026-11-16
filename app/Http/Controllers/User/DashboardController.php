@@ -55,7 +55,9 @@ class DashboardController extends Controller
 
             $validator = Validator::make([
                 'department_id' => $departmentId,
-                'type' => $type,
+                'type'          => $type,
+                'page'          => $request->query('page'),
+                'per_page'      => $request->query('per_page'),
             ], [
                 'type' => [
                     'required',
@@ -69,40 +71,57 @@ class DashboardController extends Controller
                     'integer',
                     Rule::exists('departments', 'id'),
                 ],
+                /* pagination inputs (optional) */
+                'page'     => ['nullable', 'integer', 'min:1'],
+                'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Validation failed.',
-                    'errors' => $validator->errors(),
+                    'errors'  => $validator->errors(),
                 ], 422);
             }
 
             $tables = [
-                'instrument_masters' => 'instrument_masters',
+                'instrument_masters'      => 'instrument_masters',
                 'field_instrument_master' => 'field_instrument_masters',
                 'spare_instrument_master' => 'spare_instrument_masters',
-                'equipment_master' => 'equipment_masters',
+                'equipment_master'        => 'equipment_masters',
             ];
 
-            $data = DB::table($tables[$type])
+            /* default 25 per page, user may override up to 100 */
+            $perPage = (int) $request->query('per_page', 25);
+
+            $paginator = DB::table($tables[$type])
                 /* apply department filter only for department wise masters */
                 ->when(in_array($type, $departmentWiseTypes, true), function ($query) use ($departmentId) {
                     $query->where('department_id', $departmentId);
                 })
                 ->orderByDesc('id')
-                ->get();
+                ->paginate($perPage); // reads ?page= automatically
 
             return response()->json([
-                'status' => true,
+                'status'  => true,
                 'message' => 'Master data fetched successfully.',
-                'data' => $data,
+                'data'    => $paginator->items(),
+                'pagination' => [
+                    'current_page'  => $paginator->currentPage(),
+                    'per_page'      => $paginator->perPage(),
+                    'total'         => $paginator->total(),
+                    'last_page'     => $paginator->lastPage(),
+                    'from'          => $paginator->firstItem(),
+                    'to'            => $paginator->lastItem(),
+                    'has_more'      => $paginator->hasMorePages(),
+                    'next_page_url' => $paginator->nextPageUrl(),
+                    'prev_page_url' => $paginator->previousPageUrl(),
+                ],
             ], 200);
 
         } catch (\Throwable $e) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => $e->getMessage(),
             ], 500);
         }
