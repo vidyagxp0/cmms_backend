@@ -10,7 +10,7 @@
 
         /* ---------- page ---------- */
         @page {
-            size: A4 landscape;
+            size: A4 portrait;
             margin: 10mm 0 15mm 0;
         }
 
@@ -21,7 +21,8 @@
             padding: 0 5.5mm;
         }
 
-        html, body {
+        html,
+        body {
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -32,7 +33,11 @@
             line-height: 1.3 !important;
         }
 
-        .report-content { width: 100%; margin: 0; padding: 0; }
+        .report-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
         /* ---------- header (first page only) ---------- */
         .company-box {
@@ -43,6 +48,7 @@
             padding: 17px 10px 16px 10px;
             margin: 0;
         }
+
         .company-name {
             color: #1f3f66;
             font-size: 15px;
@@ -52,6 +58,7 @@
             margin: 0;
             padding: 0;
         }
+
         .report-banner {
             background: #254870;
             color: #ffffff;
@@ -70,6 +77,7 @@
             table-layout: fixed;
             margin: 10px 0 12px 0;
         }
+
         .meta-table td {
             width: 50%;
             border: 1px solid #d3dfec;
@@ -79,7 +87,11 @@
             padding: 11px 9px;
             vertical-align: middle;
         }
-        .meta-table td strong { color: #1f3f66; font-weight: bold; }
+
+        .meta-table td strong {
+            color: #1f3f66;
+            font-weight: bold;
+        }
 
         /* ---------- footer (every page) ---------- */
         footer {
@@ -89,17 +101,53 @@
             bottom: -11mm;
             height: 10mm;
         }
-        .footer-wrapper { border-top: 1px solid #d3dfec; padding-top: 4px; }
-        .footer-table { width: 100%; border-collapse: collapse; }
-        .footer-table td { border: 0; padding: 0; vertical-align: top; font-size: 7.5px; color: #5b6b7e; }
-        .footer-left { text-align: left; }
-        .footer-right { text-align: right; }
-        .footer-company { color: #1f3f66; font-weight: bold; text-transform: uppercase; letter-spacing: .3px; }
-        .footer-meta { color: #5b6b7e; font-size: 7px; }
+
+        .footer-wrapper {
+            border-top: 1px solid #d3dfec;
+            padding-top: 4px;
+        }
+
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .footer-table td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+            font-size: 7.5px;
+            color: #5b6b7e;
+        }
+
+        .footer-left {
+            text-align: left;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .footer-company {
+            color: #1f3f66;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        .footer-meta {
+            color: #5b6b7e;
+            font-size: 7px;
+        }
 
         /* ---------- section headings ---------- */
-        .section { margin: 0 0 12px 0; padding: 0; }
-        .section-heading, .grid-title {
+        .section {
+            margin: 0 0 12px 0;
+            padding: 0;
+        }
+
+        .section-heading,
+        .grid-title {
             background: #eaf1f9;
             color: #1f3f66;
             border: 1px solid #d3e1f0;
@@ -115,13 +163,15 @@
         }
 
         /* ---------- field tables (label | value | label | value) ---------- */
-        .data-table, .grid-table {
+        .data-table,
+        .grid-table {
             width: 100%;
             margin: 0;
             padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
         }
+
         .data-table td {
             border: 1px solid #d3dfec;
             font-size: 8.5px;
@@ -130,12 +180,14 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .data-table .field-name {
             width: 24%;
             background: #f4f8fc;
             color: #1f3f66;
             font-weight: bold;
         }
+
         .data-table .field-value {
             width: 26%;
             background: #ffffff;
@@ -143,7 +195,10 @@
         }
 
         /* ---------- grids ---------- */
-        .grid-section { margin: 0 0 12px 0; }
+        .grid-section {
+            margin: 0 0 12px 0;
+        }
+
         .grid-table th {
             background: #254870;
             color: #ffffff;
@@ -156,6 +211,7 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .grid-table td {
             background: #ffffff;
             color: #2a3a4d;
@@ -167,9 +223,19 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
-        .grid-table tbody tr:nth-child(even) td { background: #f4f8fc; }
-        .grid-number { width: 4%; }
-        .grid-value { font-size: 7px; }
+
+        .grid-table tbody tr:nth-child(even) td {
+            background: #f4f8fc;
+        }
+
+        .grid-number {
+            width: 4%;
+        }
+
+        .grid-value {
+            font-size: 7px;
+        }
+
         .empty-grid {
             color: #5b6b7e;
             background: #f4f8fc;
@@ -180,7 +246,10 @@
         }
 
         /* ---------- comments and review rows ---------- */
-        .review-row-section { margin-top: 9px; }
+        .review-row-section {
+            margin-top: 9px;
+        }
+
         .review-row-table {
             width: 100%;
             border-collapse: collapse;
@@ -188,6 +257,7 @@
             margin: 0 0 7px 0;
             page-break-inside: avoid;
         }
+
         .review-row-table td {
             border: 1px solid #d3dfec;
             font-size: 8px;
@@ -196,12 +266,14 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .review-row-table .review-label {
             width: 24%;
             background: #f4f8fc;
             color: #1f3f66;
             font-weight: bold;
         }
+
         .review-row-table .review-value {
             width: 26%;
             background: #ffffff;
@@ -209,12 +281,97 @@
         }
 
         /* ---------- attachments ---------- */
-        .attachment-item { margin: 0 0 2px 0; padding: 0; }
-        .attachment-link { color: #246da8; text-decoration: underline; word-wrap: break-word; }
+        .attachment-item {
+            margin: 0 0 2px 0;
+            padding: 0;
+        }
+
+        .attachment-link {
+            color: #246da8;
+            text-decoration: underline;
+            word-wrap: break-word;
+        }
 
         /* ---------- page breaks ---------- */
-        .data-table tr, .grid-table tr { page-break-inside: avoid; }
-        thead { display: table-header-group; }
+        .data-table tr,
+        .grid-table tr {
+            page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        .esign-section {
+            padding: 20px 24px 0 24px;
+            /* top right bottom left */
+        }
+
+        .section-title {
+            background: #eaf1f8;
+            color: #1e4268;
+            border-left: 4px solid #3674a5;
+            border-top: 1px solid #d4e0ed;
+            border-right: 1px solid #d4e0ed;
+            border-bottom: 1px solid #d4e0ed;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+
+        .esign-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        .esign-table th,
+        .esign-table td {
+            border: 1px solid #d3dce7;
+            padding: 8px 9px;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .esign-table th {
+            background: #24476b;
+            color: #fff;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .esign-table td {
+            background: #fff;
+            color: #263449;
+            font-size: 8px;
+        }
+
+        .esign-table tbody tr:nth-child(even) td {
+            background: #f5f8fc;
+        }
+
+        .esign-status {
+            color: #23734d;
+            font-weight: bold;
+        }
+
+        .esign-note {
+            margin-top: 7px;
+            padding: 7px 9px;
+            background: #f3f6fa;
+            border: 1px solid #d8e0e9;
+            color: #52647a;
+            font-size: 7.5px;
+        }
     </style>
 </head>
 
@@ -249,321 +406,109 @@
 
     <div class="page-wrap">
 
-    {{-- header: first page only --}}
-    <div class="company-box">
-        <div class="company-name">{{ $header['company_name'] }}</div>
-    </div>
-    <div class="report-banner">{{ $header['report_title'] }}</div>
+        {{-- header: first page only --}}
+        <div class="company-box">
+            <div class="company-name">{{ $header['company_name'] }}</div>
+        </div>
+        <div class="report-banner">{{ $header['report_title'] }}</div>
 
-    <table class="meta-table">
-        <tr>
-            <td><strong>Document Number:</strong> {{ $header['document_number'] ?? '-' }}</td>
-            <td><strong>Document Type:</strong> {{ $header['document_type'] ?? '-' }}</td>
-        </tr>
-    </table>
+        <table class="meta-table">
+            <tr>
+                <td><strong>Document Number:</strong> {{ $header['document_number'] ?? '-' }}</td>
+                <td><strong>Document Type:</strong> {{ $header['document_type'] ?? '-' }}</td>
+            </tr>
+        </table>
 
-    {{-- report content --}}
-    <div class="report-content">
+        {{-- report content --}}
+        <div class="report-content">
 
-        @foreach($tabs ?? [] as $tab)
-            @php
-                $tabTitle = $tab['tab_title'] ?? '-';
-            @endphp
-
-            {{-- tab title uses the same heading style as sections --}}
-            <div class="section-heading">{{ $tabTitle }}</div>
-
-            @foreach($tab['sections'] ?? [] as $section)
-                @if(!empty($section['fields']))
-                    <div class="section">
-                        {{-- skip the section heading when it only repeats the tab title --}}
-                        @if(strcasecmp(trim($section['title'] ?? ''), trim($tabTitle)) !== 0)
-                            <div class="section-heading">{{ $section['title'] ?? '-' }}</div>
-                        @endif
-
-                        <table class="data-table">
-                            <tbody>
-                                @foreach(array_chunk($section['fields'], 2) as $fieldPair)
-                                    <tr>
-                                        @foreach($fieldPair as $field)
-                                            @php
-                                                $value = $field['value'] ?? null;
-                                                $fieldKey = strtolower($field['key'] ?? '');
-                                                $fieldLabel = strtolower($field['label'] ?? '');
-                                                $isAttachment = str_contains($fieldKey, 'attachment') || str_contains($fieldLabel, 'attachment');
-                                            @endphp
-
-                                            <td class="field-name">{{ $field['label'] ?? '-' }}</td>
-                                            <td class="field-value">
-                                                @if($isAttachment)
-                                                    @if(is_array($value) && !empty($value))
-                                                        @foreach($value as $attachment)
-                                                            @if(is_array($attachment))
-                                                                @php
-                                                                    $attachmentName = $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment';
-                                                                    $attachmentUrl = $attachment['url'] ?? null;
-                                                                @endphp
-                                                                <div class="attachment-item">
-                                                                    @if($attachmentUrl)
-                                                                        <a href="{{ $attachmentUrl }}" target="_blank" class="attachment-link">{{ $attachmentName }}</a>
-                                                                    @else
-                                                                        {{ $attachmentName }}
-                                                                    @endif
-                                                                </div>
-                                                            @endif
-                                                        @endforeach
-                                                    @else
-                                                        -
-                                                    @endif
-                                                @elseif(is_array($value))
-                                                    @if(isset($value['name']))
-                                                        {{ $value['name'] }}
-                                                    @elseif(empty($value))
-                                                        -
-                                                    @else
-                                                        {{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
-                                                    @endif
-                                                @else
-                                                    {{ $value !== null && $value !== '' ? $value : '-' }}
-                                                @endif
-                                            </td>
-                                        @endforeach
-
-                                        @if(count($fieldPair) === 1)
-                                            <td class="field-name"></td>
-                                            <td class="field-value"></td>
-                                        @endif
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            @endforeach
-
-            {{-- normal comments and attachment stay before the calibration grids --}}
-            @if($tabTitle === 'General Information' && !empty($commentsRow))
+            @foreach($tabs ?? [] as $tab)
                 @php
-                    $comment = $commentsRow['comment'] ?? [];
-                    $attachment = $commentsRow['attachment'] ?? [];
-                    $commentValue = $comment['value'] ?? '-';
-                    $attachmentValue = $attachment['value'] ?? '-';
+                    $tabTitle = $tab['tab_title'] ?? '-';
                 @endphp
 
-                <div class="review-row-section">
-                    <table class="review-row-table">
-                        <tbody>
-                            <tr>
-                                <td class="review-label">{{ $comment['label'] ?? 'Comments' }}</td>
-                                <td class="review-value">
-                                    {{ is_scalar($commentValue) && $commentValue !== '' ? $commentValue : '-' }}
-                                </td>
-                                <td class="review-label">{{ $attachment['label'] ?? 'Attachment' }}</td>
-                                <td class="review-value">
-                                    @if(is_array($attachmentValue) && !empty($attachmentValue))
-                                        @foreach($attachmentValue as $file)
-                                            @if(is_array($file))
+                {{-- tab title uses the same heading style as sections --}}
+                <div class="section-heading">{{ $tabTitle }}</div>
+
+                @foreach($tab['sections'] ?? [] as $section)
+                    @if(!empty($section['fields']))
+                        <div class="section">
+                            {{-- skip the section heading when it only repeats the tab title --}}
+                            @if(strcasecmp(trim($section['title'] ?? ''), trim($tabTitle)) !== 0)
+                                <div class="section-heading">{{ $section['title'] ?? '-' }}</div>
+                            @endif
+
+                            <table class="data-table">
+                                <tbody>
+                                    @foreach(array_chunk($section['fields'], 2) as $fieldPair)
+                                        <tr>
+                                            @foreach($fieldPair as $field)
                                                 @php
-                                                    $fileName = $file['name'] ?? $file['file_name'] ?? 'Attachment';
-                                                    $fileUrl = $file['url'] ?? null;
+                                                    $value = $field['value'] ?? null;
+                                                    $fieldKey = strtolower($field['key'] ?? '');
+                                                    $fieldLabel = strtolower($field['label'] ?? '');
+                                                    $isAttachment = str_contains($fieldKey, 'attachment') || str_contains($fieldLabel, 'attachment');
                                                 @endphp
-                                                <div class="attachment-item">
-                                                    @if($fileUrl)
-                                                        <a href="{{ $fileUrl }}" target="_blank" class="attachment-link">{{ $fileName }}</a>
+
+                                                <td class="field-name">{{ $field['label'] ?? '-' }}</td>
+                                                <td class="field-value">
+                                                    @if($isAttachment)
+                                                        @if(is_array($value) && !empty($value))
+                                                            @foreach($value as $attachment)
+                                                                @if(is_array($attachment))
+                                                                    @php
+                                                                        $attachmentName = $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment';
+                                                                        $attachmentUrl = $attachment['url'] ?? null;
+                                                                    @endphp
+                                                                    <div class="attachment-item">
+                                                                        @if($attachmentUrl)
+                                                                            <a href="{{ $attachmentUrl }}" target="_blank"
+                                                                                class="attachment-link">{{ $attachmentName }}</a>
+                                                                        @else
+                                                                            {{ $attachmentName }}
+                                                                        @endif
+                                                                    </div>
+                                                                @endif
+                                                            @endforeach
+                                                        @else
+                                                            -
+                                                        @endif
+                                                    @elseif(is_array($value))
+                                                        @if(isset($value['name']))
+                                                            {{ $value['name'] }}
+                                                        @elseif(empty($value))
+                                                            -
+                                                        @else
+                                                            {{ json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
+                                                        @endif
                                                     @else
-                                                        {{ $fileName }}
+                                                        {{ $value !== null && $value !== '' ? $value : '-' }}
                                                     @endif
-                                                </div>
-                                            @elseif(is_scalar($file))
-                                                <div class="attachment-item">{{ $file }}</div>
+                                                </td>
+                                            @endforeach
+
+                                            @if(count($fieldPair) === 1)
+                                                <td class="field-name"></td>
+                                                <td class="field-value"></td>
                                             @endif
-                                        @endforeach
-                                    @elseif(is_scalar($attachmentValue))
-                                        {{ $attachmentValue !== '' ? $attachmentValue : '-' }}
-                                    @else
-                                        -
-                                    @endif
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-
-            {{-- calibration grids --}}
-            @if($tabTitle === 'General Information')
-
-                {{-- calibration results --}}
-                @if(isset($grids['calibrationResults']))
-                    @php
-                        $rows = $grids['calibrationResults']['rows'] ?? [];
-                    @endphp
-
-                    <div class="section grid-section">
-                        <div class="grid-title">Calibration Results</div>
-
-                        @if(!empty($rows))
-                            @php
-                                /* columns from first row; service already removed "result" column */
-                                $masterReadingColumns = [];
-                                $unitReadingColumns = [];
-                                $errorColumns = [];
-
-                                foreach (($rows[0] ?? []) as $key => $field) {
-                                    if ($key === 'row_id') {
-                                        continue;
-                                    }
-
-                                    $group = $field['group'] ?? null;
-                                    $column = ['key' => $key, 'label' => $field['label'] ?? $key];
-
-                                    if ($group === 'Master Instrument Readings in') {
-                                        $masterReadingColumns[] = $column;
-                                    } elseif ($group === 'Unit under calibration Readings in') {
-                                        $unitReadingColumns[] = $column;
-                                    } elseif ($group === 'Error in') {
-                                        $errorColumns[] = $column;
-                                    }
-                                }
-                            @endphp
-
-                            <table class="grid-table">
-                                <thead>
-                                    <tr>
-                                        <th class="grid-number" rowspan="2">Sr. No.</th>
-
-                                        @if(!empty($masterReadingColumns))
-                                            <th colspan="{{ count($masterReadingColumns) }}">Master Instrument Readings in</th>
-                                        @endif
-
-                                        @if(!empty($unitReadingColumns))
-                                            <th colspan="{{ count($unitReadingColumns) }}">Unit under calibration Readings in</th>
-                                        @endif
-
-                                        @if(!empty($errorColumns))
-                                            <th rowspan="2">Error in</th>
-                                        @endif
-                                    </tr>
-
-                                    <tr>
-                                        @foreach($masterReadingColumns as $column)
-                                            <th>{{ $column['label'] }}</th>
-                                        @endforeach
-                                        @foreach($unitReadingColumns as $column)
-                                            <th>{{ $column['label'] }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    @foreach($rows as $rowIndex => $row)
-                                        <tr>
-                                            <td class="grid-number">{{ $rowIndex + 1 }}</td>
-
-                                            @foreach(array_merge($masterReadingColumns, $unitReadingColumns, $errorColumns) as $column)
-                                                <td class="grid-value">{{ $cellValue($row, $column['key']) }}</td>
-                                            @endforeach
                                         </tr>
                                     @endforeach
                                 </tbody>
                             </table>
-                        @else
-                            <div class="empty-grid">No records available.</div>
-                        @endif
-                    </div>
-                @endif
+                        </div>
+                    @endif
+                @endforeach
 
-                {{-- master instruments details --}}
-                @if(isset($grids['masterInstrumentsDetails']))
+                {{-- normal comments and attachment stay before the calibration grids --}}
+                @if($tabTitle === 'General Information' && !empty($commentsRow))
                     @php
-                        $rows = $grids['masterInstrumentsDetails']['rows'] ?? [];
+                        $comment = $commentsRow['comment'] ?? [];
+                        $attachment = $commentsRow['attachment'] ?? [];
+                        $commentValue = $comment['value'] ?? '-';
+                        $attachmentValue = $attachment['value'] ?? '-';
                     @endphp
 
-                    <div class="section grid-section">
-                        <div class="grid-title">Master Instruments Details</div>
-
-                        @if(!empty($rows))
-                            @php
-                                $columns = [];
-                                foreach (($rows[0] ?? []) as $key => $field) {
-                                    if ($key === 'row_id') {
-                                        continue;
-                                    }
-                                    $columns[] = ['key' => $key, 'label' => $field['label'] ?? $key];
-                                }
-                            @endphp
-
-                            <table class="grid-table">
-                                <thead>
-                                    <tr>
-                                        <th class="grid-number">Sr. No.</th>
-                                        @foreach($columns as $column)
-                                            <th>{{ $column['label'] }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-
-                                <tbody>
-                                    @foreach($rows as $rowIndex => $row)
-                                        <tr>
-                                            <td class="grid-number">{{ $rowIndex + 1 }}</td>
-                                            @foreach($columns as $column)
-                                                <td class="grid-value">{{ $cellValue($row, $column['key']) }}</td>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @else
-                            <div class="empty-grid">No records available.</div>
-                        @endif
-                    </div>
-                @endif
-
-                {{-- monthly calibration --}}
-                @if(!empty($monthlyCalibration))
-                    <div class="section grid-section">
-                        <div class="grid-title">Monthly Calibration</div>
-
-                        <table class="grid-table">
-                            <thead>
-                                <tr>
-                                    <th>Month</th>
-                                    <th>Scheduler Date</th>
-                                    <th>Calibration Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as $month)
-                                    @php
-                                        $monthData = $monthlyCalibration[$month] ?? [];
-                                        $schedulerDate = $monthData['schedulerDate'] ?? null;
-                                        $calibrationDate = $monthData['calibrationDate'] ?? null;
-                                    @endphp
-                                    <tr>
-                                        <td class="grid-value">{{ $month }}</td>
-                                        <td class="grid-value">{{ $schedulerDate ?: '-' }}</td>
-                                        <td class="grid-value">{{ $calibrationDate ?: '-' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-
-            @endif
-
-            {{-- HOD and QA review rows appear after all calibration grids --}}
-            @if($tabTitle === 'General Information' && !empty($reviewRows))
-                <div class="review-row-section">
-                    @foreach($reviewRows as $reviewRow)
-                        @php
-                            $comment = $reviewRow['comment'] ?? [];
-                            $attachment = $reviewRow['attachment'] ?? [];
-                            $commentValue = $comment['value'] ?? '-';
-                            $attachmentValue = $attachment['value'] ?? '-';
-                        @endphp
-
+                    <div class="review-row-section">
                         <table class="review-row-table">
                             <tbody>
                                 <tr>
@@ -600,14 +545,275 @@
                                 </tr>
                             </tbody>
                         </table>
-                    @endforeach
-                </div>
-            @endif
-        @endforeach
+                    </div>
+                @endif
 
-    </div>
+                {{-- calibration grids --}}
+                @if($tabTitle === 'General Information')
+
+                    {{-- calibration results --}}
+                    @if(isset($grids['calibrationResults']))
+                        @php
+                            $rows = $grids['calibrationResults']['rows'] ?? [];
+                        @endphp
+
+                        <div class="section grid-section">
+                            <div class="grid-title">Calibration Results</div>
+
+                            @if(!empty($rows))
+                                @php
+                                    /* columns from first row; service already removed "result" column */
+                                    $masterReadingColumns = [];
+                                    $unitReadingColumns = [];
+                                    $errorColumns = [];
+
+                                    foreach (($rows[0] ?? []) as $key => $field) {
+                                        if ($key === 'row_id') {
+                                            continue;
+                                        }
+
+                                        $group = $field['group'] ?? null;
+                                        $column = ['key' => $key, 'label' => $field['label'] ?? $key];
+
+                                        if ($group === 'Master Instrument Readings in') {
+                                            $masterReadingColumns[] = $column;
+                                        } elseif ($group === 'Unit under calibration Readings in') {
+                                            $unitReadingColumns[] = $column;
+                                        } elseif ($group === 'Error in') {
+                                            $errorColumns[] = $column;
+                                        }
+                                    }
+                                @endphp
+
+                                <table class="grid-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="grid-number" rowspan="2">Sr. No.</th>
+
+                                            @if(!empty($masterReadingColumns))
+                                                <th colspan="{{ count($masterReadingColumns) }}">Master Instrument Readings in</th>
+                                            @endif
+
+                                            @if(!empty($unitReadingColumns))
+                                                <th colspan="{{ count($unitReadingColumns) }}">Unit under calibration Readings in</th>
+                                            @endif
+
+                                            @if(!empty($errorColumns))
+                                                <th rowspan="2">Error in</th>
+                                            @endif
+                                        </tr>
+
+                                        <tr>
+                                            @foreach($masterReadingColumns as $column)
+                                                <th>{{ $column['label'] }}</th>
+                                            @endforeach
+                                            @foreach($unitReadingColumns as $column)
+                                                <th>{{ $column['label'] }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach($rows as $rowIndex => $row)
+                                            <tr>
+                                                <td class="grid-number">{{ $rowIndex + 1 }}</td>
+
+                                                @foreach(array_merge($masterReadingColumns, $unitReadingColumns, $errorColumns) as $column)
+                                                    <td class="grid-value">{{ $cellValue($row, $column['key']) }}</td>
+                                                @endforeach
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @else
+                                <div class="empty-grid">No records available.</div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- master instruments details --}}
+                    @if(isset($grids['masterInstrumentsDetails']))
+                        @php
+                            $rows = $grids['masterInstrumentsDetails']['rows'] ?? [];
+                        @endphp
+
+                        <div class="section grid-section">
+                            <div class="grid-title">Master Instruments Details</div>
+
+                            @if(!empty($rows))
+                                @php
+                                    $columns = [];
+                                    foreach (($rows[0] ?? []) as $key => $field) {
+                                        if ($key === 'row_id') {
+                                            continue;
+                                        }
+                                        $columns[] = ['key' => $key, 'label' => $field['label'] ?? $key];
+                                    }
+                                @endphp
+
+                                <table class="grid-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="grid-number">Sr. No.</th>
+                                            @foreach($columns as $column)
+                                                <th>{{ $column['label'] }}</th>
+                                            @endforeach
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach($rows as $rowIndex => $row)
+                                            <tr>
+                                                <td class="grid-number">{{ $rowIndex + 1 }}</td>
+                                                @foreach($columns as $column)
+                                                    <td class="grid-value">{{ $cellValue($row, $column['key']) }}</td>
+                                                @endforeach
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @else
+                                <div class="empty-grid">No records available.</div>
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- monthly calibration --}}
+                    @if(!empty($monthlyCalibration))
+                        <div class="section grid-section">
+                            <div class="grid-title">Monthly Calibration</div>
+
+                            <table class="grid-table">
+                                <thead>
+                                    <tr>
+                                        <th>Month</th>
+                                        <th>Scheduler Date</th>
+                                        <th>Calibration Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as $month)
+                                        @php
+                                            $monthData = $monthlyCalibration[$month] ?? [];
+                                            $schedulerDate = $monthData['schedulerDate'] ?? null;
+                                            $calibrationDate = $monthData['calibrationDate'] ?? null;
+                                        @endphp
+                                        <tr>
+                                            <td class="grid-value">{{ $month }}</td>
+                                            <td class="grid-value">{{ $schedulerDate ?: '-' }}</td>
+                                            <td class="grid-value">{{ $calibrationDate ?: '-' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+
+                @endif
+
+                {{-- HOD and QA review rows appear after all calibration grids --}}
+                @if($tabTitle === 'General Information' && !empty($reviewRows))
+                    <div class="review-row-section">
+                        @foreach($reviewRows as $reviewRow)
+                            @php
+                                $comment = $reviewRow['comment'] ?? [];
+                                $attachment = $reviewRow['attachment'] ?? [];
+                                $commentValue = $comment['value'] ?? '-';
+                                $attachmentValue = $attachment['value'] ?? '-';
+                            @endphp
+
+                            <table class="review-row-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="review-label">{{ $comment['label'] ?? 'Comments' }}</td>
+                                        <td class="review-value">
+                                            {{ is_scalar($commentValue) && $commentValue !== '' ? $commentValue : '-' }}
+                                        </td>
+                                        <td class="review-label">{{ $attachment['label'] ?? 'Attachment' }}</td>
+                                        <td class="review-value">
+                                            @if(is_array($attachmentValue) && !empty($attachmentValue))
+                                                @foreach($attachmentValue as $file)
+                                                    @if(is_array($file))
+                                                        @php
+                                                            $fileName = $file['name'] ?? $file['file_name'] ?? 'Attachment';
+                                                            $fileUrl = $file['url'] ?? null;
+                                                        @endphp
+                                                        <div class="attachment-item">
+                                                            @if($fileUrl)
+                                                                <a href="{{ $fileUrl }}" target="_blank" class="attachment-link">{{ $fileName }}</a>
+                                                            @else
+                                                                {{ $fileName }}
+                                                            @endif
+                                                        </div>
+                                                    @elseif(is_scalar($file))
+                                                        <div class="attachment-item">{{ $file }}</div>
+                                                    @endif
+                                                @endforeach
+                                            @elseif(is_scalar($attachmentValue))
+                                                {{ $attachmentValue !== '' ? $attachmentValue : '-' }}
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        @endforeach
+                    </div>
+                @endif
+            @endforeach
+
+        </div>
 
     </div>{{-- /page-wrap --}}
+
+    <div class="esign-section">
+        <div class="section-title">Electronic Signature History</div>
+
+        <table class="esign-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">Sr. No.</th>
+                    <th style="width: 17%;">Signed By</th>
+                    <th style="width: 18%;">Activity</th>
+                    <th style="width: 15%;">From Stage</th>
+                    <th style="width: 15%;">To Stage</th>
+                    <th style="width: 18%;">Comment</th>
+                    <th style="width: 12%;">Date & Time</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @forelse ($esign_history ?? [] as $index => $esign)
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+
+                        <td>
+                            <span class="esign-status">
+                                {{ $esign['user_name'] ?? '-' }}
+                            </span>
+                        </td>
+
+                        <td>{{ $esign['activity_name'] ?? '-' }}</td>
+
+                        <td>{{ $esign['from_stage'] ?? '-' }}</td>
+
+                        <td>{{ $esign['to_stage'] ?? '-' }}</td>
+
+                        <td>{{ $esign['comment'] ?? '-' }}</td>
+
+                        <td>{{ $esign['performed_at'] ?? '-' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="empty-message">
+                            No electronic signature history available.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 
 </body>
 

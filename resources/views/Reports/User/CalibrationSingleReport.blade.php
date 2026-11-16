@@ -288,6 +288,55 @@
             text-align: left !important;
             font-size: 7.5px !important;
         }
+
+        .esign-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        .esign-table th,
+        .esign-table td {
+            border: 1px solid #d3dce7;
+            padding: 8px 9px;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .esign-table th {
+            background: #24476b;
+            color: #fff;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .esign-table td {
+            background: #fff;
+            color: #263449;
+            font-size: 8px;
+        }
+
+        .esign-table tbody tr:nth-child(even) td {
+            background: #f5f8fc;
+        }
+
+        .esign-status {
+            color: #23734d;
+            font-weight: bold;
+        }
+
+        .esign-note {
+            margin-top: 7px;
+            padding: 7px 9px;
+            background: #f3f6fa;
+            border: 1px solid #d8e0e9;
+            color: #52647a;
+            font-size: 7.5px;
+        }
     </style>
 </head>
 <body>
@@ -551,6 +600,52 @@
         </table>
     @endif
 @endforeach
+
+<div class="section-title">Electronic Signature History</div>
+
+<table class="esign-table">
+    <thead>
+        <tr>
+            <th style="width: 5%;">Sr. No.</th>
+            <th style="width: 17%;">Signed By</th>
+            <th style="width: 18%;">Activity</th>
+            <th style="width: 15%;">From Stage</th>
+            <th style="width: 15%;">To Stage</th>
+            <th style="width: 18%;">Comment</th>
+            <th style="width: 12%;">Date & Time</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        @forelse ($esign_history ?? [] as $index => $esign)
+            <tr>
+                <td>{{ $index + 1 }}</td>
+
+                <td>
+                    <span class="esign-status">
+                        {{ $esign['user_name'] ?? '-' }}
+                    </span>
+                </td>
+
+                <td>{{ $esign['activity_name'] ?? '-' }}</td>
+
+                <td>{{ $esign['from_stage'] ?? '-' }}</td>
+
+                <td>{{ $esign['to_stage'] ?? '-' }}</td>
+
+                <td>{{ $esign['comment'] ?? '-' }}</td>
+
+                <td>{{ $esign['performed_at'] ?? '-' }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="7" class="empty-message">
+                    No electronic signature history available.
+                </td>
+            </tr>
+        @endforelse
+    </tbody>
+</table>
 
 <div class="footer">
     <table class="footer-table">

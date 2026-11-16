@@ -4,6 +4,7 @@ namespace App\Services\UserReport;
 
 use App\Helpers\ResponseHelper;
 use App\Models\ProcessRecord;
+use App\Models\RecordActivityHistory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 
@@ -174,6 +175,27 @@ class PreventiveAddendumPlannerReportService
                 ];
             }
 
+            $esignHistory = RecordActivityHistory::with([
+                'performedBy:id,username',
+                'activity:id,name',
+                'stage:id,name',
+                'targetStage:id,name',
+            ])
+                ->where('process_record_id', $record->id)
+                ->orderBy('performed_at')
+                ->get()
+                ->map(fn ($item) => [
+                    'user_name' => $item->performedBy?->username ?? '-',
+                    'activity_name' => $item->activity?->name ?? '-',
+                    'from_stage' => $item->stage?->name ?? '-',
+                    'to_stage' => $item->targetStage?->name ?? '-',
+                    'comment' => $item->comment ?: '-',
+                    'performed_at' => $item->performed_at
+                        ? Carbon::parse($item->performed_at)->format('d-m-Y H:i:s')
+                        : '-',
+                ])
+                ->toArray();
+
             $data = [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
@@ -182,6 +204,7 @@ class PreventiveAddendumPlannerReportService
                     'document_type' => self::value($processFields, 'documentType') ?: '-',
                 ],
                 'sections' => $sections,
+                'esign_history' => $esignHistory,
                 'footer' => [
                     'generated_by' => auth()->user()?->name ?? 'System',
                     'generated_at' => now()->format('d-m-Y H:i:s'),

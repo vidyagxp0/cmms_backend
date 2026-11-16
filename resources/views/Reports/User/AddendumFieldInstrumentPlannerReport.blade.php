@@ -14,7 +14,8 @@
             margin: 10mm 0 15mm 0;
         }
 
-        html, body {
+        html,
+        body {
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -32,7 +33,11 @@
             padding: 0 5.5mm;
         }
 
-        .report-content { width: 100%; margin: 0; padding: 0; }
+        .report-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
 
         /* ---------- header (first page only) ---------- */
         .company-box {
@@ -43,6 +48,7 @@
             padding: 17px 10px 16px 10px;
             margin: 0;
         }
+
         .company-name {
             color: #1f3f66;
             font-size: 15px;
@@ -52,6 +58,7 @@
             margin: 0;
             padding: 0;
         }
+
         .report-banner {
             background: #254870;
             color: #ffffff;
@@ -70,6 +77,7 @@
             table-layout: fixed;
             margin: 10px 0 12px 0;
         }
+
         .meta-table td {
             width: 50%;
             border: 1px solid #d3dfec;
@@ -79,7 +87,11 @@
             padding: 11px 9px;
             vertical-align: middle;
         }
-        .meta-table td strong { color: #1f3f66; font-weight: bold; }
+
+        .meta-table td strong {
+            color: #1f3f66;
+            font-weight: bold;
+        }
 
         /* ---------- footer (every page) ---------- */
         footer {
@@ -89,17 +101,53 @@
             bottom: -11mm;
             height: 10mm;
         }
-        .footer-wrapper { border-top: 1px solid #d3dfec; padding-top: 4px; }
-        .footer-table { width: 100%; border-collapse: collapse; }
-        .footer-table td { border: 0; padding: 0; vertical-align: top; font-size: 7.5px; color: #5b6b7e; }
-        .footer-left { text-align: left; }
-        .footer-right { text-align: right; }
-        .footer-company { color: #1f3f66; font-weight: bold; text-transform: uppercase; letter-spacing: .3px; }
-        .footer-meta { color: #5b6b7e; font-size: 7px; }
+
+        .footer-wrapper {
+            border-top: 1px solid #d3dfec;
+            padding-top: 4px;
+        }
+
+        .footer-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .footer-table td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+            font-size: 7.5px;
+            color: #5b6b7e;
+        }
+
+        .footer-left {
+            text-align: left;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .footer-company {
+            color: #1f3f66;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        .footer-meta {
+            color: #5b6b7e;
+            font-size: 7px;
+        }
 
         /* ---------- section headings ---------- */
-        .section { margin: 0 0 12px 0; padding: 0; }
-        .section-heading, .grid-title {
+        .section {
+            margin: 0 0 12px 0;
+            padding: 0;
+        }
+
+        .section-heading,
+        .grid-title {
             background: #eaf1f9;
             color: #1f3f66;
             border: 1px solid #d3e1f0;
@@ -115,13 +163,15 @@
         }
 
         /* ---------- field tables (label | value | label | value) ---------- */
-        .data-table, .grid-table {
+        .data-table,
+        .grid-table {
             width: 100%;
             margin: 0;
             padding: 0;
             border-collapse: collapse;
             table-layout: fixed;
         }
+
         .data-table td {
             border: 1px solid #d3dfec;
             font-size: 8.5px;
@@ -130,12 +180,14 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .data-table .field-name {
             width: 24%;
             background: #f4f8fc;
             color: #1f3f66;
             font-weight: bold;
         }
+
         .data-table .field-value {
             width: 26%;
             background: #ffffff;
@@ -143,7 +195,10 @@
         }
 
         /* ---------- grids ---------- */
-        .grid-section { margin: 0 0 12px 0; }
+        .grid-section {
+            margin: 0 0 12px 0;
+        }
+
         .grid-table th {
             background: #254870;
             color: #ffffff;
@@ -156,6 +211,7 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .grid-table td {
             background: #ffffff;
             color: #2a3a4d;
@@ -167,7 +223,11 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
-        .grid-table tbody tr:nth-child(even) td { background: #f4f8fc; }
+
+        .grid-table tbody tr:nth-child(even) td {
+            background: #f4f8fc;
+        }
+
         .empty-grid {
             color: #5b6b7e;
             background: #f4f8fc;
@@ -178,12 +238,97 @@
         }
 
         /* ---------- attachments ---------- */
-        .attachment-item { margin: 0 0 2px 0; padding: 0; }
-        .attachment-link { color: #246da8; text-decoration: underline; word-wrap: break-word; }
+        .attachment-item {
+            margin: 0 0 2px 0;
+            padding: 0;
+        }
+
+        .attachment-link {
+            color: #246da8;
+            text-decoration: underline;
+            word-wrap: break-word;
+        }
 
         /* ---------- page breaks ---------- */
-        .data-table tr, .grid-table tr { page-break-inside: avoid; }
-        thead { display: table-header-group; }
+        .data-table tr,
+        .grid-table tr {
+            page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        .esign-section {
+            padding: 20px 24px 0 24px;
+            /* top right bottom left */
+        }
+
+        .section-title {
+            background: #eaf1f8;
+            color: #1e4268;
+            border-left: 4px solid #3674a5;
+            border-top: 1px solid #d4e0ed;
+            border-right: 1px solid #d4e0ed;
+            border-bottom: 1px solid #d4e0ed;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+
+        .esign-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 8px;
+            margin-bottom: 12px;
+        }
+
+        .esign-table th,
+        .esign-table td {
+            border: 1px solid #d3dce7;
+            padding: 8px 9px;
+            text-align: left;
+            vertical-align: middle;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .esign-table th {
+            background: #24476b;
+            color: #fff;
+            font-size: 8px;
+            font-weight: bold;
+        }
+
+        .esign-table td {
+            background: #fff;
+            color: #263449;
+            font-size: 8px;
+        }
+
+        .esign-table tbody tr:nth-child(even) td {
+            background: #f5f8fc;
+        }
+
+        .esign-status {
+            color: #23734d;
+            font-weight: bold;
+        }
+
+        .esign-note {
+            margin-top: 7px;
+            padding: 7px 9px;
+            background: #f3f6fa;
+            border: 1px solid #d8e0e9;
+            color: #52647a;
+            font-size: 7.5px;
+        }
     </style>
 </head>
 
@@ -196,7 +341,8 @@
                 <tr>
                     <td class="footer-left">
                         <div class="footer-company">{{ $header['company_name'] ?? 'Shilpa Medicare Pvt Ltd' }}</div>
-                        <div class="footer-meta">{{ $header['report_title'] ?? '-' }} &nbsp;|&nbsp; Controlled Document</div>
+                        <div class="footer-meta">{{ $header['report_title'] ?? '-' }} &nbsp;|&nbsp; Controlled Document
+                        </div>
                     </td>
                     <td class="footer-right">
                         <div>Generated By: <strong>{{ $footer['generated_by'] ?? 'System' }}</strong></div>
@@ -271,7 +417,7 @@
                             @endif
                         </div>
 
-                    {{-- ================= field section ================= --}}
+                        {{-- ================= field section ================= --}}
                     @elseif(!empty($section['fields']))
                         <div class="section">
                             {{-- hide review/comment headings while keeping their field rows --}}
@@ -291,9 +437,9 @@
                             @endphp
 
                             @if(
-                                strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0
-                                && !$hideSectionHeading
-                            )
+                                    strcasecmp(trim($sectionTitle), trim($tabTitle)) !== 0
+                                    && !$hideSectionHeading
+                                )
                                 <div class="section-heading">{{ $sectionTitle }}</div>
                             @endif
 
@@ -321,7 +467,8 @@
                                                                     @endphp
                                                                     <div class="attachment-item">
                                                                         @if($attachmentUrl)
-                                                                            <a href="{{ $attachmentUrl }}" target="_blank" class="attachment-link">{{ $attachmentName }}</a>
+                                                                            <a href="{{ $attachmentUrl }}" target="_blank"
+                                                                                class="attachment-link">{{ $attachmentName }}</a>
                                                                         @else
                                                                             {{ $attachmentName }}
                                                                         @endif
@@ -363,6 +510,54 @@
         </div>
 
     </div>{{-- /page-wrap --}}
+
+    <div class="esign-section">
+        <div class="section-title">Electronic Signature History</div>
+
+        <table class="esign-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">Sr. No.</th>
+                    <th style="width: 17%;">Signed By</th>
+                    <th style="width: 18%;">Activity</th>
+                    <th style="width: 15%;">From Stage</th>
+                    <th style="width: 15%;">To Stage</th>
+                    <th style="width: 18%;">Comment</th>
+                    <th style="width: 12%;">Date & Time</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @forelse ($esign_history ?? [] as $index => $esign)
+                    <tr>
+                        <td>{{ $index + 1 }}</td>
+
+                        <td>
+                            <span class="esign-status">
+                                {{ $esign['user_name'] ?? '-' }}
+                            </span>
+                        </td>
+
+                        <td>{{ $esign['activity_name'] ?? '-' }}</td>
+
+                        <td>{{ $esign['from_stage'] ?? '-' }}</td>
+
+                        <td>{{ $esign['to_stage'] ?? '-' }}</td>
+
+                        <td>{{ $esign['comment'] ?? '-' }}</td>
+
+                        <td>{{ $esign['performed_at'] ?? '-' }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="empty-message">
+                            No electronic signature history available.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
 
 </body>
 
