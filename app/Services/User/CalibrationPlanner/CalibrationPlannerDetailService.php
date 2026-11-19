@@ -29,7 +29,11 @@ class CalibrationPlannerDetailService
             self::addChildDatesToGrid($processRecord);
 
             /* NEW, separate from child_records: row wise QA Verification Complete data of the is_child = 1 records */
-            $processRecord->setAttribute('qa_verification_rows', self::buildQaVerificationRows($processRecord->id));
+            $qaRows = self::buildQaVerificationRows($processRecord->id);
+            $processRecord->setAttribute('qa_verification_rows', $qaRows);
+
+            /* NEW: store the QA verified dates in grid_data (calibrationDoneDate / nextCalibrationDoneDate) */
+            self::storeQaDatesInGrid($processRecord, $qaRows);
 
             return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
         } catch (ModelNotFoundException $e) {
@@ -55,10 +59,16 @@ class CalibrationPlannerDetailService
                 return;
             }
             self::addChildDatesToGrid($record);
+
+            /* NEW: keep the stored QA dates in grid_data up to date as well */
+            self::storeQaDatesInGrid($record, self::buildQaVerificationRows($record->id));
+
             $id = $record->parent_id;
         }
     }
- 
+
+    /* ================= NEW: row wise QA verification data (separate from the existing logic) ================= */
+
     private static function buildQaVerificationRows($parentId): array
     {
         $records = ProcessRecord::with('stage')
@@ -118,6 +128,70 @@ class CalibrationPlannerDetailService
         }
         return $result;
     }
+
+    /*
+     * Store qa_verified_on of the child records in grid_data of the parent record, matched by row_id:
+     *   1st record of the row (oldest initiation)  => calibrationDoneDate
+     *   2nd record of the row                      => nextCalibrationDoneDate
+     * A field is only written when the record has a QA verified date, an existing value is never cleared by this method.
+     */
+    private static function storeQaDatesInGrid(ProcessRecord $planner, array $qaRows): void
+    {
+        if (empty($qaRows)) {
+            return;
+        }
+
+        $datesByRow = [];
+        foreach ($qaRows as $qaRow) {
+            $records = $qaRow['records'] ?? [];
+            $datesByRow[(string) $qaRow['row_id']] = [
+                'done' => $records[0]['qa_verified_on'] ?? null,
+                'next' => $records[1]['qa_verified_on'] ?? null,
+            ];
+        }
+
+        foreach ($planner->gridRecords as $gridRecord) {
+            $original = self::decodeGridData($gridRecord->grid_data);
+            if (empty($original)) {
+                continue;
+            }
+
+            $rows = $original;
+            foreach ($rows as $index => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $rowId = (string) self::resolveRowId($row, $index);
+                if (!isset($datesByRow[$rowId])) {
+                    continue;
+                }
+                if ($datesByRow[$rowId]['done'] !== null) {
+                    $row = self::writeGridValue($row, 'calibrationDoneDate', $datesByRow[$rowId]['done']);
+                }
+                if ($datesByRow[$rowId]['next'] !== null) {
+                    $row = self::writeGridValue($row, 'nextCalibrationDoneDate', $datesByRow[$rowId]['next']);
+                }
+                $rows[$index] = $row;
+            }
+
+            if ($rows !== $original) {
+                self::storeGridData($gridRecord->id, $rows);
+            }
+            $gridRecord->setAttribute('grid_data', $rows);
+        }
+    }
+
+    /* row_id can be a plain number or a nested ['key', 'label', 'value' => ...] structure, read the innermost value */
+    private static function resolveRowId(array $row, $index)
+    {
+        $value = $row['row_id'] ?? null;
+        while (is_array($value)) {
+            $value = $value['value'] ?? null;
+        }
+        return ($value === null || $value === '') ? ($index + 1) : $value;
+    }
+
+    /* ================= EXISTING LOGIC (unchanged) ================= */
 
     private static function addChildDatesToGrid(ProcessRecord $planner): void
     {

@@ -167,6 +167,9 @@ class CalibrationManagementService
             /* pass data here */
             $processRecord->qaVerifiedAt = $qaVerifiedAt;
 
+            /* NEW: fill calibrationNextDueDate of masterInstrumentsDetails from the parent planner grid */
+            self::syncMasterInstrumentDueDates($processRecord);
+
             return ResponseHelper::success(
                 $processRecord,
                 'Process record fetched successfully.'
@@ -177,6 +180,105 @@ class CalibrationManagementService
                 404
             );
         }
+    }
+
+    private static function syncMasterInstrumentDueDates(ProcessRecord $record): void
+    {
+        if (empty($record->parent_id)) {
+            return;
+        }
+
+        $parent = ProcessRecord::with('gridRecords')->find($record->parent_id);
+        if (!$parent) {
+            return;
+        }
+
+        /* equipmentInstrumentId => nextPlannedDate, from every row of the parent planner grid */
+        $dueDates = [];
+        foreach ($parent->gridRecords as $parentGrid) {
+            foreach (self::decodeMasterGrid($parentGrid->grid_data) as $parentRow) {
+                if (!is_array($parentRow)) {
+                    continue;
+                }
+                $equipmentId = self::normalizeMasterKey(self::readMasterField($parentRow, 'equipmentInstrumentId'));
+                $nextDone = self::readMasterField($parentRow, 'nextPlannedDate');
+                if ($equipmentId === '' || $nextDone === null || $nextDone === '') {
+                    continue;
+                }
+                if (!isset($dueDates[$equipmentId])) { /* first row with a date wins */
+                    $dueDates[$equipmentId] = $nextDone;
+                }
+            }
+        }
+
+        if (empty($dueDates)) {
+            return;
+        }
+
+        foreach ($record->gridRecords as $gridRecord) {
+            $original = self::decodeMasterGrid($gridRecord->grid_data);
+            if (empty($original)) {
+                continue;
+            }
+
+            $groups = $original;
+            foreach ($groups as $groupIndex => $group) {
+                if (!is_array($group) || ($group['name'] ?? null) !== 'masterInstrumentsDetails' || !is_array($group['rows'] ?? null)) {
+                    continue;
+                }
+                foreach ($group['rows'] as $rowIndex => $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    $idNo = self::normalizeMasterKey(self::readMasterField($row, 'IdNo'));
+                    if ($idNo === '' || !isset($dueDates[$idNo])) {
+                        continue;
+                    }
+                    $group['rows'][$rowIndex] = self::writeMasterField($row, 'calibrationNextDueDate', $dueDates[$idNo]);
+                }
+                $groups[$groupIndex] = $group;
+            }
+
+            if ($groups !== $original) {
+                DB::table('grid_records')->where('id', $gridRecord->id)->update([
+                    'grid_data' => json_encode($groups, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'updated_at' => now(),
+                ]);
+            }
+            $gridRecord->setAttribute('grid_data', $groups);
+        }
+    }
+
+    private static function decodeMasterGrid($value): array
+    {
+        if (is_string($value)) {
+            $value = json_decode($value, true);
+        }
+        return is_array($value) ? $value : [];
+    }
+
+    /* value of a grid field stored as ['key', 'label', 'value'], nested values are unwrapped */
+    private static function readMasterField(array $row, string $key)
+    {
+        $value = $row[$key] ?? null;
+        while (is_array($value)) {
+            $value = $value['value'] ?? null;
+        }
+        return $value;
+    }
+
+    private static function writeMasterField(array $row, string $key, $value): array
+    {
+        $field = (isset($row[$key]) && is_array($row[$key])) ? $row[$key] : ['key' => $key, 'label' => $key];
+        $field['value'] = $value;
+        $row[$key] = $field;
+        return $row;
+    }
+
+    /* trim and lower case so "SMLJ/ENG/224 " still matches "smlj/eng/224" */
+    private static function normalizeMasterKey($value): string
+    {
+        return strtolower(trim((string) $value));
     }
 
     /* update process record */
