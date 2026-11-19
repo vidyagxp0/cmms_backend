@@ -862,7 +862,6 @@ class AddendumFieldInstrumentService
     {
         DB::beginTransaction();
         try {
-            dd("test");
             $processRecord = ProcessRecord::with(['process', 'stage', 'department', 'initiator'])->findOrFail($id);
 
             /* activity must be active and valid for the record's current stage */

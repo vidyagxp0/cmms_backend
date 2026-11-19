@@ -93,26 +93,18 @@
             letter-spacing: 0.4px;
         }
 
-        .details-table {
+        .details-table,
+        .review-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
             margin-bottom: 10px;
         }
 
-        /* Space between section heading and its content */
-        .section-title + table,
-        .section-title + .section-content {
-            margin-top: 8px;
-        }
-
-        /* Space between sections */
-        .report-section {
-            margin-bottom: 14px;
-        }
-
         .details-table th,
-        .details-table td {
+        .details-table td,
+        .review-table th,
+        .review-table td {
             border: 1px solid #d8e0e9;
             padding: 7px 9px;
             vertical-align: top;
@@ -120,7 +112,8 @@
             overflow-wrap: break-word;
         }
 
-        .details-table th {
+        .details-table th,
+        .review-table th {
             width: 24%;
             background: #f3f6fa;
             color: #344b65;
@@ -128,24 +121,33 @@
             font-weight: bold;
         }
 
-        .details-table td {
+        .details-table td,
+        .review-table td {
             width: 26%;
             background: #fff;
             color: #263449;
+        }
+
+        .review-table {
+            margin-bottom: 7px;
+        }
+
+        .attachment-link {
+            color: #1d4ed8;
+            text-decoration: underline;
         }
 
         .instrument-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-            margin-top: 0;
             margin-bottom: 12px;
         }
 
         .instrument-table th,
         .instrument-table td {
             border: 1px solid #d3dce7;
-            padding: 6px 4px;
+            padding: 6px 3px;
             text-align: center;
             vertical-align: middle;
             word-wrap: break-word;
@@ -156,14 +158,14 @@
             background: #24476b;
             color: #fff;
             font-weight: bold;
-            font-size: 7.5px;
+            font-size: 7px;
             line-height: 1.4;
         }
 
         .instrument-table td {
             background: #fff;
             color: #34445a;
-            font-size: 7.5px;
+            font-size: 7px;
             line-height: 1.45;
         }
 
@@ -171,68 +173,24 @@
             background: #f5f8fc;
         }
 
-        .instrument-table .serial { width: 4%; }
-        .instrument-table .instrument-name { width: 12%; }
-        .instrument-table .instrument-id { width: 10%; }
-        .instrument-table .make { width: 7%; }
-        .instrument-table .model { width: 9%; }
-        .instrument-table .location { width: 10%; }
-        .instrument-table .least-count { width: 6%; }
-        .instrument-table .accuracy { width: 7%; }
-        .instrument-table .instrument-range { width: 7%; }
-        .instrument-table .operating-range { width: 7%; }
-        .instrument-table .test-points { width: 8%; }
+        /* column widths add up to 100% */
+        .instrument-table .serial { width: 3%; }
+        .instrument-table .instrument-name { width: 9%; }
+        .instrument-table .instrument-id { width: 8%; }
+        .instrument-table .make { width: 5%; }
+        .instrument-table .model { width: 7%; }
+        .instrument-table .location { width: 7%; }
+        .instrument-table .least-count { width: 5%; }
+        .instrument-table .accuracy { width: 5%; }
+        .instrument-table .instrument-range { width: 6%; }
+        .instrument-table .operating-range { width: 5%; }
+        .instrument-table .test-points { width: 6%; }
         .instrument-table .category { width: 5%; }
-        .instrument-table .planned-date { width: 7%; }
-        .instrument-table .done-date { width: 7%; }
-        .instrument-table .remarks { width: 7%; }
-
-        .review-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            margin-bottom: 10px;
-        }
-
-        .review-table th,
-        .review-table td {
-            border: 1px solid #d8e0e9;
-            padding: 8px 10px;
-            vertical-align: top;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-        }
-
-        .review-table th {
-            width: 27%;
-            background: #f3f6fa;
-            color: #344b65;
-            text-align: left;
-            font-weight: bold;
-        }
-
-        .review-table td {
-            background: #fff;
-            color: #263449;
-        }
-
-        .single-row-review {
-            margin-bottom: 7px;
-        }
-
-        .single-row-review th,
-        .single-row-review td {
-            padding: 7px 9px;
-            vertical-align: middle;
-        }
-
-        .single-row-review th {
-            width: 24%;
-        }
-
-        .single-row-review td {
-            width: 26%;
-        }
+        .instrument-table .planned-date { width: 6%; }
+        .instrument-table .done-date { width: 6%; }
+        .instrument-table .next-planned-date { width: 6%; }
+        .instrument-table .next-done-date { width: 6%; }
+        .instrument-table .remarks { width: 5%; }
 
         .empty-message {
             border: 1px solid #d8e0e9;
@@ -272,21 +230,12 @@
             text-align: right;
         }
 
-        .page-number:after {
-            content: counter(page);
-        }
-
         .muted {
             color: #64748b;
         }
 
         tr {
             page-break-inside: avoid;
-        }
-
-        .monthly-value {
-            text-align: left !important;
-            font-size: 7.5px !important;
         }
 
         .esign-table {
@@ -328,15 +277,6 @@
             color: #23734d;
             font-weight: bold;
         }
-
-        .esign-note {
-            margin-top: 7px;
-            padding: 7px 9px;
-            background: #f3f6fa;
-            border: 1px solid #d8e0e9;
-            color: #52647a;
-            font-size: 7.5px;
-        }
     </style>
 </head>
 <body>
@@ -354,7 +294,6 @@
     </tr>
 </table>
 
-{{-- Document metadata: only Document Number and Document Type --}}
 <table class="document-meta">
     <tr>
         <td>
@@ -371,18 +310,11 @@
 <div class="section-title">General Information</div>
 
 <table class="details-table">
-    @php
-        $generalFields = $tabs[0]['sections'][0]['fields'] ?? [];
-        $generalRows = array_chunk($generalFields, 2);
-    @endphp
-
-    @forelse ($generalRows as $row)
+    @forelse (array_chunk($general_fields ?? [], 2) as $row)
         <tr>
             @foreach ($row as $field)
-                <th>{{ $field['label'] ?? '-' }}</th>
-                <td>
-                    {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
-                </td>
+                <th>{{ $field['label'] }}</th>
+                <td>{{ $field['value'] }}</td>
             @endforeach
 
             @if (count($row) === 1)
@@ -397,44 +329,14 @@
     @endforelse
 </table>
 
-@php
-    $calibrationFields = $tabs[0]['sections'][1]['fields'] ?? [];
-
-    $commentFields = array_values(array_filter(
-        $calibrationFields,
-        function ($field) {
-            $key = strtolower(trim($field['key'] ?? ''));
-            $label = strtolower(trim($field['label'] ?? ''));
-
-            return in_array($key, ['comment', 'comments', 'attachment'])
-                || in_array($label, ['comments', 'comment', 'attachment']);
-        }
-    ));
-
-    $calibrationFields = array_values(array_filter(
-        $calibrationFields,
-        function ($field) {
-            $key = strtolower(trim($field['key'] ?? ''));
-            $label = strtolower(trim($field['label'] ?? ''));
-
-            return !in_array($key, ['comment', 'comments', 'attachment'])
-                && !in_array($label, ['comments', 'comment', 'attachment']);
-        }
-    ));
-
-    $calibrationRows = array_chunk($calibrationFields, 2);
-@endphp
-
 <div class="section-title">Calibration Information</div>
 
 <table class="details-table">
-    @forelse ($calibrationRows as $row)
+    @forelse (array_chunk($calibration_fields ?? [], 2) as $row)
         <tr>
             @foreach ($row as $field)
-                <th>{{ $field['label'] ?? '-' }}</th>
-                <td>
-                    {{ is_scalar($field['value'] ?? null) ? ($field['value'] ?? '-') : '-' }}
-                </td>
+                <th>{{ $field['label'] }}</th>
+                <td>{{ $field['value'] }}</td>
             @endforeach
 
             @if (count($row) === 1)
@@ -468,6 +370,8 @@
             <th class="category">Category</th>
             <th class="planned-date">Planned Date</th>
             <th class="done-date">Calibration Done On</th>
+            <th class="next-planned-date">Next Planned Date</th>
+            <th class="next-done-date">Next Calibration Done On</th>
             <th class="remarks">Remarks</th>
         </tr>
     </thead>
@@ -475,77 +379,26 @@
         @forelse ($grid_records ?? [] as $index => $grid)
             <tr>
                 <td>{{ $index + 1 }}</td>
-
-                <td>
-                    {{ $grid['equipmentInstrumentName']['value']
-                        ?? $grid['instrumentName']['value']
-                        ?? $grid['equipmentName']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>
-                    {{ $grid['equipmentInstrumentId']['value']
-                        ?? $grid['instrumentId']['value']
-                        ?? $grid['instrument_id_no']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>{{ $grid['make']['value'] ?? '-' }}</td>
-
-                <td>
-                    {{ $grid['model']['value']
-                        ?? $grid['modelNo']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>{{ $grid['location']['value'] ?? '-' }}</td>
-
-                <td>
-                    {{ $grid['leastCount']['value']
-                        ?? $grid['least_count']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>{{ $grid['accuracy']['value'] ?? '-' }}</td>
-
-                <td>
-                    {{ $grid['instrumentrange']['value']
-                        ?? $grid['instrumentRange']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>
-                    {{ $grid['operatingrange']['value']
-                        ?? $grid['operatingRange']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>
-                    {{ $grid['calibrationTestPoints']['value']
-                        ?? $grid['calibrationTestPoint']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>{{ $grid['category']['value'] ?? '-' }}</td>
-
-                <td>
-                    {{ $grid['calibrationNextDueDate']['value']
-                        ?? $grid['plannedDate']['value']
-                        ?? $grid['nextCalibrationDate']['value']
-                        ?? '-' }}
-                </td>
-
-                <td>
-                    {{ $grid['calibrationDoneDate']['value'] ?? '-' }}
-                </td>
-
-                <td>
-                    {{ $grid['remark']['value'] ?? '-' }}
-                </td>
+                <td>{{ $grid['instrument_name'] }}</td>
+                <td>{{ $grid['instrument_id'] }}</td>
+                <td>{{ $grid['make'] }}</td>
+                <td>{{ $grid['model'] }}</td>
+                <td>{{ $grid['location'] }}</td>
+                <td>{{ $grid['least_count'] }}</td>
+                <td>{{ $grid['accuracy'] }}</td>
+                <td>{{ $grid['instrument_range'] }}</td>
+                <td>{{ $grid['operating_range'] }}</td>
+                <td>{{ $grid['test_points'] }}</td>
+                <td>{{ $grid['category'] }}</td>
+                <td>{{ $grid['planned_date'] }}</td>
+                <td>{{ $grid['done_date'] }}</td>
+                <td>{{ $grid['next_planned_date'] }}</td>
+                <td>{{ $grid['next_done_date'] }}</td>
+                <td>{{ $grid['remark'] }}</td>
             </tr>
         @empty
             <tr>
-                <td colspan="15" class="empty-message">
+                <td colspan="17" class="empty-message">
                     No instrument records available.
                 </td>
             </tr>
@@ -553,52 +406,41 @@
     </tbody>
 </table>
 
-@php
-    $reviewTabs = array_slice($tabs ?? [], 1, 3);
-
-    $reviewGroups = [
-        [
-            'fields' => $commentFields,
-        ],
-        [
-            'fields' => $reviewTabs[0]['sections'][0]['fields'] ?? [],
-        ],
-        [
-            'fields' => $reviewTabs[1]['sections'][0]['fields'] ?? [],
-        ],
-        [
-            'fields' => $reviewTabs[2]['sections'][0]['fields'] ?? [],
-        ],
-    ];
-@endphp
-
-@foreach ($reviewGroups as $group)
-    @php
-        $fields = array_values(array_filter(
-            $group['fields'],
-            fn ($field) => is_array($field)
-        ));
-    @endphp
-
-    @if (count($fields) > 0)
-        <table class="review-table single-row-review">
-            <tbody>
+{{-- Initiator comment, HOD review, User Department review and QA review blocks --}}
+@foreach ($review_groups ?? [] as $fields)
+    <table class="review-table">
+        <tbody>
+            @foreach (array_chunk($fields, 2) as $row)
                 <tr>
-                    @foreach (array_slice($fields, 0, 2) as $field)
-                        <th>{{ $field['label'] ?? '-' }}</th>
+                    @foreach ($row as $field)
+                        <th>{{ $field['label'] }}</th>
                         <td>
-                            {{ is_scalar($field['value'] ?? null) && ($field['value'] ?? '') !== '' ? $field['value'] : '-' }}
+                            @if (is_array($field['attachments']))
+                                {{-- attachment fields: clickable links that open the file in a new tab --}}
+                                @forelse ($field['attachments'] as $attachment)
+                                    @if (!empty($attachment['url']))
+                                        <a class="attachment-link" href="{{ $attachment['url'] }}" target="_blank" rel="noopener">{{ $attachment['name'] }}</a>
+                                    @else
+                                        {{ $attachment['name'] }}
+                                    @endif
+                                    @if (!$loop->last), @endif
+                                @empty
+                                    -
+                                @endforelse
+                            @else
+                                {{ $field['value'] }}
+                            @endif
                         </td>
                     @endforeach
 
-                    @if (count($fields) === 1)
+                    @if (count($row) === 1)
                         <th></th>
                         <td></td>
                     @endif
                 </tr>
-            </tbody>
-        </table>
-    @endif
+            @endforeach
+        </tbody>
+    </table>
 @endforeach
 
 <div class="section-title">Electronic Signature History</div>
@@ -620,22 +462,12 @@
         @forelse ($esign_history ?? [] as $index => $esign)
             <tr>
                 <td>{{ $index + 1 }}</td>
-
-                <td>
-                    <span class="esign-status">
-                        {{ $esign['user_name'] ?? '-' }}
-                    </span>
-                </td>
-
-                <td>{{ $esign['activity_name'] ?? '-' }}</td>
-
-                <td>{{ $esign['from_stage'] ?? '-' }}</td>
-
-                <td>{{ $esign['to_stage'] ?? '-' }}</td>
-
-                <td>{{ $esign['comment'] ?? '-' }}</td>
-
-                <td>{{ $esign['performed_at'] ?? '-' }}</td>
+                <td><span class="esign-status">{{ $esign['user_name'] }}</span></td>
+                <td>{{ $esign['activity_name'] }}</td>
+                <td>{{ $esign['from_stage'] }}</td>
+                <td>{{ $esign['to_stage'] }}</td>
+                <td>{{ $esign['comment'] }}</td>
+                <td>{{ $esign['performed_at'] }}</td>
             </tr>
         @empty
             <tr>

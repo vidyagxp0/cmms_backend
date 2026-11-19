@@ -52,31 +52,15 @@
             letter-spacing: .6px;
             text-transform: uppercase;
             padding: 11px 10px;
+            margin-bottom: 11px;
         }
 
-        .meta-table,
         .data-table,
         .grid-table,
         .footer-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
-        }
-
-        .meta-table {
-            margin: 9px 0 11px;
-        }
-
-        .meta-table td {
-            width: 50%;
-            border: 1px solid #d3dfec;
-            background: #f4f8fc;
-            padding: 8px;
-            font-size: 7.5px;
-        }
-
-        .meta-table strong {
-            color: #1f3f66;
         }
 
         .section {
@@ -100,7 +84,7 @@
         }
 
         .data-table {
-            margin: 0 0 9px;
+            margin: 0 0 6px;
         }
 
         .data-table td,
@@ -152,6 +136,17 @@
             background: #f4f8fc;
         }
 
+        /* checklist: long texts read better left aligned */
+        .checklist-table td {
+            text-align: left;
+            vertical-align: top;
+            line-height: 1.45;
+        }
+
+        .checklist-table td.sr-cell {
+            text-align: center;
+        }
+
         .grid-table tr,
         .data-table tr {
             page-break-inside: avoid;
@@ -159,19 +154,6 @@
 
         thead {
             display: table-header-group;
-        }
-
-        .review-row {
-            margin-top: 7px;
-            page-break-inside: avoid;
-        }
-
-        .review-table {
-            margin: 0;
-        }
-
-        .review-table td {
-            padding: 7px 6px;
         }
 
         .attachment-item {
@@ -182,14 +164,6 @@
             color: #246da8;
             text-decoration: underline;
             overflow-wrap: break-word;
-        }
-
-        .empty-grid {
-            color: #5b6b7e;
-            background: #f4f8fc;
-            border: 1px dashed #c5d3e3;
-            padding: 9px;
-            text-align: center;
         }
 
         footer {
@@ -232,6 +206,27 @@
             color: #5b6b7e;
         }
 
+        .esign-section {
+            padding: 20px 24px 0 24px;
+        }
+
+        .section-title {
+            background: #eaf1f8;
+            color: #1e4268;
+            border-left: 4px solid #3674a5;
+            border-top: 1px solid #d4e0ed;
+            border-right: 1px solid #d4e0ed;
+            border-bottom: 1px solid #d4e0ed;
+            text-transform: uppercase;
+            padding: 8px 10px;
+            margin-top: 12px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+
         .esign-table {
             width: 100%;
             border-collapse: collapse;
@@ -272,35 +267,10 @@
             font-weight: bold;
         }
 
-        .esign-note {
-            margin-top: 7px;
-            padding: 7px 9px;
-            background: #f3f6fa;
-            border: 1px solid #d8e0e9;
-            color: #52647a;
-            font-size: 7.5px;
-        }
-
-        .esign-section {
-            padding: 20px 24px 0 24px;
-            /* top right bottom left */
-        }
-
-        .section-title {
-            background: #eaf1f8;
-            color: #1e4268;
-            border-left: 4px solid #3674a5;
-            border-top: 1px solid #d4e0ed;
-            border-right: 1px solid #d4e0ed;
-            border-bottom: 1px solid #d4e0ed;
-            text-transform: uppercase;
-            padding: 8px 10px;
-            margin-top: 12px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
+        .empty-message {
+            color: #5b6b7e;
+            background: #f4f8fc;
+            text-align: center;
         }
     </style>
 </head>
@@ -329,118 +299,84 @@
             <div class="company-name">{{ $header['company_name'] ?? 'Shilpa Medicare Limited' }}</div>
         </div>
         <div class="report-banner">{{ $header['report_title'] ?? 'Preventive Maintenance Report' }}</div>
-        <table class="meta-table">
-            <tr>
-                <td><strong>Document Number:</strong> {{ $header['document_number'] ?? '-' }}</td>
-                <td><strong>Document Type:</strong> {{ $header['document_type'] ?? '-' }}</td>
-            </tr>
-        </table>
 
-        @foreach($tabs ?? [] as $tab)
-            @foreach($tab['sections'] ?? [] as $section)
-                @if(($section['type'] ?? 'fields') === 'grid')
-                    <div class="grid-section">
-                        <div class="grid-title">{{ $section['title'] ?? 'Preventive Maintenance Planner' }}</div>
-                        @if(!empty($section['rows']) && !empty($section['columns']))
-                            <table class="grid-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width:{{ $section['sr_width'] ?? 4 }}%">Sr. No.</th>
-                                        @foreach($section['columns'] as $column)
-                                            <th style="width:{{ $column['width'] ?? 8 }}%">{{ $column['label'] }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($section['rows'] as $rowIndex => $row)
-                                        <tr>
-                                            <td>{{ $rowIndex + 1 }}</td>
-                                            @foreach($section['columns'] as $column)
-                                                <td>{{ $row[$column['key']] ?? '-' }}</td>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        @else
-                            <div class="empty-grid">No preventive maintenance records available.</div>
-                        @endif
-                    </div>
-                @elseif(!empty($section['fields']))
-                    <div class="section">
-                        <div class="section-heading">{{ $section['title'] ?? '-' }}</div>
-                        <table class="data-table">
-                            <tbody>
-                                @foreach(array_chunk($section['fields'], 2) as $fieldPair)
-                                    <tr>
-                                        @foreach($fieldPair as $field)
-                                            @php
-                                                $value = $field['value'] ?? null;
-                                                $key = strtolower((string) ($field['key'] ?? ''));
-                                                $label = strtolower((string) ($field['label'] ?? ''));
-                                                $isAttachment = str_contains($key, 'attachment') || str_contains($label, 'attachment');
-                                            @endphp
-                                            <td class="field-name">{{ $field['label'] ?? '-' }}</td>
-                                            <td class="field-value">
-                                                @if($isAttachment)
-                                                    @if(is_array($value) && count($value))
-                                                        @foreach($value as $attachment)
-                                                            @if(is_array($attachment))
-                                                                @php
-                                                                    $attachmentName = $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment';
-                                                                    $attachmentUrl = $attachment['url'] ?? null;
-                                                                @endphp
-                                                                <div class="attachment-item">
-                                                                    @if($attachmentUrl)<a class="attachment-link"
-                                                                        href="{{ $attachmentUrl }}">{{ $attachmentName }}</a>
-                                                                    @else{{ $attachmentName }}@endif
-                                                                </div>
-                                                            @elseif(is_string($attachment) && $attachment !== '')
-                                                                <div class="attachment-item">{{ $attachment }}</div>
-                                                            @endif
-                                                        @endforeach
-                                                    @else - @endif
-                                                @elseif(is_array($value))
-                                                    {{ empty($value) ? '-' : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}
-                                                @else
-                                                    {{ $value !== null && $value !== '' ? $value : '-' }}
-                                                @endif
-                                            </td>
-                                        @endforeach
-                                        @if(count($fieldPair) === 1)
-                                            <td class="field-name"></td>
-                                        <td class="field-value"></td>@endif
-                                    </tr>
+        @foreach($sections ?? [] as $section)
+            {{-- checklist: Sr. No. + one column per checklist column --}}
+            @if(($section['type'] ?? 'fields') === 'checklist')
+                <div class="grid-section">
+                    <div class="section-heading">{{ $section['title'] }}</div>
+                    <table class="grid-table checklist-table">
+                        <thead>
+                            <tr>
+                                @if($section['show_sr'])
+                                    <th style="width:{{ $section['sr_width'] }}%">Sr. No.</th>
+                                @endif
+                                @foreach($section['columns'] as $column)
+                                    <th style="width:{{ $column['width'] }}%">{{ $column['label'] }}</th>
                                 @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            @endforeach
-        @endforeach
-
-        @foreach($reviewRows ?? [] as $reviewRow)
-        <div class="review-row">
-            <table class="data-table review-table">
-                <tr>
-                    <td class="field-name">{{ $reviewRow[0]['label'] ?? '-' }}</td>
-                    <td class="field-value">{{ $reviewRow[0]['value'] ?? '-' }}</td>
-                    <td class="field-name">{{ $reviewRow[1]['label'] ?? '-' }}</td>
-                    <td class="field-value">
-                        @php($attachments = $reviewRow[1]['value'] ?? [])
-                        @if(is_array($attachments) && count($attachments))
-                            @foreach($attachments as $attachment)
-                                @if(is_array($attachment))
-                                    @if(!empty($attachment['url']))<a class="attachment-link"
-                                        href="{{ $attachment['url'] }}">{{ $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment' }}</a>
-                                    @else{{ $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment' }}@endif
-                                @else{{ $attachment }}@endif
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($section['rows'] as $rowIndex => $row)
+                                <tr>
+                                    @if($section['show_sr'])
+                                        <td class="sr-cell">{{ $rowIndex + 1 }}</td>
+                                    @endif
+                                    @foreach($section['columns'] as $column)
+                                        <td>{!! nl2br(e($row[$column['label']] ?? '-')) !!}</td>
+                                    @endforeach
+                                </tr>
                             @endforeach
-                        @else{{ is_string($attachments) && $attachments !== '' ? $attachments : '-' }}@endif
-                    </td>
-                </tr>
-            </table>
-        </div>
+                        </tbody>
+                    </table>
+                </div>
+
+            {{-- field tables: label | value | label | value (heading only when the section has a title) --}}
+            @else
+                <div class="section">
+                    @if(!empty($section['title']))
+                        <div class="section-heading">{{ $section['title'] }}</div>
+                    @endif
+                    <table class="data-table">
+                        <tbody>
+                            @foreach(array_chunk($section['fields'], 2) as $fieldPair)
+                                <tr>
+                                    @foreach($fieldPair as $field)
+                                        @php
+                                            $value = $field['value'] ?? null;
+                                            $isAttachment = str_contains(strtolower((string) ($field['key'] ?? '')), 'attachment');
+                                        @endphp
+                                        <td class="field-name">{{ $field['label'] ?? '-' }}</td>
+                                        <td class="field-value">
+                                            @if($isAttachment)
+                                                @forelse((array) $value as $attachment)
+                                                    <div class="attachment-item">
+                                                        {{-- opens the file in a new tab --}}
+                                                        @if(!empty($attachment['url']))
+                                                            <a class="attachment-link" href="{{ $attachment['url'] }}" target="_blank" rel="noopener">{{ $attachment['name'] }}</a>
+                                                        @else
+                                                            {{ $attachment['name'] }}
+                                                        @endif
+                                                    </div>
+                                                @empty
+                                                    -
+                                                @endforelse
+                                            @else
+                                                {{ $value }}
+                                            @endif
+                                        </td>
+                                    @endforeach
+
+                                    @if(count($fieldPair) === 1)
+                                        <td class="field-name"></td>
+                                        <td class="field-value"></td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         @endforeach
     </div>
 
@@ -464,21 +400,11 @@
                 @forelse ($esign_history ?? [] as $index => $esign)
                     <tr>
                         <td>{{ $index + 1 }}</td>
-
-                        <td>
-                            <span class="esign-status">
-                                {{ $esign['user_name'] ?? '-' }}
-                            </span>
-                        </td>
-
+                        <td><span class="esign-status">{{ $esign['user_name'] ?? '-' }}</span></td>
                         <td>{{ $esign['activity_name'] ?? '-' }}</td>
-
                         <td>{{ $esign['from_stage'] ?? '-' }}</td>
-
                         <td>{{ $esign['to_stage'] ?? '-' }}</td>
-
                         <td>{{ $esign['comment'] ?? '-' }}</td>
-
                         <td>{{ $esign['performed_at'] ?? '-' }}</td>
                     </tr>
                 @empty

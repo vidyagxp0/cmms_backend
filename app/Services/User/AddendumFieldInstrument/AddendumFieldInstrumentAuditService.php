@@ -429,11 +429,14 @@ class AddendumFieldInstrumentAuditService
         return $rows;
     }
 
-    /* normalize grid rows into row_number => fields, regenerating labels from keys */
+
+    /* normalize grid rows into row_number => fields */
     private static function normalizeGridRows($rows)
     {
         $result = [];
         if (!is_array($rows)) return $result;
+
+        $skipKeys = ['equipmentDbId', 'isEquipmentLocked'];
 
         foreach ($rows as $index => $row) {
             if (!is_array($row)) continue;
@@ -447,13 +450,13 @@ class AddendumFieldInstrumentAuditService
                 $key = $item['key'] ?? null;
                 $value = $item['value'] ?? null;
 
-                /* row number override */
                 if ($key === 'row') {
-                    if ($value !== null && $value !== '') $rowNumber = (int) $value;
+                    if ($value !== null && $value !== '') {
+                        $rowNumber = (int) $value;
+                    }
                     continue;
                 }
 
-                /* nested fields container */
                 if ($key === 'fields') {
                     if (!is_array($value)) continue;
 
@@ -461,25 +464,42 @@ class AddendumFieldInstrumentAuditService
                         if (!is_array($field)) continue;
 
                         $fieldKey = $field['key'] ?? $field['Key'] ?? null;
-                        if (!$fieldKey) continue;
 
-                        $fieldValue = array_key_exists('value', $field) ? $field['value'] : ($field['Value'] ?? null);
-                        $fields[$fieldKey] = ['label' => UserAuditHelper::getGridFieldLabel($fieldKey), 'value' => $fieldValue];
+                        if (!$fieldKey || in_array($fieldKey, $skipKeys, true)) {
+                            continue;
+                        }
+
+                        $fieldValue = array_key_exists('value', $field)
+                            ? $field['value']
+                            : ($field['Value'] ?? null);
+
+                        $fields[$fieldKey] = [
+                            'label' => UserAuditHelper::getGridFieldLabel($fieldKey),
+                            'value' => $fieldValue
+                        ];
                     }
+
                     continue;
                 }
 
                 /* flat grid structure fallback */
-                if ($key) {
-                    $fields[$key] = ['label' => UserAuditHelper::getGridFieldLabel($key), 'value' => $value];
+                if ($key && !in_array($key, $skipKeys, true)) {
+                    $fields[$key] = [
+                        'label' => UserAuditHelper::getGridFieldLabel($key),
+                        'value' => $value
+                    ];
                 }
             }
 
-            $result[$rowNumber] = ['row_number' => $rowNumber, 'fields' => $fields];
+            $result[$rowNumber] = [
+                'row_number' => $rowNumber,
+                'fields' => $fields
+            ];
         }
 
         return $result;
     }
+
 
     /* equipment master audit trail */
     public static function getEquipmentMasterAudit($recordId)

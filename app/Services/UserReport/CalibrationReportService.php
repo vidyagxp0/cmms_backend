@@ -3,220 +3,96 @@
 namespace App\Services\UserReport;
 
 use App\Helpers\ResponseHelper;
+use App\Models\Department;
 use App\Models\ProcessRecord;
 use App\Models\RecordActivityHistory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
 
 class CalibrationReportService
 {
+    /* process_data keys that store a department id (shown as department name in the report) */
+    private const DEPARTMENT_ID_KEYS = ['user_dept_selected_department'];
+
+    /*
+     * Instrument table columns: report column => candidate grid keys (case-insensitive).
+     * 'pattern' is a fallback regex on the grid key, 'date' formats the value as dd-mm-yyyy.
+     * If a column ever shows "-", add the real grid key name to its 'keys' list.
+     */
+    private const GRID_COLUMNS = [
+        'instrument_name' => ['keys' => ['equipmentInstrumentName', 'instrumentName', 'equipmentName']],
+        'instrument_id' => ['keys' => ['equipmentInstrumentId', 'instrumentId', 'instrument_id_no']],
+        'make' => ['keys' => ['make']],
+        'model' => ['keys' => ['model', 'modelNo']],
+        'location' => ['keys' => ['location']],
+        'least_count' => ['keys' => ['leastCount', 'least_count']],
+        'accuracy' => ['keys' => ['accuracy']],
+        'instrument_range' => ['keys' => ['instrumentRange']],
+        'operating_range' => ['keys' => ['operatingRange']],
+        'test_points' => ['keys' => ['calibrationTestPoints', 'calibrationTestPoint']],
+        'category' => ['keys' => ['category']],
+        'planned_date' => ['keys' => ['calibrationNextDueDate', 'plannedDate'], 'date' => true],
+        'done_date' => ['keys' => ['calibrationDoneDate'], 'date' => true],
+        'next_planned_date' => [
+            'keys' => [
+                'nextCalibrationNextDueDate',
+                'nextCalibrationDueDate',
+                'nextPlannedDate',
+                'nextPlanDate',
+                'nextCalibrationDate',
+            ],
+            'pattern' => '/^next(?!.*done).*(plan|due|date)/i',
+            'date' => true,
+        ],
+        'next_done_date' => [
+            'keys' => ['nextCalibrationDoneDate', 'nextDoneDate', 'nextCalibrationDoneOn'],
+            'pattern' => '/^next.*done/i',
+            'date' => true,
+        ],
+        'remark' => ['keys' => ['remark', 'remarks']],
+    ];
+
     public static function generateReport($id)
     {
         try {
-            $record = ProcessRecord::with([
-                'process',
-                'stage',
-                'department',
-                'initiator',
-                'gridRecords'
-            ])->findOrFail($id);
+            $record = ProcessRecord::with(['process', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
 
-            $processData = $record->process_data;
-
-            if (is_string($processData)) {
-                $processData = json_decode($processData, true);
-            }
-
-            if (!is_array($processData)) {
-                $processData = [];
-            }
-
-            $processFields = [];
-
-            foreach ($processData as $field) {
-                if (!is_array($field)) {
-                    continue;
-                }
-
-                $key = $field['key'] ?? null;
-
-                if (!$key) {
-                    continue;
-                }
-
-                $processFields[$key] = [
-                    'key' => $key,
-                    'label' => $field['label'] ?? self::formatFieldLabel($key),
-                    'value' => $field['value'] ?? null,
-                ];
-            }
-
-            $recordAttachments = $record->attachments;
-
-            if (is_string($recordAttachments)) {
-                $recordAttachments = json_decode($recordAttachments, true);
-            }
-
-            if (!is_array($recordAttachments)) {
-                $recordAttachments = [];
-            }
-
-            foreach ($processFields as $key => &$field) {
-                if ($key === 'attachment' || str_contains($key, 'attachment')) {
-                    $field['value'] = self::getAttachmentsByField(
-                        $recordAttachments,
-                        $key
-                    );
-                }
-            }
-
-            unset($field);
-
-            $recordNumber = self::getProcessFieldValue(
-                $processFields,
-                'recordNumber'
-            );
-
-            $documentNumber = self::getProcessFieldValue(
-                $processFields,
-                'documentNumber'
-            );
-
-            $documentType = self::getProcessFieldValue(
-                $processFields,
-                'documentType'
-            );
-
-            $siteLocationCode = self::getProcessFieldValue(
-                $processFields,
-                'siteLocationCode'
-            );
-
-            $calibrationFields = self::getFieldsByKeys(
-                $processFields,
-                [
-                    'year',
-                    'block',
-                    'area',
-                    'comment',
-                    'attachment',
-                ]
-            );
-
-            $hodReviewFields = self::getFieldsByKeys(
-                $processFields,
-                [
-                    'hod_review_comments',
-                    'hod_review_attachment',
-                ]
-            );
-
-            $userDepartmentFields = self::getFieldsByKeys(
-                $processFields,
-                [
-                    'user_dept_review_comments',
-                    'user_dept_review_attachment',
-                ]
-            );
-
-            $qaApprovalFields = self::getFieldsByKeys(
-                $processFields,
-                [
-                    'qa_review_comments',
-                    'qa_review_attachment',
-                ]
-            );
+            $processFields = self::buildProcessFields($record);
 
             $generalFields = self::prepareReportFields([
-                [
-                    'label' => 'Record Number',
-                    'value' => $recordNumber,
-                ],
-                // [
-                //     'label' => 'Site / Location Code',
-                //     'value' => $siteLocationCode,
-                // ],
-                [
-                    'label' => 'Process',
-                    'value' => $record->process?->name,
-                ],
-                [
-                    'label' => 'Initiator',
-                    'value' => $record->initiator?->name,
-                ],
-                [
-                    'label' => 'Initiation Department',
-                    'value' => $record->department?->name,
-                ],
-                [
-                    'label' => 'Date of Initiation',
-                    'value' => $record->initiation_date
-                        ? Carbon::parse($record->initiation_date)->format('d-m-Y')
-                        : null,
-                ],
-                // [
-                //     'label' => 'Stage',
-                //     'value' => $record->stage?->name,
-                // ],
-                [
-                    'label' => 'Short Description',
-                    'value' => $record->short_description,
-                ],
+                ['label' => 'Record Number', 'value' => $processFields['recordNumber']['value'] ?? null],
+                ['label' => 'Process', 'value' => $record->process?->name],
+                ['label' => 'Initiator', 'value' => $record->initiator?->name],
+                ['label' => 'Initiation Department', 'value' => $record->department?->name],
+                ['label' => 'Date of Initiation', 'value' => self::formatDate($record->initiation_date)],
+                ['label' => 'Short Description', 'value' => $record->short_description],
             ]);
 
-            $calibrationFields = self::prepareReportFields($calibrationFields);
-            $hodReviewFields = self::prepareReportFields($hodReviewFields);
-            $userDepartmentFields = self::prepareReportFields($userDepartmentFields);
-            $qaApprovalFields = self::prepareReportFields($qaApprovalFields);
+            $calibrationFields = self::prepareReportFields(
+                self::getFieldsByKeys($processFields, ['year', 'block', 'area'])
+            );
 
-            $gridRecords = [];
-
-            foreach ($record->gridRecords ?? [] as $gridRecord) {
-                $gridData = $gridRecord->grid_data;
-
-                if (is_string($gridData)) {
-                    $gridData = json_decode($gridData, true);
-                }
-
-                if (!is_array($gridData)) {
-                    continue;
-                }
-
-                foreach ($gridData as $row) {
-                    if (!is_array($row)) {
-                        continue;
-                    }
-
-                    $fields = [];
-
-                    foreach ($row as $key => $field) {
-                        if ($key === 'calibrationFrequencyStartDate') {
-                            continue;
-                        }
-
-                        if ($key === 'monthlyCalibration') {
-                            $fields[$key] = [
-                                'label' => 'Monthly Calibration',
-                                'value' => is_array($field) ? $field : [],
-                            ];
-
-                            continue;
-                        }
-
-                        $fields[$key] = [
-                            'label' => self::getGridFieldLabel($key),
-                            'value' => is_array($field)
-                                ? ($field['value'] ?? null)
-                                : $field,
-                        ];
-                    }
-
-                    if (!empty($fields)) {
-                        $gridRecords[] = $fields;
-                    }
-                }
-            }
+            /* each group is rendered as its own block under the instrument table */
+            $reviewGroups = array_values(array_filter([
+                self::prepareReportFields(self::getFieldsByKeys($processFields, [
+                    'comment',
+                    'attachment',
+                ])),
+                self::prepareReportFields(self::getFieldsByKeys($processFields, [
+                    'hod_review_comments',
+                    'hod_review_attachment',
+                ])),
+                self::prepareReportFields(self::getFieldsByKeys($processFields, [
+                    'user_dept_selected_department',
+                    'user_dept_review_comments',
+                    'user_dept_review_attachment',
+                ])),
+                self::prepareReportFields(self::getFieldsByKeys($processFields, [
+                    'qa_review_comments',
+                    'qa_review_attachment',
+                ])),
+            ]));
 
             $esignHistory = RecordActivityHistory::with([
                 'performedBy:id,username',
@@ -239,242 +115,254 @@ class CalibrationReportService
                 ])
                 ->toArray();
 
-            $data = [
+            $pdf = Pdf::loadView('Reports.User.CalibrationSingleReport', [
                 'header' => [
                     'company_name' => 'SHILPA MEDICARE LIMITED',
-                    'report_title' => $record->process->name,
+                    'report_title' => $record->process?->name,
                 ],
-
                 'record' => [
-                    'record_id' => $record->id,
-                    'document_number' => $documentNumber,
-                    'document_type' => $documentType,
-                    'record_number' => $recordNumber,
-                    'site_location_code' => $siteLocationCode,
-                    'process' => $record->process?->name,
-                    'stage' => $record->stage?->name,
-                    'department' => $record->department?->name,
-                    'initiator' => $record->initiator?->name,
-                    'short_description' => $record->short_description,
-                    'initiation_date' => $record->initiation_date
-                        ? Carbon::parse($record->initiation_date)->format('d-m-Y')
-                        : null,
+                    'document_number' => $processFields['documentNumber']['value'] ?? null,
+                    'document_type' => $processFields['documentType']['value'] ?? null,
                 ],
-
-                'tabs' => [
-                    [
-                        'tab_title' => 'General Information',
-                        'sections' => [
-                            [
-                                'title' => 'PROCESS RECORD DETAILS',
-                                'fields' => $generalFields,
-                            ],
-                            [
-                                'title' => 'CALIBRATION INFORMATION',
-                                'fields' => $calibrationFields,
-                            ],
-                        ],
-                    ],
-                    [
-                        'tab_title' => 'HOD / DESIGNEE REVIEW',
-                        'sections' => [
-                            [
-                                'title' => 'HOD / DESIGNEE REVIEW',
-                                'fields' => $hodReviewFields,
-                            ],
-                        ],
-                    ],
-                    [
-                        'tab_title' => 'USER DEPARTMENT REVIEW',
-                        'sections' => [
-                            [
-                                'title' => 'USER DEPARTMENT REVIEW',
-                                'fields' => $userDepartmentFields,
-                            ],
-                        ],
-                    ],
-                    [
-                        'tab_title' => 'QA APPROVAL REVIEW',
-                        'sections' => [
-                            [
-                                'title' => 'QA APPROVAL REVIEW',
-                                'fields' => $qaApprovalFields,
-                            ],
-                        ],
-                    ],
-                ],
-
-                'grid_records' => $gridRecords,
+                'general_fields' => $generalFields,
+                'calibration_fields' => $calibrationFields,
+                'grid_records' => self::buildInstrumentRows($record->gridRecords),
+                'review_groups' => $reviewGroups,
                 'esign_history' => $esignHistory,
-
                 'footer' => [
                     'generated_by' => auth()->user()?->name ?? '-',
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
-            ];
+            ])->setPaper('a4', 'landscape');
 
-            $pdf = Pdf::loadView(
-                'Reports.User.CalibrationSingleReport',
-                $data
-            );
-
-            $pdf->setPaper('a4', 'landscape');
-
-            return $pdf->stream(
-                'calibration-planner-' . $record->id . '.pdf'
-            );
+            return $pdf->stream('calibration-planner-' . $record->id . '.pdf');
         } catch (\Throwable $e) {
             report($e);
 
-            return ResponseHelper::error(
-                'Failed to generate process report.',
-                500
-            );
+            return ResponseHelper::error('Failed to generate process report.', 500);
         }
     }
 
-    private static function getAttachmentsByField($attachments, $attachmentField)
+    /* process_data indexed by key, with attachments attached and department ids resolved */
+    private static function buildProcessFields(ProcessRecord $record): array
     {
-        if (!is_array($attachments)) {
-            return [];
+        $recordAttachments = self::decodeArray($record->attachments);
+        $processFields = [];
+
+        foreach (self::decodeArray($record->process_data) as $field) {
+            $key = is_array($field) ? ($field['key'] ?? null) : null;
+
+            if (!$key) continue;
+
+            $processFields[$key] = [
+                'key' => $key,
+                'label' => $field['label'] ?? self::formatFieldLabel($key),
+                'value' => self::isAttachmentKey($key)
+                    ? self::getAttachmentsByField($recordAttachments, $key)
+                    : ($field['value'] ?? null),
+            ];
         }
 
+        foreach (self::DEPARTMENT_ID_KEYS as $key) {
+            if (isset($processFields[$key])) {
+                $processFields[$key]['value'] = self::resolveDepartmentNames($processFields[$key]['value']);
+            }
+        }
+
+        return $processFields;
+    }
+
+    /* one display row per grid row, with fixed report columns */
+    private static function buildInstrumentRows($gridRecords): array
+    {
+        $rows = [];
+
+        foreach ($gridRecords ?? [] as $gridRecord) {
+            foreach (self::decodeArray($gridRecord->grid_data) as $row) {
+                if (!is_array($row)) continue;
+
+                $values = self::flattenGridRow($row);
+                if (empty($values)) continue;
+
+                $mapped = [];
+
+                foreach (self::GRID_COLUMNS as $column => $config) {
+                    $value = self::pickGridValue($values, $config['keys'], $config['pattern'] ?? null);
+
+                    if (!empty($config['date'])) $value = self::formatDate($value);
+
+                    $mapped[$column] = ($value === null || $value === '') ? '-' : $value;
+                }
+
+                $rows[] = $mapped;
+            }
+        }
+
+        return $rows;
+    }
+
+    /* lowercase key => scalar value for one grid row (nested calibration data is not shown here) */
+    private static function flattenGridRow(array $row): array
+    {
+        $values = [];
+
+        foreach ($row as $key => $field) {
+            $lowerKey = strtolower((string) $key);
+
+            if (in_array($lowerKey, ['calibrationfrequencystartdate', 'monthlycalibration'], true)) continue;
+
+            $values[$lowerKey] = self::scalarValue($field);
+        }
+
+        return $values;
+    }
+
+    /* first non-empty value among the candidate keys, then an optional regex fallback on the key */
+    private static function pickGridValue(array $values, array $keys, ?string $pattern = null)
+    {
+        foreach ($keys as $key) {
+            $value = $values[strtolower($key)] ?? null;
+            if ($value !== null && $value !== '') return $value;
+        }
+
+        if ($pattern) {
+            foreach ($values as $key => $value) {
+                if ($value !== null && $value !== '' && preg_match($pattern, (string) $key)) return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /* reduce a {value} wrapper / name-object / scalar to a plain scalar */
+    private static function scalarValue($field)
+    {
+        if (is_array($field)) {
+            return self::scalarValue($field['value'] ?? $field['name'] ?? null);
+        }
+
+        return is_scalar($field) ? $field : null;
+    }
+
+    /* department id(s) -> department name(s); values that are already names are kept */
+    private static function resolveDepartmentNames($value): ?string
+    {
+        $names = [];
+
+        foreach (Arr::wrap($value) as $item) {
+            if (is_array($item)) $item = $item['name'] ?? $item['value'] ?? null;
+            if ($item === null || $item === '') continue;
+
+            $names[] = is_numeric($item)
+                ? (Department::whereKey((int) $item)->value('name') ?? $item)
+                : $item;
+        }
+
+        return $names ? implode(', ', $names) : null;
+    }
+
+    /* attachments of one attachment field, with absolute urls so they can be opened from the PDF */
+    private static function getAttachmentsByField($attachments, string $attachmentField): array
+    {
         $result = [];
 
-        foreach ($attachments as $attachment) {
-            if (!is_array($attachment)) {
-                continue;
-            }
-
-            if (($attachment['attachment_field'] ?? null) !== $attachmentField) {
-                continue;
-            }
+        foreach (is_array($attachments) ? $attachments : [] as $attachment) {
+            if (!is_array($attachment) || ($attachment['attachment_field'] ?? null) !== $attachmentField) continue;
 
             $result[] = [
-                'attachment_field' => $attachmentField,
-                'name' => $attachment['name']
-                    ?? $attachment['file_name']
-                    ?? 'Attachment',
-                'file_name' => $attachment['file_name'] ?? null,
-                'path' => $attachment['path'] ?? null,
-                'url' => $attachment['url'] ?? null,
-                'mime_type' => $attachment['mime_type'] ?? null,
-                'size' => $attachment['size'] ?? null,
+                'name' => $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment',
+                'url' => self::resolveAttachmentUrl($attachment['url'] ?? null),
             ];
         }
 
         return $result;
     }
 
-    private static function getGridFieldLabel($key)
+    private static function resolveAttachmentUrl($url): ?string
     {
-        $labels = [
-            'equipmentInstrumentName' => 'Instrument Name',
-            'equipmentInstrumentId' => 'Instrument ID No.',
-            'equipmentName' => 'Equipment Name',
-            'instrumentName' => 'Instrument Name',
-            'instrumentId' => 'Instrument ID No.',
-            'department' => 'Department',
-            'location' => 'Location',
-            'make' => 'Make',
-            'model' => 'Sr. No. / Model No.',
-            'modelNo' => 'Sr. No. / Model No.',
-            'instrumentrange' => 'Instrument Range',
-            'instrumentRange' => 'Instrument Range',
-            'operatingrange' => 'Operating Range',
-            'operatingRange' => 'Operating Range',
-            'leastCount' => 'Least Count',
-            'accuracy' => 'Accuracy',
-            'calibrationFrequency' => 'Calibration Frequency',
-            'previousCalibrationDate' => 'Previous Calibration Date',
-            'nextCalibrationDate' => 'Next Calibration Date',
-            'calibrationNextDueDate' => 'Planned Date',
-            'calibrationDoneDate' => 'Calibration Done On',
-            'plannedDate' => 'Planned Date',
-            'remark' => 'Remarks',
-            'monthlyCalibration' => 'Monthly Calibration',
-            'calibrationTestPoints' => 'Calibration Test Points',
-            'calibrationTestPoint' => 'Calibration Test Points',
-            'category' => 'Category',
-        ];
+        if (!is_string($url) || trim($url) === '') return null;
 
-        return $labels[$key] ?? self::formatFieldLabel($key);
+        $url = trim($url);
+
+        return preg_match('#^https?://#i', $url) ? $url : url($url);
     }
 
-    private static function getProcessFieldValue($fields, $key)
+    private static function isAttachmentKey($key): bool
     {
-        return $fields[$key]['value'] ?? null;
+        return str_contains((string) $key, 'attachment');
     }
 
-    private static function getFieldsByKeys($fields, array $keys)
+    private static function getFieldsByKeys(array $fields, array $keys): array
     {
         $result = [];
 
         foreach ($keys as $key) {
-            if (isset($fields[$key])) {
-                $result[] = $fields[$key];
-            }
+            if (isset($fields[$key])) $result[] = $fields[$key];
         }
 
         return $result;
     }
 
-    private static function prepareReportFields($fields)
+    /* normalize fields for the view: attachment fields keep name + url, everything else becomes a string */
+    private static function prepareReportFields(array $fields): array
     {
         $result = [];
 
         foreach ($fields as $field) {
-            if (!is_array($field)) {
-                continue;
-            }
+            if (!is_array($field)) continue;
 
-            $value = $field['value'] ?? null;
             $key = $field['key'] ?? '';
+            $value = $field['value'] ?? null;
+            $attachments = null;
 
-            if ($key === 'attachment' || str_contains($key, 'attachment')) {
-                if (is_array($value)) {
-                    $names = [];
-
-                    foreach ($value as $attachment) {
-                        if (is_array($attachment)) {
-                            $names[] = $attachment['name']
-                                ?? $attachment['file_name']
-                                ?? 'Attachment';
-                        }
-                    }
-
-                    $value = count($names) ? implode(', ', $names) : '-';
-                } else {
-                    $value = '-';
-                }
-            } elseif (is_array($value)) {
-                if (isset($value['name'])) {
-                    $value = $value['name'];
-                } elseif (empty($value)) {
-                    $value = '-';
-                } else {
-                    $value = json_encode(
-                        $value,
-                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                    );
-                }
-            }
-
-            if ($value === null || $value === '') {
+            if (self::isAttachmentKey($key)) {
+                $attachments = array_values(array_filter(is_array($value) ? $value : [], 'is_array'));
                 $value = '-';
+            } elseif (is_array($value)) {
+                $value = isset($value['name'])
+                    ? $value['name']
+                    : (empty($value) ? '-' : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             }
+
+            if ($value === null || $value === '') $value = '-';
 
             $result[] = [
                 'key' => $key,
                 'label' => $field['label'] ?? '-',
                 'value' => $value,
+                'attachments' => $attachments,
             ];
         }
 
         return $result;
     }
 
-    private static function formatFieldLabel($key)
+    /* dd-mm-yyyy for ISO dates (yyyy-mm-dd...), anything else is returned unchanged */
+    private static function formatDate($value)
+    {
+        if ($value === null || $value === '') return null;
+
+        if ($value instanceof \DateTimeInterface) return $value->format('d-m-Y');
+
+        if (is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}/', $value)) {
+            try {
+                return Carbon::createFromFormat('Y-m-d', substr($value, 0, 10))->format('d-m-Y');
+            } catch (\Throwable) {
+                return $value;
+            }
+        }
+
+        return $value;
+    }
+
+    private static function decodeArray($value): array
+    {
+        if (is_string($value)) $value = json_decode($value, true);
+
+        return is_array($value) ? $value : [];
+    }
+
+    private static function formatFieldLabel($key): string
     {
         $key = str_replace(['_', '-'], ' ', $key);
         $key = str_replace('/', ' / ', $key);

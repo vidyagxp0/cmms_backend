@@ -3,49 +3,39 @@
 namespace App\Services\UserReport;
 
 use App\Helpers\ResponseHelper;
+use App\Models\Department;
 use App\Models\ProcessRecord;
 use App\Models\RecordActivityHistory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 class AddendumFieldInstrumentReportService
 {
+    /* process_data keys that store a department id (shown as department name in the report) */
+    private const DEPARTMENT_ID_KEYS = ['master_department', 'user_dept_selected_department'];
+
+    /* report label overrides (process_data key => label shown in the report, same as the screen) */
+    private const FIELD_LABELS = [
+        'instrumentType' => 'Instrument Type',
+    ];
+
+    /* technical grid keys that must never be shown in the report (compared lowercase) */
+    private const GRID_SKIP_KEYS = [
+        'row_id',
+        'monthlycalibration',
+        'calibrationfrequencystartdate',
+        'equipmentdbid',
+        'isequipmentlocked',
+    ];
+
     /* generate field instrument calibration addendum report */
     public static function generateReport($id)
     {
         try {
             $record = ProcessRecord::with(['process', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
 
-            /* process data */
-            $processFields = [];
-            foreach (self::decodeArray($record->process_data) as $field) {
-                if (!is_array($field)) {
-                    continue;
-                }
-                $key = $field['key'] ?? null;
-                if (!$key) {
-                    continue;
-                }
-                $processFields[$key] = [
-                    'key' => $key,
-                    'label' => $field['label'] ?? self::formatFieldLabel($key),
-                    'value' => $field['value'] ?? null,
-                ];
-            }
-
-            /* map record attachments to the attachment fields */
-            $recordAttachments = self::decodeArray($record->attachments);
-            foreach ($processFields as $key => &$field) {
-                if (str_contains($key, 'attachment')) {
-                    $field['value'] = self::getAttachmentsByField($recordAttachments, $key);
-                }
-            }
-            unset($field);
-
-            /* header values */
-            $documentNumber = self::getProcessFieldValue($processFields, 'documentNumber');
-            $documentType = self::getProcessFieldValue($processFields, 'documentType');
-            $recordNumber = self::getProcessFieldValue($processFields, 'recordNumber');
+            $processFields = self::buildProcessFields($record);
 
             /* initiation date: process data value first, then the record column */
             $initiationDate = self::getProcessFieldValue($processFields, 'dateOfInitiation');
@@ -53,33 +43,26 @@ class AddendumFieldInstrumentReportService
                 $initiationDate = Carbon::parse($record->initiation_date)->format('d-M-Y H:i:s');
             }
 
-            /* general information tab */
             $systemFields = self::prepareReportFields([
-                ['key' => 'recordNumber', 'label' => 'Record Number', 'value' => $recordNumber],
+                ['key' => 'recordNumber', 'label' => 'Record Number', 'value' => self::getProcessFieldValue($processFields, 'recordNumber')],
                 ['key' => 'initiator', 'label' => 'Initiator', 'value' => $record->initiator?->name ?? self::getProcessFieldValue($processFields, 'initiator')],
                 ['key' => 'dateOfInitiation', 'label' => 'Date of Initiation', 'value' => $initiationDate],
                 ['key' => 'initiationDepartment', 'label' => 'Initiation Department', 'value' => $record->department?->name ?? self::getProcessFieldValue($processFields, 'initiationDepartment')],
                 ['key' => 'short_description', 'label' => 'Short Description', 'value' => $record->short_description ?: self::getProcessFieldValue($processFields, 'short_description')],
             ]);
 
-            $instrumentInfoFields = self::prepareReportFields(
-                self::getFieldsByKeys($processFields, ['year', 'block', 'area'])
-            );
-
-            $commentFields = self::prepareReportFields(
-                self::getFieldsByKeys($processFields, ['comment', 'attachment'])
-            );
-
-            /* calibration addendum grid */
             $grid = self::prepareGrid($record->gridRecords);
 
-            $tabs = [];
-
-            $tabs[] = [
+            /* everything is printed under the General Information tab (no separate review tabs) */
+            $tabs = [[
                 'tab_title' => 'General Information',
                 'sections' => [
                     ['type' => 'fields', 'title' => 'System Information', 'fields' => $systemFields],
-                    ['type' => 'fields', 'title' => 'Field Instrument Information', 'fields' => $instrumentInfoFields],
+                    [
+                        'type' => 'fields',
+                        'title' => 'Field Instrument Information',
+                        'fields' => self::fieldSection($processFields, ['year', 'block', 'area', 'instrumentType', 'master_department']),
+                    ],
                     [
                         'type' => 'grid',
                         'title' => 'Field Instrument Calibration Addendum',
@@ -87,54 +70,44 @@ class AddendumFieldInstrumentReportService
                         'rows' => $grid['rows'],
                         'sr_width' => $grid['sr_width'],
                     ],
-                    ['type' => 'fields', 'title' => 'Comments & Attachments', 'fields' => $commentFields],
+                    [
+                        'type' => 'fields',
+                        'title' => 'Comments & Attachments',
+                        'fields' => self::fieldSection($processFields, ['comment', 'attachment']),
+                    ],
+                    [
+                        'type' => 'fields',
+                        'title' => 'HOD / Designee Review (Engineering Dept)',
+                        'fields' => self::fieldSection($processFields, ['hod_review_comments', 'hod_review_attachment']),
+                    ],
+                    [
+                        'type' => 'fields',
+                        'title' => 'User Department Review (User Dept)',
+                        'fields' => self::fieldSection($processFields, [
+                            'user_dept_selected_department',
+                            'user_dept_review_comments',
+                            'user_dept_review_attachment',
+                        ]),
+                    ],
+                    [
+                        'type' => 'fields',
+                        'title' => 'QA Approval Review',
+                        'fields' => self::fieldSection($processFields, ['qa_review_comments', 'qa_review_attachment']),
+                    ],
                 ],
-            ];
-
-            /* review comments and attachments without separate review tabs */
-            $tabs[0]['sections'][] = [
-                'type' => 'fields',
-                'title' => 'HOD / Designee Review (Engineering Dept)',
-                'fields' => self::prepareReportFields(
-                    self::getFieldsByKeys($processFields, [
-                        'hod_review_comments',
-                        'hod_review_attachment',
-                    ])
-                ),
-            ];
-
-            $tabs[0]['sections'][] = [
-                'type' => 'fields',
-                'title' => 'User Department Review (User Dept)',
-                'fields' => self::prepareReportFields(
-                    self::getFieldsByKeys($processFields, [
-                        'user_dept_review_comments',
-                        'user_dept_review_attachment',
-                    ])
-                ),
-            ];
-
-            $tabs[0]['sections'][] = [
-                'type' => 'fields',
-                'title' => 'QA Approval Review',
-                'fields' => self::prepareReportFields(
-                    self::getFieldsByKeys($processFields, [
-                        'qa_review_comments',
-                        'qa_review_attachment',
-                    ])
-                ),
-            ];
+            ]];
 
             /* cancellation tab only when the record was cancelled */
             $cancellationRemark = self::getProcessFieldValue($processFields, 'cancellation_remark');
             $cancellationAttachment = self::getProcessFieldValue($processFields, 'cancellation_attachment');
+
             if (!empty($cancellationRemark) || (is_array($cancellationAttachment) && !empty($cancellationAttachment))) {
                 $tabs[] = [
                     'tab_title' => 'Cancellation',
                     'sections' => [[
                         'type' => 'fields',
                         'title' => 'Cancellation',
-                        'fields' => self::prepareReportFields(self::getFieldsByKeys($processFields, ['cancellation_remark', 'cancellation_attachment'])),
+                        'fields' => self::fieldSection($processFields, ['cancellation_remark', 'cancellation_attachment']),
                     ]],
                 ];
             }
@@ -160,13 +133,12 @@ class AddendumFieldInstrumentReportService
                 ])
                 ->toArray();
 
-            /* report data */
-            $data = [
+            $pdf = Pdf::loadView('Reports.User.AddendumFieldInstrumentPlannerReport', [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
                     'report_title' => 'Calibration Addendum',
-                    'document_number' => $documentNumber ?: '-',
-                    'document_type' => $documentType ?: '-',
+                    'document_number' => self::getProcessFieldValue($processFields, 'documentNumber') ?: '-',
+                    'document_type' => self::getProcessFieldValue($processFields, 'documentType') ?: '-',
                 ],
                 'tabs' => $tabs,
                 'esign_history' => $esignHistory,
@@ -174,68 +146,81 @@ class AddendumFieldInstrumentReportService
                     'generated_by' => auth()->user()?->name,
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
-            ];
+            ]);
 
-            /* generate PDF */
-            $pdf = Pdf::loadView('Reports.User.AddendumFieldInstrumentPlannerReport', $data);
             $pdf->setPaper('a4', 'landscape');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 
             return $pdf->stream('process-record-' . $record->id . '.pdf');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            report($e);
+
             return ResponseHelper::error($e->getMessage(), 500);
         }
     }
 
-    /* decode json string / array safely */
-    private static function decodeArray($value)
+    /* process_data indexed by key: attachments mapped, department ids resolved, labels overridden */
+    private static function buildProcessFields(ProcessRecord $record): array
     {
-        if (is_string($value)) {
-            $value = json_decode($value, true);
+        $recordAttachments = self::decodeArray($record->attachments);
+        $processFields = [];
+
+        foreach (self::decodeArray($record->process_data) as $field) {
+            $key = is_array($field) ? ($field['key'] ?? null) : null;
+
+            if (!$key) continue;
+
+            $processFields[$key] = [
+                'key' => $key,
+                'label' => self::FIELD_LABELS[$key] ?? $field['label'] ?? self::formatFieldLabel($key),
+                'value' => str_contains($key, 'attachment')
+                    ? self::getAttachmentsByField($recordAttachments, $key)
+                    : ($field['value'] ?? null),
+            ];
         }
 
-        return is_array($value) ? $value : [];
+        foreach (self::DEPARTMENT_ID_KEYS as $key) {
+            if (isset($processFields[$key])) {
+                $processFields[$key]['value'] = self::resolveDepartmentNames($processFields[$key]['value']);
+            }
+        }
+
+        return $processFields;
+    }
+
+    /* fields of one report section, in the given order (missing keys are skipped) */
+    private static function fieldSection(array $processFields, array $keys): array
+    {
+        return self::prepareReportFields(self::getFieldsByKeys($processFields, $keys));
     }
 
     /* build grid columns and rows (one row per instrument) */
-    private static function prepareGrid($gridRecords)
+    private static function prepareGrid($gridRecords): array
     {
-        /* technical keys that should never be shown in the report */
-        $skipKeys = ['row_id', 'monthlyCalibration', 'calibrationFrequencyStartDate'];
-
         $columns = [];
         $rows = [];
 
         foreach ($gridRecords ?? [] as $gridRecord) {
             foreach (self::decodeArray($gridRecord->grid_data) as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
+                if (!is_array($row)) continue;
 
                 $values = [];
 
                 foreach ($row as $key => $field) {
-                    if (in_array($key, $skipKeys, true)) {
-                        continue;
-                    }
+                    if (in_array(strtolower((string) $key), self::GRID_SKIP_KEYS, true)) continue;
 
                     if (!isset($columns[$key])) {
                         $label = (is_array($field) && !empty($field['label']))
                             ? $field['label']
                             : self::getGridFieldLabel($key);
 
-                        $columns[$key] = [
-                            'key' => $key,
-                            'label' => self::cleanLabel($label),
-                        ];
+                        $columns[$key] = ['key' => $key, 'label' => self::cleanLabel($label)];
                     }
 
                     $values[$key] = self::formatGridValue(is_array($field) ? ($field['value'] ?? null) : $field);
                 }
 
-                if (!empty($values)) {
-                    $rows[] = $values;
-                }
+                if (!empty($values)) $rows[] = $values;
             }
         }
 
@@ -278,12 +263,10 @@ class AddendumFieldInstrumentReportService
     }
 
     /* grid cell value as printable text */
-    private static function formatGridValue($value)
+    private static function formatGridValue($value): string
     {
         if (is_array($value)) {
-            if (empty($value)) {
-                return '-';
-            }
+            if (empty($value)) return '-';
 
             $parts = [];
             foreach ($value as $item) {
@@ -295,41 +278,50 @@ class AddendumFieldInstrumentReportService
             return implode(', ', $parts);
         }
 
-        if ($value === null || $value === '') {
-            return '-';
-        }
+        if ($value === null || $value === '') return '-';
 
         return (string) $value;
     }
 
+    /* department id(s) -> department name(s); values that are already names are kept */
+    private static function resolveDepartmentNames($value): ?string
+    {
+        $names = [];
+
+        foreach (Arr::wrap($value) as $item) {
+            if (is_array($item)) $item = $item['name'] ?? $item['value'] ?? null;
+            if ($item === null || $item === '') continue;
+
+            $names[] = is_numeric($item)
+                ? (Department::whereKey((int) $item)->value('name') ?? $item)
+                : $item;
+        }
+
+        return $names ? implode(', ', $names) : null;
+    }
+
     /* remove required-field asterisks etc. from labels */
-    private static function cleanLabel($label)
+    private static function cleanLabel($label): string
     {
         return trim(ltrim((string) $label, '* '));
     }
 
-    /* get attachments by field */
-    private static function getAttachmentsByField($attachments, $attachmentField)
+    /* attachments of one attachment field, with absolute urls so they can be opened from the PDF */
+    private static function getAttachmentsByField($attachments, string $attachmentField): array
     {
-        if (!is_array($attachments)) {
-            return [];
-        }
-
         $result = [];
-        foreach ($attachments as $attachment) {
-            if (!is_array($attachment)) {
-                continue;
-            }
-            if (($attachment['attachment_field'] ?? null) !== $attachmentField) {
-                continue;
-            }
+
+        foreach (is_array($attachments) ? $attachments : [] as $attachment) {
+            if (!is_array($attachment) || ($attachment['attachment_field'] ?? null) !== $attachmentField) continue;
+
+            $url = $attachment['url'] ?? null;
 
             $result[] = [
                 'attachment_field' => $attachmentField,
                 'name' => $attachment['name'] ?? $attachment['file_name'] ?? 'Attachment',
                 'file_name' => $attachment['file_name'] ?? null,
                 'path' => $attachment['path'] ?? null,
-                'url' => $attachment['url'] ?? null,
+                'url' => (is_string($url) && $url !== '' && !preg_match('#^https?://#i', $url)) ? url($url) : $url,
                 'mime_type' => $attachment['mime_type'] ?? null,
                 'size' => $attachment['size'] ?? null,
             ];
@@ -338,8 +330,8 @@ class AddendumFieldInstrumentReportService
         return $result;
     }
 
-    /* known grid field labels, falling back to a formatted key */
-    private static function getGridFieldLabel($key)
+    /* known grid field labels (used only when the grid data has no label), falling back to a formatted key */
+    private static function getGridFieldLabel($key): string
     {
         $labels = [
             'equipmentName' => 'Equipment Name',
@@ -362,40 +354,43 @@ class AddendumFieldInstrumentReportService
         return $labels[$key] ?? self::formatFieldLabel($key);
     }
 
-    private static function getProcessFieldValue($fields, $key)
+    /* decode json string / array safely */
+    private static function decodeArray($value): array
+    {
+        if (is_string($value)) $value = json_decode($value, true);
+
+        return is_array($value) ? $value : [];
+    }
+
+    private static function getProcessFieldValue(array $fields, string $key)
     {
         return $fields[$key]['value'] ?? null;
     }
 
-    private static function getFieldsByKeys($fields, array $keys)
+    private static function getFieldsByKeys(array $fields, array $keys): array
     {
         $result = [];
+
         foreach ($keys as $key) {
-            if (isset($fields[$key])) {
-                $result[] = $fields[$key];
-            }
+            if (isset($fields[$key])) $result[] = $fields[$key];
         }
 
         return $result;
     }
 
-    /* prepare report fields */
-    private static function prepareReportFields($fields)
+    /* normalize fields for the view: attachment fields keep their list, everything else becomes printable text */
+    private static function prepareReportFields(array $fields): array
     {
         $result = [];
 
         foreach ($fields as $field) {
-            if (!is_array($field)) {
-                continue;
-            }
+            if (!is_array($field)) continue;
 
             $value = $field['value'] ?? null;
             $key = $field['key'] ?? '';
 
             if (str_contains($key, 'attachment')) {
-                if (!is_array($value) || empty($value)) {
-                    $value = '-';
-                }
+                if (!is_array($value) || empty($value)) $value = '-';
             } elseif (is_array($value)) {
                 if (isset($value['name'])) {
                     $value = $value['name'];
@@ -406,9 +401,7 @@ class AddendumFieldInstrumentReportService
                 }
             }
 
-            if ($value === null || $value === '') {
-                $value = '-';
-            }
+            if ($value === null || $value === '') $value = '-';
 
             $result[] = [
                 'key' => $key,
@@ -420,7 +413,7 @@ class AddendumFieldInstrumentReportService
         return $result;
     }
 
-    private static function formatFieldLabel($key)
+    private static function formatFieldLabel($key): string
     {
         $key = str_replace(['_', '-'], ' ', $key);
         $key = str_replace('/', ' / ', $key);

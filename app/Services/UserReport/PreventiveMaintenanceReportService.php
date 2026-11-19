@@ -3,6 +3,8 @@
 namespace App\Services\UserReport;
 
 use App\Helpers\ResponseHelper;
+use App\Models\ChecklistRecord;
+use App\Models\Department;
 use App\Models\ProcessRecord;
 use App\Models\RecordActivityHistory;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -11,28 +13,42 @@ use Throwable;
 
 class PreventiveMaintenanceReportService
 {
+    /*
+     * Review lines printed without headings, one table row each.
+     * Slot = [label, candidate process_data keys, fallback regex on the key, is a department id].
+     * The first key found is used, so small key differences do not hide a field.
+     */
+    private const REVIEW_LINES = [
+        [
+            ['User Department', ['user_dept_selected_department'], '/^user.*dep.*select|select.*user.*dep/i', true],
+        ],
+        [
+            ['User Department Review Comments', ['user_dept_review_comments', 'user_department_review_comments'], '/^user.*comment/i', false],
+            ['User Department Review Attachment', ['user_dept_review_attachment', 'user_department_review_attachment'], '/^user.*attachment/i', false],
+        ],
+        [
+            ['Engineer Review Comments', ['engineer_review_comments'], '/^eng.*comment/i', false],
+            ['Engineer Review Attachment', ['engineer_review_attachment'], '/^eng.*attachment/i', false],
+        ],
+        [
+            ['QA Review Comments', ['qa_approval_comments', 'qa_review_comments'], '/^qa.*comment/i', false],
+            ['QA Review Attachment', ['qa_approval_attachment', 'qa_review_attachment'], '/^qa.*attachment/i', false],
+        ],
+    ];
+
+    /* checklist column widths (weights) by column name */
+    private const CHECKLIST_WEIGHTS = ['Check point' => 40, 'Frequency' => 10, 'Remarks' => 20, 'Executed By (Sign & Date)' => 20];
+
     /* Generate preventive maintenance report */
     public static function generateReport($id)
     {
         try {
-            $record = ProcessRecord::with([
-                'process', 'stage', 'department', 'initiator', 'gridRecords',
-            ])->findOrFail($id);
+            $record = ProcessRecord::with(['process', 'department', 'initiator'])->findOrFail($id);
 
-            $fields = self::mapProcessFields($record->process_data);
-            $recordAttachments = self::decodeArray($record->attachments);
+            $fields = self::mapProcessFields($record);
 
-            foreach ($fields as $key => &$field) {
-                if (str_contains(strtolower($key), 'attachment')) {
-                    $field['value'] = self::getAttachments($recordAttachments, $key, $field['value'] ?? null);
-                }
-            }
-            unset($field);
-
-            $documentNumber = self::fieldValue($fields, 'documentNumber');
-            $documentType = self::fieldValue($fields, 'documentType');
-            $recordNumber = self::fieldValue($fields, 'recordNumber') ?: $record->id;
-            $initiationDate = self::fieldValue($fields, 'dateOfInitiation');
+            $recordNumber = $fields['recordNumber']['value'] ?? null ?: $record->id;
+            $initiationDate = $fields['dateOfInitiation']['value'] ?? null;
 
             if (!$initiationDate && $record->initiation_date) {
                 $initiationDate = Carbon::parse($record->initiation_date)->format('d-m-Y H:i:s');
@@ -41,56 +57,40 @@ class PreventiveMaintenanceReportService
             $generalFields = self::prepareFields([
                 self::makeField('recordNumber', 'Record Number', $recordNumber),
                 self::makeField('process', 'Process', $record->process?->name),
-                self::makeField('initiator', 'Initiator', $record->initiator?->name ?: self::fieldValue($fields, 'initiator')),
-                self::makeField('initiationDepartment', 'Initiation Department', $record->department?->name ?: self::fieldValue($fields, 'initiationDepartment')),
+                self::makeField('initiator', 'Initiator', $record->initiator?->name ?: ($fields['initiator']['value'] ?? null)),
+                self::makeField('initiationDepartment', 'Initiation Department', $record->department?->name ?: ($fields['initiationDepartment']['value'] ?? null)),
                 self::makeField('dateOfInitiation', 'Date of Initiation', $initiationDate),
-                self::makeField('short_description', 'Short Description', $record->short_description ?: self::fieldValue($fields, 'short_description')),
+                self::makeField('short_description', 'Short Description', $record->short_description ?: ($fields['short_description']['value'] ?? null)),
             ]);
 
-            $maintenanceKeys = [
-                'equipmentInstrumentName', 'equipmentInstrumentId', 'block', 'department',
-                'location', 'previousPreventiveDate', 'nextPreventiveDate',
-                'preventive_frequency', 'preventiveFrequency', 'remark',
-            ];
+            /* equipment details in screen order; previous / next dates only when they have a value */
+            $equipmentKeys = ['equipmentInstrumentName', 'equipmentInstrumentId', 'block', 'department', 'location'];
+            foreach (['previousPreventiveDate', 'nextPreventiveDate'] as $dateKey) {
+                if (!empty($fields[$dateKey]['value'])) $equipmentKeys[] = $dateKey;
+            }
+            $equipmentKeys = array_merge($equipmentKeys, ['preventive_frequency', 'preventiveFrequency', 'remark', 'attachment']);
 
-            $maintenanceFields = self::prepareFields(self::selectFields($fields, $maintenanceKeys));
-            $grid = self::prepareGrid($record->gridRecords);
+            $frequency = $fields['preventive_frequency']['value'] ?? $fields['preventiveFrequency']['value'] ?? null;
 
-            $comments = self::prepareFields(self::selectFields($fields, ['comment', 'comments', 'attachment']));
-            $reviewRows = [
-                self::makeReviewRow($fields, 'engineer_review_comments', 'Engineer Review Comments', 'engineer_review_attachment', 'Engineer Review Attachment'),
-                self::makeReviewRow($fields, 'qa_approval_comments', 'QA Review Comments', 'qa_approval_attachment', 'QA Review Attachment'),
-            ];
-            $reviewRows = array_values(array_filter($reviewRows));
+            /* order: general information, checklist(s), equipment details, comments, reviews, cancellation */
+            $sections = array_merge(
+                [['type' => 'fields', 'title' => 'General Information', 'fields' => $generalFields]],
+                [['type' => 'fields', 'title' => 'Equipment Details', 'fields' => self::prepareFields(self::selectFields($fields, $equipmentKeys))]],
+                self::prepareChecklists($record->id, $frequency),
+                [['type' => 'fields', 'title' => 'Comments', 'fields' => self::prepareFields(self::selectFields($fields, ['comment', 'comments']))]],
+            );
 
-            $cancellationFields = self::prepareFields(self::selectFields($fields, ['cancellation_remark', 'cancellation_attachment']));
-
-            $sections = [
-                ['type' => 'fields', 'title' => 'General Information', 'fields' => $generalFields],
-                ['type' => 'fields', 'title' => 'Preventive Maintenance Information', 'fields' => $maintenanceFields],
-                [
-                    'type' => 'grid',
-                    'title' => 'Preventive Maintenance Planner',
-                    'columns' => $grid['columns'],
-                    'rows' => $grid['rows'],
-                    'sr_width' => $grid['sr_width'],
-                ],
-            ];
-
-            if ($comments) {
-                $sections[] = ['type' => 'fields', 'title' => 'Comments & Attachments', 'fields' => $comments];
+            foreach (self::REVIEW_LINES as $slots) {
+                $sections[] = ['type' => 'fields', 'title' => null, 'fields' => self::prepareFields(self::pickReviewFields($fields, $slots))];
             }
 
-            if ($cancellationFields) {
-                $sections[] = ['type' => 'fields', 'title' => 'Cancellation Details', 'fields' => $cancellationFields];
-            }
+            $sections[] = [
+                'type' => 'fields',
+                'title' => 'Cancellation Details',
+                'fields' => self::prepareFields(self::selectFields($fields, ['cancellation_remark', 'cancellation_attachment'])),
+            ];
 
-            $esignHistory = RecordActivityHistory::with([
-                'performedBy:id,username',
-                'activity:id,name',
-                'stage:id,name',
-                'targetStage:id,name',
-            ])
+            $esignHistory = RecordActivityHistory::with(['performedBy:id,username', 'activity:id,name', 'stage:id,name', 'targetStage:id,name'])
                 ->where('process_record_id', $record->id)
                 ->orderBy('performed_at')
                 ->get()
@@ -100,232 +100,202 @@ class PreventiveMaintenanceReportService
                     'from_stage' => $item->stage?->name ?? '-',
                     'to_stage' => $item->targetStage?->name ?? '-',
                     'comment' => $item->comment ?: '-',
-                    'performed_at' => $item->performed_at
-                        ? Carbon::parse($item->performed_at)->format('d-m-Y H:i:s')
-                        : '-',
+                    'performed_at' => $item->performed_at ? Carbon::parse($item->performed_at)->format('d-m-Y H:i:s') : '-',
                 ])
                 ->toArray();
 
-            $data = [
+            $pdf = Pdf::loadView('Reports.User.PreventiveMaintenanceReport', [
                 'header' => [
                     'company_name' => 'Shilpa Medicare Limited',
                     'report_title' => $record->process?->name,
-                    'document_number' => $documentNumber ?: '-',
-                    'document_type' => $documentType ?: '-',
                 ],
-                'tabs' => [['tab_title' => 'Preventive Maintenance', 'sections' => $sections]],
-                'reviewRows' => $reviewRows,
+                /* sections without any field / row are dropped here, not in the view */
+                'sections' => array_values(array_filter($sections, fn ($s) => !empty($s['fields']) || !empty($s['rows']))),
                 'esign_history' => $esignHistory,
                 'footer' => [
                     'generated_by' => auth()->user()?->name ?? 'System',
                     'generated_at' => now()->format('d-m-Y H:i:s'),
                 ],
-            ];
+            ]);
 
-            $pdf = Pdf::loadView('Reports.User.PreventiveMaintenanceReport', $data);
-            $pdf->setPaper('a4', 'landscape');
+            $pdf->setPaper('a4', 'portrait');
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 
-            $fileName = preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $recordNumber);
-            return $pdf->stream('preventive-maintenance-' . $fileName . '.pdf');
+            return $pdf->stream('preventive-maintenance-' . preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $recordNumber) . '.pdf');
         } catch (Throwable $e) {
             report($e);
+
             return ResponseHelper::error('Failed to generate preventive maintenance report.', 500);
         }
     }
 
-    /* Map process data by key */
-    private static function mapProcessFields($value): array
+    /* process_data indexed by key; attachment fields get their files from the record attachments */
+    private static function mapProcessFields(ProcessRecord $record): array
     {
+        $attachments = self::decodeArray($record->attachments);
         $result = [];
-        foreach (self::decodeArray($value) as $item) {
+
+        foreach (self::decodeArray($record->process_data) as $item) {
             if (!is_array($item) || empty($item['key'])) continue;
+
             $key = (string) $item['key'];
-            $result[$key] = [
-                'key' => $key,
-                'label' => $item['label'] ?? self::label($key),
-                'value' => $item['value'] ?? null,
-            ];
+            $value = $item['value'] ?? null;
+
+            if (str_contains(strtolower($key), 'attachment')) {
+                $value = self::attachmentList($attachments, $key, $value);
+            } elseif (in_array($key, ['preventive_frequency', 'preventiveFrequency'], true) && is_string($value)) {
+                $value = ucfirst($value);
+            }
+
+            $result[$key] = ['key' => $key, 'label' => $item['label'] ?? $key, 'value' => $value];
         }
+
         return $result;
     }
 
-    /* Prepare grid rows and dynamic columns */
-    private static function prepareGrid($gridRecords): array
+    /* Checklist sections: one per checklist record, built from checklist_data.questions[].values[] */
+    private static function prepareChecklists($processRecordId, ?string $frequency): array
     {
-        $skipKeys = ['row_id', 'equipmentDbId', 'weeklyPreventive', 'monthlyCalibration', 'calibrationFrequencyStartDate'];
-        $columns = [];
-        $rows = [];
+        $sections = [];
 
-        foreach ($gridRecords ?? [] as $gridRecord) {
-            foreach (self::decodeArray($gridRecord->grid_data) as $gridRow) {
-                if (!is_array($gridRow)) continue;
-                $row = [];
+        foreach (ChecklistRecord::where('process_record_id', $processRecordId)->get() as $checklist) {
+            $data = self::decodeArray($checklist->getAttribute('checklist_data'));
+            $rows = [];
 
-                foreach ($gridRow as $key => $field) {
-                    if (in_array($key, $skipKeys, true)) continue;
+            foreach ($data['questions'] ?? [] as $question) {
+                $cells = ['Check point' => self::cellText($question['question'] ?? null)];
 
-                    $value = is_array($field) && array_key_exists('value', $field) ? $field['value'] : $field;
-                    if (is_array($value)) continue;
+                /* the frequency of the equipment is printed per row, same as the screen */
+                if ($frequency) $cells['Frequency'] = $frequency;
 
-                    if (!isset($columns[$key])) {
-                        $columns[$key] = [
-                            'key' => $key,
-                            'label' => self::cleanLabel(is_array($field) ? ($field['label'] ?? self::label($key)) : self::label($key)),
-                        ];
-                    }
-                    $row[$key] = self::formatGridValue($value);
+                foreach ($question['values'] ?? [] as $value) {
+                    $cells[$value['column_name'] ?? 'Column ' . ($value['column_id'] ?? '')] = self::cellText($value['value'] ?? null);
                 }
 
-                if ($row) $rows[] = $row;
+                $rows[] = $cells;
             }
-        }
 
-        $weights = ['equipmentInstrumentName' => 12, 'equipmentInstrumentId' => 10, 'location' => 10, 'remark' => 8];
-        $srWeight = 3;
-        $defaultWeight = 7;
-        $totalWeight = $srWeight;
+            if (!$rows) continue;
 
-        foreach ($columns as $key => $column) $totalWeight += $weights[$key] ?? $defaultWeight;
-        foreach ($columns as $key => &$column) {
-            $column['width'] = round((($weights[$key] ?? $defaultWeight) / $totalWeight) * 100, 2);
-        }
-        unset($column);
+            $labels = array_values(array_unique(array_merge(...array_map('array_keys', $rows))));
+            $showSr = $data['include_serial_number'] ?? true;
+            $srWeight = $showSr ? 4 : 0;
+            $total = $srWeight + array_sum(array_map(fn ($label) => self::CHECKLIST_WEIGHTS[$label] ?? 12, $labels));
 
-        return [
-            'columns' => array_values($columns),
-            'rows' => $rows,
-            'sr_width' => round(($srWeight / $totalWeight) * 100, 2),
-        ];
-    }
-
-    /* Build one compact review row */
-    private static function makeReviewRow(array $fields, string $commentKey, string $commentLabel, string $attachmentKey, string $attachmentLabel): ?array
-    {
-        if (!isset($fields[$commentKey]) && !isset($fields[$attachmentKey])) return null;
-
-        return [
-            self::makeField($commentKey, $commentLabel, self::normaliseValue($fields[$commentKey]['value'] ?? null)),
-            self::makeField($attachmentKey, $attachmentLabel, self::normaliseAttachments($fields[$attachmentKey]['value'] ?? null)),
-        ];
-    }
-
-    /* Select fields by their process-data keys */
-    private static function selectFields(array $fields, array $keys): array
-    {
-        $result = [];
-        foreach ($keys as $key) {
-            if (isset($fields[$key])) $result[] = $fields[$key];
-        }
-        return $result;
-    }
-
-    /* Resolve attachments from process record */
-    private static function getAttachments(array $attachments, string $key, $fallback): array
-    {
-        $result = [];
-        foreach ($attachments as $item) {
-            if (!is_array($item) || ($item['attachment_field'] ?? null) !== $key) continue;
-            $result[] = [
-                'name' => $item['name'] ?? $item['file_name'] ?? 'Attachment',
-                'file_name' => $item['file_name'] ?? null,
-                'path' => $item['path'] ?? null,
-                'url' => $item['url'] ?? null,
+            $sections[] = [
+                'type' => 'checklist',
+                'title' => $data['checklist_name'] ?? 'Checklist',
+                'show_sr' => $showSr,
+                'sr_width' => round($srWeight / $total * 100, 2),
+                'columns' => array_map(fn ($label) => [
+                    'label' => $label,
+                    'width' => round((self::CHECKLIST_WEIGHTS[$label] ?? 12) / $total * 100, 2),
+                ], $labels),
+                'rows' => $rows,
             ];
         }
-        return $result ?: self::normaliseAttachments($fallback);
+
+        return $sections;
     }
 
-    /* Normalise attachment values */
-    private static function normaliseAttachments($value): array
-    {
-        if (is_string($value) && $value !== '') return [['name' => basename($value), 'url' => $value]];
-        if (!is_array($value) || empty($value)) return [];
-
-        $result = [];
-        foreach ($value as $item) {
-            if (is_string($item) && $item !== '') {
-                $result[] = ['name' => basename($item), 'url' => $item];
-            } elseif (is_array($item)) {
-                $result[] = [
-                    'name' => $item['name'] ?? $item['file_name'] ?? 'Attachment',
-                    'file_name' => $item['file_name'] ?? null,
-                    'url' => $item['url'] ?? null,
-                    'path' => $item['path'] ?? null,
-                ];
-            }
-        }
-        return $result;
-    }
-
-    /* Prepare printable fields */
-    private static function prepareFields(array $fields): array
-    {
-        $result = [];
-        foreach ($fields as $field) {
-            if (!is_array($field)) continue;
-            $key = strtolower((string) ($field['key'] ?? ''));
-            $value = $field['value'] ?? null;
-            $value = str_contains($key, 'attachment')
-                ? self::normaliseAttachments($value)
-                : self::normaliseValue($value);
-
-            $result[] = [
-                'key' => $field['key'] ?? '',
-                'label' => $field['label'] ?? '-',
-                'value' => $value,
-            ];
-        }
-        return $result;
-    }
-
-    /* Format values for report output */
-    private static function normaliseValue($value)
+    /* checklist cell text: signature block -> Signed / name / date, everything else as plain text */
+    private static function cellText($value): string
     {
         if (is_array($value)) {
-            if (isset($value['name'])) return $value['name'];
-            return empty($value) ? '-' : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if (array_key_exists('checked', $value)) {
+                return !empty($value['checked'])
+                    ? implode("\n", array_filter(['Signed', $value['signed_by'] ?? null, $value['signed_at'] ?? null]))
+                    : '-';
+            }
+
+            $lines = [];
+            foreach ($value as $key => $item) {
+                if (is_scalar($item) && $item !== '') $lines[] = (is_string($key) ? $key . ' : ' : '• ') . $item;
+            }
+
+            return $lines ? implode("\n", $lines) : '-';
         }
-        return $value !== null && $value !== '' ? $value : '-';
+
+        return $value === null || $value === '' ? '-' : (string) $value;
     }
 
-    /* Create report field */
+    /* Fields of one review line; a department id is shown as the department name */
+    private static function pickReviewFields(array $fields, array $slots): array
+    {
+        $result = [];
+
+        foreach ($slots as [$label, $candidates, $pattern, $isDepartment]) {
+            $key = collect($candidates)->first(fn ($candidate) => isset($fields[$candidate]))
+                ?? collect(array_keys($fields))->first(fn ($fieldKey) => preg_match($pattern, (string) $fieldKey));
+
+            if ($key === null) continue;
+
+            $value = $fields[$key]['value'] ?? null;
+
+            if ($isDepartment && is_numeric($value)) {
+                $value = Department::whereKey((int) $value)->value('name') ?? $value;
+            }
+
+            $result[] = self::makeField((string) $key, $label, $value);
+        }
+
+        return $result;
+    }
+
+    /* attachments of one attachment field (record attachments first, then the field's own value) */
+    private static function attachmentList(array $recordAttachments, string $key, $fallback): array
+    {
+        $items = array_filter($recordAttachments, fn ($item) => is_array($item) && ($item['attachment_field'] ?? null) === $key);
+
+        if (!$items) $items = array_filter(is_array($fallback) ? $fallback : [], 'is_array');
+
+        return array_values(array_map(fn ($item) => [
+            'name' => $item['name'] ?? $item['file_name'] ?? 'Attachment',
+            'url' => self::resolveUrl($item['url'] ?? null),
+        ], $items));
+    }
+
+    /* relative paths become absolute urls so the links work from the PDF */
+    private static function resolveUrl($url): ?string
+    {
+        if (!is_string($url) || trim($url) === '') return null;
+
+        $url = trim($url);
+
+        return preg_match('#^https?://#i', $url) ? $url : url($url);
+    }
+
+    private static function selectFields(array $fields, array $keys): array
+    {
+        return array_values(array_filter(array_map(fn ($key) => $fields[$key] ?? null, $keys)));
+    }
+
+    /* printable fields: attachment fields keep their file list, everything else becomes text */
+    private static function prepareFields(array $fields): array
+    {
+        return array_map(function ($field) {
+            $value = $field['value'] ?? null;
+
+            if (!str_contains(strtolower((string) $field['key']), 'attachment')) {
+                $value = is_array($value)
+                    ? ($value['name'] ?? ($value ? json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '-'))
+                    : ($value !== null && $value !== '' ? $value : '-');
+            }
+
+            return self::makeField($field['key'], $field['label'] ?? '-', $value);
+        }, $fields);
+    }
+
     private static function makeField(string $key, string $label, $value): array
     {
         return ['key' => $key, 'label' => $label, 'value' => $value];
     }
 
-    /* Read process field value */
-    private static function fieldValue(array $fields, string $key)
-    {
-        return $fields[$key]['value'] ?? null;
-    }
-
-    /* Decode JSON values safely */
+    /* decode JSON values safely */
     private static function decodeArray($value): array
     {
         if (is_string($value)) $value = json_decode($value, true);
+
         return is_array($value) ? $value : [];
-    }
-
-    /* Format grid cell */
-    private static function formatGridValue($value): string
-    {
-        if ($value === null || $value === '') return '-';
-        if (is_bool($value)) return $value ? 'Yes' : 'No';
-        return is_scalar($value) ? (string) $value : '-';
-    }
-
-    /* Clean report label */
-    private static function cleanLabel(string $label): string
-    {
-        return trim(ltrim($label, '* '));
-    }
-
-    /* Convert key to readable label */
-    private static function label(string $key): string
-    {
-        $key = preg_replace('/([a-z])([A-Z])/', '$1 $2', $key);
-        return ucwords(str_replace(['_', '-'], ' ', $key));
     }
 }

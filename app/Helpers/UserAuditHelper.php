@@ -12,6 +12,26 @@ use Illuminate\Support\Facades\Auth;
 
 class UserAuditHelper
 {
+    /* process_data keys whose stored value is a department primary id (shown as department name in audits) */
+    private const DEPARTMENT_ID_KEYS = [
+        'user_dept_selected_department',
+    ];
+
+    /* technical grid keys never shown in audits (compared lowercase) */
+    private const GRID_SKIP_KEYS = [
+        'id',
+        'row_id',
+        '_rowid',
+        'grid_record_id',
+        'process_record_id',
+        'created_at',
+        'updated_at',
+        'calibrationfrequencystartdate',
+    ];
+
+    /* per-request cache so the same lookup never hits the DB twice */
+    private static array $departmentNameCache = [];
+
     /* create an audit log entry */
     public static function log(
         string $module,
@@ -163,255 +183,112 @@ class UserAuditHelper
         return self::formatDateValue($value, $fieldKey);
     }
 
-    /* clean grid rows and preserve multiple named grids */
+    /* clean grid data - supports multiple named grids and the legacy single-grid format */
     private static function cleanGridData(array $data): array
     {
-        $result = [];
-        $skip = [
-            'id',
-            'row_id',
-            '_rowid',
-            'grid_record_id',
-            'process_record_id',
-            'created_at',
-            'updated_at',
-            'calibrationfrequencystartdate',
-        ];
-
         $isMultiGrid = false;
 
         foreach ($data as $item) {
-            if (
-                is_array($item) &&
-                isset($item['name']) &&
-                isset($item['rows']) &&
-                is_array($item['rows'])
-            ) {
+            if (is_array($item) && isset($item['name'], $item['rows']) && is_array($item['rows'])) {
                 $isMultiGrid = true;
                 break;
             }
         }
 
-        if ($isMultiGrid) {
-            foreach ($data as $grid) {
-                if (!is_array($grid)) {
-                    continue;
-                }
-
-                $gridName = isset($grid['name'])
-                    ? trim((string) $grid['name'])
-                    : null;
-
-                $gridLabel = isset($grid['label']) && !is_numeric($grid['label'])
-                    ? trim((string) $grid['label'])
-                    : $gridName;
-
-                $rows = isset($grid['rows']) && is_array($grid['rows'])
-                    ? array_values($grid['rows'])
-                    : [];
-
-                $cleanRows = [];
-
-                foreach ($rows as $row) {
-                    if (!is_array($row)) {
-                        continue;
-                    }
-
-                    $calibrationLabel = self::getCalibrationLabel(
-                        self::getCalibrationFrequency($row)
-                    );
-
-                    $cleanRow = [];
-
-                    foreach ($row as $columnKey => $column) {
-                        if (
-                            in_array(
-                                strtolower((string) $columnKey),
-                                $skip,
-                                true
-                            )
-                        ) {
-                            continue;
-                        }
-
-                        if (!is_array($column)) {
-                            $value = self::extractDisplayValue(
-                                $column,
-                                (string) $columnKey
-                            );
-
-                            if ($value === null || $value === '') {
-                                continue;
-                            }
-
-                            $cleanRow[] = [
-                                'key' => $columnKey,
-                                'label' => self::getGridFieldLabel($columnKey),
-                                'value' => $value,
-                            ];
-
-                            continue;
-                        }
-
-                        $fieldKey = $column['key']
-                            ?? $column['Key']
-                            ?? $columnKey;
-
-                        if (
-                            strtolower((string) $fieldKey) ===
-                            'calibrationfrequencystartdate'
-                        ) {
-                            continue;
-                        }
-
-                        $fieldValue = array_key_exists('value', $column)
-                            ? $column['value']
-                            : ($column['Value'] ?? $column);
-
-                        $cleanValue = self::extractDisplayValue(
-                            $fieldValue,
-                            $fieldKey
-                        );
-
-                        if ($fieldKey === 'monthlyCalibration') {
-                            if (
-                                $cleanValue !== null &&
-                                $cleanValue !== []
-                            ) {
-                                $cleanRow[] = [
-                                    'key' => 'monthlyCalibration',
-                                    'label' => $calibrationLabel,
-                                    'value' => $cleanValue,
-                                ];
-                            }
-
-                            continue;
-                        }
-
-                        if ($cleanValue === null || $cleanValue === '') {
-                            continue;
-                        }
-
-                        $cleanRow[] = [
-                            'key' => $fieldKey,
-                            'label' => self::getGridFieldLabel($fieldKey),
-                            'value' => $cleanValue,
-                        ];
-                    }
-
-                    if (!empty($cleanRow)) {
-                        $cleanRows[] = $cleanRow;
-                    }
-                }
-
-                if (!empty($cleanRows)) {
-                    $result[] = [
-                        'name' => $gridName,
-                        'label' => $gridLabel,
-                        'rows' => $cleanRows,
-                    ];
-                }
-            }
-
-            return $result;
-        }
-
         /* legacy single-grid row format */
-        foreach ($data as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
+        if (!$isMultiGrid) return self::cleanGridRows($data);
 
-            $calibrationLabel = self::getCalibrationLabel(
-                self::getCalibrationFrequency($row)
-            );
+        $result = [];
 
-            $cleanRow = [];
+        foreach ($data as $grid) {
+            if (!is_array($grid)) continue;
 
-            foreach ($row as $columnKey => $column) {
-                if (
-                    in_array(
-                        strtolower((string) $columnKey),
-                        $skip,
-                        true
-                    )
-                ) {
-                    continue;
-                }
+            $gridName = isset($grid['name']) ? trim((string) $grid['name']) : null;
+            $gridLabel = isset($grid['label']) && !is_numeric($grid['label'])
+                ? trim((string) $grid['label'])
+                : $gridName;
 
-                if (!is_array($column)) {
-                    $value = self::extractDisplayValue(
-                        $column,
-                        (string) $columnKey
-                    );
+            $cleanRows = self::cleanGridRows(isset($grid['rows']) && is_array($grid['rows']) ? $grid['rows'] : []);
 
-                    if ($value === null || $value === '') {
-                        continue;
-                    }
-
-                    $cleanRow[] = [
-                        'key' => $columnKey,
-                        'label' => self::getGridFieldLabel($columnKey),
-                        'value' => $value,
-                    ];
-
-                    continue;
-                }
-
-                $fieldKey = $column['key']
-                    ?? $column['Key']
-                    ?? $columnKey;
-
-                if (
-                    strtolower((string) $fieldKey) ===
-                    'calibrationfrequencystartdate'
-                ) {
-                    continue;
-                }
-
-                $fieldValue = array_key_exists('value', $column)
-                    ? $column['value']
-                    : ($column['Value'] ?? $column);
-
-                if ($fieldKey === 'monthlyCalibration') {
-                    $cleanValue = self::cleanNestedValue(
-                        $fieldValue,
-                        'monthlyCalibration'
-                    );
-
-                    if ($cleanValue !== null && $cleanValue !== []) {
-                        $cleanRow[] = [
-                            'key' => 'monthlyCalibration',
-                            'label' => $calibrationLabel,
-                            'value' => $cleanValue,
-                        ];
-                    }
-
-                    continue;
-                }
-
-                $cleanValue = self::extractDisplayValue(
-                    $fieldValue,
-                    $fieldKey
-                );
-
-                if ($cleanValue === null || $cleanValue === '') {
-                    continue;
-                }
-
-                $cleanRow[] = [
-                    'key' => $fieldKey,
-                    'label' => self::getGridFieldLabel($fieldKey),
-                    'value' => $cleanValue,
+            if (!empty($cleanRows)) {
+                $result[] = [
+                    'name' => $gridName,
+                    'label' => $gridLabel,
+                    'rows' => $cleanRows,
                 ];
-            }
-
-            if (!empty($cleanRow)) {
-                $result[] = $cleanRow;
             }
         }
 
         return $result;
+    }
+
+    /* clean a list of grid rows, dropping rows that end up empty */
+    private static function cleanGridRows(array $rows): array
+    {
+        $result = [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+
+            $cleanRow = self::cleanGridRow($row);
+            if (!empty($cleanRow)) $result[] = $cleanRow;
+        }
+
+        return $result;
+    }
+
+    /* clean a single grid row into a list of key/label/value entries */
+    private static function cleanGridRow(array $row): array
+    {
+        $calibrationLabel = self::getCalibrationLabel(self::getCalibrationFrequency($row));
+        $cleanRow = [];
+
+        foreach ($row as $columnKey => $column) {
+            if (in_array(strtolower((string) $columnKey), self::GRID_SKIP_KEYS, true)) continue;
+
+            /* plain scalar column */
+            if (!is_array($column)) {
+                $value = self::extractDisplayValue($column, (string) $columnKey);
+                if ($value === null || $value === '') continue;
+
+                $cleanRow[] = [
+                    'key' => $columnKey,
+                    'label' => self::getGridFieldLabel((string) $columnKey),
+                    'value' => $value,
+                ];
+                continue;
+            }
+
+            /* {key, value} column */
+            $fieldKey = $column['key'] ?? $column['Key'] ?? $columnKey;
+
+            if (strtolower((string) $fieldKey) === 'calibrationfrequencystartdate') continue;
+
+            $fieldValue = array_key_exists('value', $column) ? $column['value'] : ($column['Value'] ?? $column);
+            $cleanValue = self::extractDisplayValue($fieldValue, (string) $fieldKey);
+
+            /* calibration column is labelled by its frequency, e.g. "Monthly Calibration" */
+            if ($fieldKey === 'monthlyCalibration') {
+                if ($cleanValue !== null && $cleanValue !== []) {
+                    $cleanRow[] = [
+                        'key' => 'monthlyCalibration',
+                        'label' => $calibrationLabel,
+                        'value' => $cleanValue,
+                    ];
+                }
+                continue;
+            }
+
+            if ($cleanValue === null || $cleanValue === '') continue;
+
+            $cleanRow[] = [
+                'key' => $fieldKey,
+                'label' => self::getGridFieldLabel((string) $fieldKey),
+                'value' => $cleanValue,
+            ];
+        }
+
+        return $cleanRow;
     }
 
     /* find the calibrationFrequency value within a grid row */
@@ -567,7 +444,7 @@ class UserAuditHelper
     }
 
     /* known display labels for nested field keys, falling back to a formatted key */
-    private static function getNestedLabel(string $key): string
+    private static function getNestedLabel($key): string
     {
         $labels = [
             'masterInstrumentReadings1' => 'Master Instrument Reading 1',
@@ -586,7 +463,7 @@ class UserAuditHelper
             'calibrationFrequencyStartDate' => 'Calibration Frequency Start Date',
         ];
 
-        return $labels[$key] ?? self::formatGridLabel($key);
+        return $labels[$key] ?? self::formatGridLabel((string) $key);
     }
 
     /* format date-like values as DD/MM/YYYY; only applies when the field name looks like a date */
@@ -622,9 +499,16 @@ class UserAuditHelper
         return $value;
     }
 
+    /* department name by id (cached for the request) */
     private static function getDepartmentName($id)
     {
-        return $id ? Department::where('id', $id)->value('name') : null;
+        if (!$id) return null;
+
+        if (!array_key_exists($id, self::$departmentNameCache)) {
+            self::$departmentNameCache[$id] = Department::where('id', $id)->value('name');
+        }
+
+        return self::$departmentNameCache[$id];
     }
 
     private static function getUserName($id)
@@ -645,11 +529,7 @@ class UserAuditHelper
     /* check for null / blank string / empty array */
     private static function isEmptyValue($value): bool
     {
-        if ($value === null) return true;
-        if (is_string($value)) return trim($value) === '';
-        if (is_array($value)) return empty($value);
-
-        return false;
+        return self::isAuditEmptyValue($value);
     }
 
     /* turn a raw key into a readable label, e.g. "some_field" -> "Some Field" */
@@ -824,7 +704,7 @@ class UserAuditHelper
         }
     }
 
-    /* flatten process_data into label => value pairs */
+    /* flatten process_data into label => value pairs (department ids are resolved to names) */
     public static function getProcessDataValues($data)
     {
         if (!is_array($data)) return [];
@@ -834,49 +714,48 @@ class UserAuditHelper
         foreach ($data as $key => $item) {
             if (is_array($item)) {
                 if (array_key_exists('label', $item) && array_key_exists('value', $item)) {
-                    if ($item['label']) $result[$item['label']] = $item['value'] ?? null;
+                    if ($item['label']) {
+                        $result[$item['label']] = self::resolveProcessDataValue($item['key'] ?? null, $item['value'] ?? null);
+                    }
                     continue;
                 }
 
                 if (isset($item['key']) && array_key_exists('value', $item)) {
-                    $result[$item['key']] = $item['value'] ?? null;
+                    $result[$item['key']] = self::resolveProcessDataValue($item['key'], $item['value'] ?? null);
                     continue;
                 }
             }
 
-            if (is_string($key)) $result[$key] = $item;
+            if (is_string($key)) $result[$key] = self::resolveProcessDataValue($key, $item);
         }
 
         return $result;
     }
 
-    /* reduce attachment data to name/url entries */
-    public static function formatAttachmentAuditValue($attachments)
+    /* replace a stored department id with the department name for known department fields */
+    private static function resolveProcessDataValue($key, $value)
     {
-        if ($attachments === null || $attachments === '') return null;
+        if (!is_string($key) || !in_array($key, self::DEPARTMENT_ID_KEYS, true)) return $value;
 
-        if (is_string($attachments)) {
-            $decoded = json_decode($attachments, true);
-            $attachments = is_array($decoded) ? $decoded : [];
+        /* multi-select: list of ids */
+        if (is_array($value)) {
+            $names = array_map(fn($item) => self::resolveDepartmentValue($item), $value);
+            return implode(', ', array_filter($names, fn($name) => !self::isAuditEmptyValue($name)));
         }
 
-        if (!is_array($attachments)) return null;
+        return self::resolveDepartmentValue($value);
+    }
 
-        $result = [];
+    /* numeric id -> department name; anything else (already a name, empty, deleted department) is kept as is */
+    private static function resolveDepartmentValue($value)
+    {
+        if (is_string($value)) $value = trim($value);
 
-        foreach ($attachments as $attachment) {
-            if (!is_array($attachment)) continue;
-
-            $name = $attachment['name'] ?? $attachment['Name'] ?? null;
-            if (!$name) continue;
-
-            $result[] = [
-                'name' => $name,
-                'url' => $attachment['url'] ?? $attachment['Url'] ?? null,
-            ];
+        if (is_int($value) || (is_string($value) && ctype_digit($value))) {
+            return self::getDepartmentName((int) $value) ?? $value;
         }
 
-        return empty($result) ? null : $result;
+        return $value;
     }
 
     /* build one display-ready audit row */
@@ -996,4 +875,32 @@ class UserAuditHelper
         return [];
     }
 
+    /* reduce attachment data to name/url entries */
+    public static function formatAttachmentAuditValue($attachments)
+    {
+        if ($attachments === null || $attachments === '') return null;
+
+        if (is_string($attachments)) {
+            $decoded = json_decode($attachments, true);
+            $attachments = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($attachments)) return null;
+
+        $result = [];
+
+        foreach ($attachments as $attachment) {
+            if (!is_array($attachment)) continue;
+
+            $name = $attachment['name'] ?? $attachment['Name'] ?? null;
+            if (!$name) continue;
+
+            $result[] = [
+                'name' => $name,
+                'url' => $attachment['url'] ?? $attachment['Url'] ?? null,
+            ];
+        }
+
+        return empty($result) ? null : $result;
+    }
 }

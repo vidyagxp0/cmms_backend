@@ -27,6 +27,10 @@ class CalibrationPlannerDetailService
                 'checklistRecords',
             ])->findOrFail($id);
             self::addChildDatesToGrid($processRecord);
+
+            /* NEW, separate from child_records: row wise QA Verification Complete data of the is_child = 1 records */
+            $processRecord->setAttribute('qa_verification_rows', self::buildQaVerificationRows($processRecord->id));
+
             return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
         } catch (ModelNotFoundException $e) {
             return ResponseHelper::error('Process record not found.', 404);
@@ -54,8 +58,67 @@ class CalibrationPlannerDetailService
             $id = $record->parent_id;
         }
     }
+ 
+    private static function buildQaVerificationRows($parentId): array
+    {
+        $records = ProcessRecord::with('stage')
+            ->where('parent_id', $parentId)
+            ->where('is_child', 1)
+            ->get();
 
-    /* add the calculated dates to every grid row and store them when they changed */
+        if ($records->isEmpty()) {
+            return [];
+        }
+
+        $histories = self::findQaVerificationHistories($records->pluck('id')->all());
+
+        return $records
+            ->groupBy(fn($record) => (string) $record->row_id)
+            ->sortBy(fn($group, $rowId) => (int) $rowId)
+            ->map(function (Collection $group, $rowId) use ($histories) {
+                $items = self::sortChildren($group)->map(function ($record) use ($histories) {
+                    $entries = $histories[$record->id] ?? [];
+                    $latest = empty($entries) ? null : max($entries);
+                    return [
+                        'id' => $record->id,
+                        'record_number' => self::readRecordNumber($record),
+                        'stage' => $record->stage?->name,
+                        'initiation_date' => $record->initiation_date,
+                        'qa_verified_on' => $latest ? Carbon::parse($latest)->toDateString() : null,
+                        'qa_verified_at' => $latest,
+                        'qa_verification_history' => $entries,
+                    ];
+                })->values();
+
+                return [
+                    'row_id' => $rowId,
+                    'total_records' => $items->count(),
+                    'verified_records' => $items->whereNotNull('qa_verified_at')->count(),
+                    'records' => $items->all(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /* record id => all "QA Verification Complete" timestamps (oldest first), whatever the stage of the record is */
+    private static function findQaVerificationHistories(array $recordIds): array
+    {
+        $result = [];
+        $rows = DB::table('record_activity_histories as history')
+            ->join('activities as activity', 'activity.id', '=', 'history.activity_id')
+            ->whereIn('history.process_record_id', $recordIds)
+            ->where('activity.name', self::QA_VERIFIED_ACTIVITY)
+            ->orderBy('history.created_at')
+            ->select('history.process_record_id', 'history.created_at')
+            ->get();
+
+        foreach ($rows as $row) {
+            $result[$row->process_record_id][] = (string) $row->created_at;
+        }
+        return $result;
+    }
+
     private static function addChildDatesToGrid(ProcessRecord $planner): void
     {
         $calibrationChildren = ProcessRecord::with('stage')

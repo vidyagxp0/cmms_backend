@@ -217,7 +217,9 @@ class CalibrationManagementReportService
 
                     'short_description' => $record->short_description,
 
-                    'initiation_date' => self::formatReportDate($record->initiation_date, 'd-m-Y H:i'),
+                    'initiation_date' => self::formatReportDate($record->initiation_date, 'd-m-Y H:i'),                    
+                    'document_number' => $processFields['documentNumber']['value'] ?? null,
+                    'document_type' => $processFields['documentType']['value'] ?? null,
 
                 ],
 

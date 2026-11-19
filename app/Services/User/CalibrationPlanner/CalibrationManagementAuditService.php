@@ -20,7 +20,7 @@ class CalibrationManagementAuditService
     public static function getProcessRecordAudits($id, Request $request)
     {
         try {
-            $perPage = 10;
+            $perPage = 30;
             $page = max((int) $request->input('page', 1), 1);
             $search = trim((string) $request->input('search', ''));
             $fromDate = $request->input('from_date');
