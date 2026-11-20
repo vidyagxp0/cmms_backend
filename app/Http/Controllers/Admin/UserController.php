@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\ResponseHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\User;
 use App\Services\Admin\UserService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -97,6 +101,45 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Failed to update user status.',
             ], 500);
+        }
+    }
+
+    /* checks username and password */
+    public function checkCredentials(Request $request)
+    {
+        try {
+            $request->validate([
+                'username' => 'required|string',
+                'password' => 'required|string',
+            ]);
+
+            $user = User::where('username', $request->username)->first();
+
+            if (!$user) {
+                return ResponseHelper::error('Invalid username or password.', 401);
+            }
+
+            if (!Hash::check($request->password, $user->password)) {
+                return ResponseHelper::error('Invalid username or password.', 401);
+            }
+
+            return ResponseHelper::success(
+                [
+                    'user_id' => $user->id,
+                    'username' => $user->username,
+                    'name' => $user->name,
+                ],
+                'Credentials verified successfully.'
+            );
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
+
+        } catch (\Exception $e) {
+            return ResponseHelper::error(
+                'Something went wrong while checking credentials.',
+                500
+            );
         }
     }
 }

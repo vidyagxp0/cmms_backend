@@ -273,5 +273,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         /* get notification listing */
          Route::get('/record-notifications', [DashboardController::class, 'getNotificationList'])->name('record-notification');
+         Route::post('/check-user-crendentials', [UserController::class, 'checkCredentials'])->name('check-user-crendentials');
     });
 });
