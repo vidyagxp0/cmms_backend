@@ -42,7 +42,9 @@ class EquipmentMasterService
             'hod_review_comments',
             'qa_review_comments',
             'initiator_id',
-            'department_id'
+            'department_id',
+            'asset_code',
+            'capacity'
         ];
     }
 
@@ -62,7 +64,7 @@ class EquipmentMasterService
             $categoryKey = strtolower(str_replace(['-', '_'], ' ', trim((string) $request->category)));
             $category = $categoryMap[$categoryKey] ?? null;
 
-            $equipments = InstrumentMaster::query()
+        $equipments = InstrumentMaster::query()
                 ->when($request->search, function ($query, $search) {
                     $query->where(function ($q) use ($search) {
                         $q->where('instrument_name', 'like', "%{$search}%")

@@ -39,7 +39,9 @@ class SpareInstrumentMasterService
             'hod_review_comments',
             'qa_review_comments',
             'initiator_id',
-            'department_id'
+            'department_id',
+            'asset_code',
+            'capacity'
         ];
     }
 

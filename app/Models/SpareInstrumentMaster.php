@@ -28,7 +28,9 @@ class SpareInstrumentMaster extends Model
         'initiator_id',
         'is_imported',
         'category',
-        'department_id'
+        'department_id',
+        'asset_code',
+        'capacity'
     ];
 
     protected $casts = [

@@ -30,7 +30,9 @@ class FieldInstrumentMaster extends Model
         'qa_review_comments',
         'initiator_id',
         'is_imported',
-        'department_id'
+        'department_id',
+        'asset_code',
+        'capacity'
     ];
 
     protected $casts = [
