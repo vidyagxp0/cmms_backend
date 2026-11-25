@@ -29,8 +29,22 @@ class FIeldInstrumentReportService
             /* general information */
             $recordFields = self::prepareReportFields([
                 ['label' => 'Process Name', 'value' => $instrument->process?->name ?? '-'],
-                ['label' => 'Initiator', 'value' => self::getInitiatorName($instrument)],
-                ['label' => 'Current Stage', 'value' => $instrument->stage?->name ?? '-'],
+
+                ...(
+                    (int) $instrument->is_imported === 0
+                    ? [
+                        [
+                            'label' => 'Initiator',
+                            'value' => self::getInitiatorName($instrument),
+                        ],
+                        [
+                            'label' => 'Stage',
+                            'value' => $instrument->stage?->name ?? '-',
+                        ],
+                    ]
+                    : []
+                ),
+
                 [
                     'label' => 'Created On',
                     'value' => $instrument->created_at
@@ -41,115 +55,39 @@ class FIeldInstrumentReportService
 
             /* field instrument details */
             $specFields = self::prepareReportFields([
+                ['label' => 'Department Name', 'value' => $instrument->department->name],
                 ['label' => 'Equipment Name', 'value' => $instrument->equipment_name],
                 ['label' => 'Instrument Name', 'value' => $instrument->instrument_name],
                 ['label' => 'Instrument ID No.', 'value' => $instrument->instrument_id_no],
                 ['label' => 'Make', 'value' => $instrument->make],
                 ['label' => 'Sr. No. / Model No.', 'value' => $instrument->sr_no_model_no],
-                ['label' => 'Location', 'value' => $instrument->location],
-                ['label' => 'Category', 'value' => $instrument->category],
                 ['label' => 'Least Count', 'value' => $instrument->least_count],
+                ['label' => 'Location', 'value' => $instrument->location],
                 ['label' => 'Accuracy', 'value' => $instrument->accuracy],
                 ['label' => 'Instrument Range', 'value' => $instrument->instrument_range],
                 ['label' => 'Operating Range', 'value' => $instrument->operating_range],
                 ['label' => 'Calibration Test Points', 'value' => $instrument->calibration_test_points],
+                ['label' => 'Asset Code', 'value' => $instrument->asset_code],
+                ['label' => 'Capacity', 'value' => $instrument->capacity],
+                ['label' => 'Category', 'value' => $instrument->category],
             ]);
 
-            /* HOD review: comments + attachment, printed as one line without a heading */
-            $hodFields = self::prepareReportFields([
-                ['label' => 'HOD Review Comments', 'value' => $instrument->hod_review_comments],
-                ['label' => 'HOD Review Attachment', 'value' => self::attachmentLabel($instrument->hod_review_attachment)],
-            ]);
+            $hodFields = [];
+            $qaFields = [];
 
-            /* QA approver review: comments + attachment, printed as one line without a heading */
-            $qaFields = self::prepareReportFields([
-                ['label' => 'QA Review Comments', 'value' => $instrument->qa_review_comments],
-                ['label' => 'QA Review Attachment', 'value' => self::attachmentLabel($instrument->qa_review_attachment)],
-            ]);
+            if ((int) $instrument->is_imported === 0) {
+                /* HOD review: comments + attachment, printed as one line without a heading */
+                $hodFields = self::prepareReportFields([
+                    ['label' => 'HOD Review Comments', 'value' => $instrument->hod_review_comments],
+                    ['label' => 'HOD Review Attachment', 'value' => self::attachmentLabel($instrument->hod_review_attachment)],
+                ]);
 
-            /* checklist configuration */
-            $config = $instrument->checklist_config;
-
-            if (is_string($config)) {
-                $config = json_decode($config, true);
+                /* QA approver review: comments + attachment, printed as one line without a heading */
+                $qaFields = self::prepareReportFields([
+                    ['label' => 'QA Review Comments', 'value' => $instrument->qa_review_comments],
+                    ['label' => 'QA Review Attachment', 'value' => self::attachmentLabel($instrument->qa_review_attachment)],
+                ]);
             }
-
-            if (!is_array($config)) {
-                $config = [];
-            }
-
-            $questionColumns = self::cleanColumns($config['question_columns'] ?? []);
-            $dataColumns = self::cleanColumns($config['data_columns'] ?? []);
-
-            $rows = [];
-            $hasFrequency = false;
-
-            foreach (($config['questions'] ?? []) as $question) {
-                if (!is_array($question)) {
-                    continue;
-                }
-
-                $values = is_array($question['values'] ?? null) ? $question['values'] : [];
-                $cells = is_array($question['data_cells'] ?? null) ? $question['data_cells'] : [];
-
-                $questionValues = [];
-                $hasQuestionText = false;
-
-                foreach ($questionColumns as $column) {
-                    $value = $values[$column['id']] ?? '';
-                    $value = is_scalar($value) ? trim((string) $value) : '';
-
-                    if ($value !== '') {
-                        $hasQuestionText = true;
-                    }
-
-                    $questionValues[] = $value !== '' ? $value : '-';
-                }
-
-                /* skip completely empty questions */
-                if (!$hasQuestionText) {
-                    continue;
-                }
-
-                $cellValues = [];
-
-                foreach ($dataColumns as $column) {
-                    $cellValues[] = self::describeCell($cells[$column['id']] ?? null);
-                }
-
-                $frequencyEnabled = ($question['frequency_enabled'] ?? true) !== false;
-                $frequency = $frequencyEnabled
-                    ? trim((string) ($question['frequency'] ?? ''))
-                    : '';
-
-                if ($frequency !== '') {
-                    $hasFrequency = true;
-                }
-
-                $rows[] = [
-                    'questions' => $questionValues,
-                    'cells' => $cellValues,
-                    'frequency' => $frequency !== '' ? $frequency : '-',
-                ];
-            }
-
-            /* checklist notes */
-            $rawNotes = $config['notes'] ?? $config['note'] ?? [];
-            $noteItems = [];
-
-            if (is_array($rawNotes)) {
-                foreach (($rawNotes['items'] ?? []) as $item) {
-                    $text = is_array($item)
-                        ? trim((string) ($item['value'] ?? ''))
-                        : (is_scalar($item) ? trim((string) $item) : '');
-
-                    if ($text !== '') {
-                        $noteItems[] = $text;
-                    }
-                }
-            }
-
-            $checklistName = trim((string) ($config['checklist_name'] ?? ''));
 
             /* report sections, printed in this order (a section without a title has no heading) */
             $sections = [
@@ -168,27 +106,7 @@ class FIeldInstrumentReportService
                     'title' => null,
                     'fields' => array_merge($hodFields, $qaFields),
                 ],
-                [
-                    'type' => 'checklist',
-                    'title' => $checklistName !== '' ? $checklistName : 'Checklist',
-                    'checklist' => [
-                        'include_serial_number' => ($config['include_serial_number'] ?? true) !== false,
-                        'question_headers' => array_column($questionColumns, 'column_header'),
-                        'data_headers' => array_column($dataColumns, 'column_header'),
-                        'show_frequency' => $hasFrequency,
-                        'rows' => $rows,
-                    ],
-                ],
             ];
-
-            if (!empty($noteItems)) {
-                $sections[] = [
-                    'type' => 'notes',
-                    'title' => 'Notes',
-                    'include_serial_number' => (is_array($rawNotes) ? ($rawNotes['include_serial_number'] ?? true) : true) !== false,
-                    'items' => $noteItems,
-                ];
-            }
 
             /* report data */
             $data = [
@@ -211,6 +129,34 @@ class FIeldInstrumentReportService
 
             $pdf = Pdf::loadView('Reports.User.FieldInstrumentReport', $data);
             $pdf->setPaper('a4', 'landscape');
+
+            $pdf->render();
+            $dompdf   = $pdf->getDomPDF();
+            $canvas   = $dompdf->getCanvas();
+            $font     = $dompdf->getFontMetrics()->get_font('DejaVu Sans', 'normal');
+            $fontBold = $dompdf->getFontMetrics()->get_font('DejaVu Sans', 'bold');
+            $w = $canvas->get_width();
+            $h = $canvas->get_height();
+
+            $printedBy   = auth()->user()?->name ?? 'System';
+            $printedOn   = now()->format('d-m-Y H:i:s');
+            $processName = "Field Instrument Master";
+
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $fontBold, $w, $h, $printedBy, $printedOn, $processName) {
+                $canvas->line(16, $h - 40, $w - 16, $h - 40, [0.83, 0.87, 0.92], 0.8);
+
+                /* process details */
+                $canvas->text(16, $h - 32, $processName, $fontBold, 7.5, [0.12, 0.25, 0.4]);
+                $canvas->text(16, $h - 22, 'Shilpa Medicare Pvt Ltd | Controlled Document', $font, 7, [0.36, 0.42, 0.49]);
+
+                /* printing details */
+                $canvas->text($w - 190, $h - 32, 'Printed By: ' . $printedBy, $font, 7, [0.36, 0.42, 0.49]);
+                $canvas->text($w - 190, $h - 22, 'Printed On: ' . $printedOn, $font, 7, [0.36, 0.42, 0.49]);
+                $canvas->text($w - 190, $h - 12, "Page $pageNumber of $pageCount", $font, 7, [0.36, 0.42, 0.49]);
+            });
+
+            return $pdf->stream('instrument-master-' . $instrument->id . '.pdf');
+
             $pdf->setOption('defaultFont', 'DejaVu Sans');
 
             return $pdf->stream('field-instrument-master-' . $instrument->id . '.pdf');

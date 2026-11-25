@@ -37,7 +37,7 @@ class AuthRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'username.required' => 'Email is required.',
+            'username.required' => 'Username is required.',
             'password.required' => 'Password is required.',
         ];
     }

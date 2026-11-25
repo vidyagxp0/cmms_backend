@@ -212,6 +212,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/update-master-department-equipment/{id}',[DepartmentEquipmentMasterController::class, 'update'])->name('update-master-department-equipment');
         Route::get('/spare-instruments/audit-trail/{id}', [DepartmentEquipmentMasterController::class, 'getInstrumentAuditTrail'])->name('instrument.audit.details');
         Route::post('/department-equipment-record-stage/{id}',[DepartmentEquipmentMasterController::class, 'moveStage'])->name('department-equipment-record-stage');
+        Route::get('/equipment-master-report/{id}',[DepartmentEquipmentMasterController::class, 'equipmentMasterSingleReport'])->name('equipment-master-report');
         Route::get('/department-equipment-record-permission/{id}',[DepartmentEquipmentMasterController::class, 'checkEquipmentMasterRecordPermission'])->name('department-equipment-record-permission');
 
         /* preventive addendum routes */

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ExcelImport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Import\ExcelImportRequest;
 use App\Jobs\ProcessExcelImportChunkJob;
+use App\Services\ExcelImport\ExcelImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,8 +45,45 @@ class ExcelImportController extends Controller
                 config('cmms-import.first_data_row', 7)
             );
 
-            $highestRow = (int) ($worksheets[0]['totalRows'] ?? 0);
-            $totalRows = max(0, $highestRow - $firstDataRow + 1);
+            /* equipment master: count rows of all sheets */
+            if ($category === 'equipment_master') {
+                $totalRows = app(ExcelImportService::class)->countEquipmentMasterRows($absolutePath);
+            } else {
+                $highestRow = (int) ($worksheets[0]['totalRows'] ?? 0);
+                $totalRows = max(0, $highestRow - $firstDataRow + 1);
+            }
+
+            /* empty file: stop here with a clear message */
+            if ($totalRows <= 0) {
+                Storage::disk('local')->delete($storedPath);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The Excel file you uploaded is empty. Please add the equipment details below the header row and upload it again.',
+                ], 422);
+            }
+
+            /* codes already in the database */
+            $duplicateNote = null;
+
+            if ($category === 'equipment_master') {
+                $check = app(ExcelImportService::class)->checkEquipmentMasterFile($absolutePath);
+
+                if ($check['unique'] > 0 && $check['existing'] >= $check['unique']) {
+                    Storage::disk('local')->delete($storedPath);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This file has already been imported. All ' . $check['unique'] . ' equipment records in it already exist, so nothing new was added.',
+                    ], 422);
+                }
+
+                if ($check['existing'] > 0) {
+                    $duplicateNote = $check['existing'] . ' of ' . $check['unique']
+                        . ' equipment records already exist (for example ' . implode(', ', $check['sample'])
+                        . ') and will be skipped.';
+                }
+            }
 
             $importId = DB::table('excel_imports')->insertGetId([
                 'category' => $category,
@@ -56,7 +94,7 @@ class ExcelImportController extends Controller
                     255
                 ),
                 'file_path' => $storedPath,
-                'status' => $totalRows > 0 ? 'queued' : 'completed',
+                'status' => 'queued',
                 'total_rows' => $totalRows,
                 'processed_rows' => 0,
                 'success_rows' => 0,
@@ -67,26 +105,23 @@ class ExcelImportController extends Controller
                 'updated_at' => now(),
             ]);
 
-            if ($totalRows > 0) {
-                ProcessExcelImportChunkJob::dispatch(
-                    $importId,
-                    $firstDataRow
-                )->onQueue(config('cmms-import.queue', 'excel-imports'));
-            } else {
-                Storage::disk('local')->delete($storedPath);
-            }
+            ProcessExcelImportChunkJob::dispatch(
+                $importId,
+                $firstDataRow
+            )->onQueue(config('cmms-import.queue', 'excel-imports'));
 
             return response()->json([
                 'success' => true,
-                'message' => $totalRows > 0
-                    ? 'Import queued successfully.'
-                    : 'The workbook contains no data rows to import.',
+                'message' => $duplicateNote
+                    ? 'Import started. ' . $duplicateNote . ' The remaining records are being imported.'
+                    : 'Your file was uploaded. The import is running, the result will be shown shortly.',
                 'data' => [
                     'import_id' => $importId,
                     'category' => $category,
                     'department_id' => $departmentId,
-                    'status' => $totalRows > 0 ? 'queued' : 'completed',
+                    'status' => 'queued',
                     'total_rows' => $totalRows,
+                    'duplicate_warning' => $duplicateNote,
                 ],
             ], 202);
         } catch (Throwable $exception) {
@@ -98,7 +133,7 @@ class ExcelImportController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to queue the Excel import. Verify the workbook and try again.',
+                'message' => 'We could not read this Excel file. Please make sure it is a valid .xlsx file and try again.',
             ], 422);
         }
     }
@@ -125,6 +160,22 @@ class ExcelImportController extends Controller
 
         $totalRows = (int) $import->total_rows;
         $processedRows = (int) $import->processed_rows;
+        $errors = json_decode($import->errors ?: '[]', true) ?: [];
+
+        /* human readable result once the import has finished */
+        $toastType = null;
+        $toastMessage = null;
+
+        if ($import->status === 'completed') {
+            [$toastType, $toastMessage] = app(ExcelImportService::class)->buildImportMessage(
+                (int) $import->success_rows,
+                (int) $import->failed_rows,
+                $errors
+            );
+        } elseif ($import->status === 'failed') {
+            $toastType = 'error';
+            $toastMessage = 'The import could not be completed. Please try again, or contact support if it keeps happening.';
+        }
 
         return response()->json([
             'success' => true,
@@ -141,7 +192,9 @@ class ExcelImportController extends Controller
                 'progress_percent' => $totalRows > 0
                     ? round(($processedRows / $totalRows) * 100, 2)
                     : 100,
-                'errors' => json_decode($import->errors ?: '[]', true) ?: [],
+                'errors' => $errors,
+                'toast_type' => $toastType,
+                'toast_message' => $toastMessage,
                 'created_at' => $import->created_at,
                 'updated_at' => $import->updated_at,
             ],

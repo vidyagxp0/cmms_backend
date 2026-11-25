@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,10 +7,14 @@
 
     <style>
         /* ---------- page ---------- */
-        /* top / bottom margin here; left / right margin is on .page-wrap because the @page side margins are ignored */
-        @page { size: A4 landscape; margin: 8mm 0 16mm 0; }
+        @page {
+            size: A4 landscape;
+            margin: 8mm 0 22mm 0;
+        }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         html, body {
             width: 100%;
@@ -22,9 +27,13 @@
             line-height: 1.35;
         }
 
-        .page-wrap { width: auto; margin: 0; padding: 0 5.5mm; }
+        .page-wrap {
+            width: auto;
+            margin: 0;
+            padding: 0 5.5mm;
+        }
 
-        /* ---------- header (first page only) ---------- */
+        /* ---------- header ---------- */
         .company-box {
             border: 1px solid #d3dfec;
             border-bottom: 0;
@@ -33,6 +42,7 @@
             padding: 15px 10px 14px 10px;
             margin: 0;
         }
+
         .company-name {
             color: #1f3f66;
             font-size: 16px;
@@ -42,6 +52,7 @@
             margin: 0;
             padding: 0;
         }
+
         .report-banner {
             background: #254870;
             color: #ffffff;
@@ -51,38 +62,70 @@
             letter-spacing: .6px;
             text-transform: uppercase;
             padding: 12px 10px;
-            margin: 0;
+            margin: 0 0 10px 0;
         }
-        .meta-table {
+
+        /* ---------- footer: every page ---------- */
+        /* .pdf-footer {
+            position: fixed;
+            left: 5.5mm;
+            right: 5.5mm;
+            bottom: -15mm;
+            height: 10mm;
+            z-index: 1000;
+        } */
+
+        .footer-wrapper {
+            border-top: 1px solid #d3dfec;
+            padding-top: 4px;
+        }
+
+        .footer-table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed;
-            margin: 10px 0 16px 0;
         }
-        .meta-table td {
-            width: 50%;
-            border: 1px solid #d3dfec;
-            background: #f4f8fc;
-            color: #2a3a4d;
-            font-size: 8.5px;
-            padding: 9px 10px;
-            vertical-align: middle;
-        }
-        .meta-table td strong { color: #1f3f66; font-weight: bold; }
 
-        /* ---------- footer (every page) ---------- */
-        footer { position: fixed; left: 5.5mm; right: 5.5mm; bottom: -12mm; height: 10mm; }
-        .footer-wrapper { border-top: 1px solid #d3dfec; padding-top: 4px; }
-        .footer-table { width: 100%; border-collapse: collapse; }
-        .footer-table td { border: 0; padding: 0; vertical-align: top; font-size: 7.5px; color: #5b6b7e; }
-        .footer-left { text-align: left; }
-        .footer-right { text-align: right; }
-        .footer-company { color: #1f3f66; font-weight: bold; text-transform: uppercase; letter-spacing: .3px; }
-        .footer-meta { color: #5b6b7e; font-size: 7px; }
+        .footer-table td {
+            border: 0;
+            padding: 0;
+            vertical-align: top;
+            font-size: 7.5px;
+            color: #5b6b7e;
+        }
+
+        .footer-left {
+            text-align: left;
+            width: 50%;
+        }
+
+        .footer-right {
+            text-align: right;
+            width: 50%;
+        }
+
+        .footer-company {
+            color: #1f3f66;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        .footer-meta {
+            color: #5b6b7e;
+            font-size: 7px;
+        }
 
         /* ---------- section headings ---------- */
-        .section { margin: 0 0 16px 0; padding: 0; page-break-inside: avoid; }
-        .section.allow-break { page-break-inside: auto; }
+        .section {
+            margin: 0 0 16px 0;
+            padding: 0;
+            page-break-inside: avoid;
+        }
+
+        .section.allow-break {
+            page-break-inside: auto;
+        }
+
         .section-heading {
             background: #eaf1f9;
             color: #1f3f66;
@@ -98,8 +141,15 @@
             page-break-after: avoid;
         }
 
-        /* ---------- field tables (label | value | label | value) ---------- */
-        .data-table { width: 100%; margin: 0; padding: 0; border-collapse: collapse; table-layout: fixed; }
+        /* ---------- field tables ---------- */
+        .data-table {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
         .data-table td {
             border: 1px solid #d3dfec;
             font-size: 8.5px;
@@ -108,11 +158,29 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
-        .data-table .field-name { width: 24%; background: #f4f8fc; color: #1f3f66; font-weight: bold; }
-        .data-table .field-value { width: 26%; background: #ffffff; color: #2a3a4d; }
+
+        .data-table .field-name {
+            width: 24%;
+            background: #f4f8fc;
+            color: #1f3f66;
+            font-weight: bold;
+        }
+
+        .data-table .field-value {
+            width: 26%;
+            background: #ffffff;
+            color: #2a3a4d;
+        }
 
         /* ---------- checklist grid ---------- */
-        .grid-table { width: 100%; margin: 0; padding: 0; border-collapse: collapse; table-layout: fixed; }
+        .grid-table {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
         .grid-table th {
             background: #254870;
             color: #ffffff;
@@ -125,6 +193,7 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+
         .grid-table td {
             background: #ffffff;
             color: #2a3a4d;
@@ -136,9 +205,21 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
-        .grid-table td.left { text-align: left; }
-        .grid-table tbody tr:nth-child(even) td { background: #f4f8fc; }
-        .grid-legend { margin: 5px 0 0 0; font-size: 7.5px; color: #5b6b7e; }
+
+        .grid-table td.left {
+            text-align: left;
+        }
+
+        .grid-table tbody tr:nth-child(even) td {
+            background: #f4f8fc;
+        }
+
+        .grid-legend {
+            margin: 5px 0 0 0;
+            font-size: 7.5px;
+            color: #5b6b7e;
+        }
+
         .empty-grid {
             color: #5b6b7e;
             background: #f4f8fc;
@@ -149,67 +230,68 @@
         }
 
         /* ---------- page breaks ---------- */
-        .data-table tr, .grid-table tr { page-break-inside: avoid; }
-        thead { display: table-header-group; }
+        .data-table tr,
+        .grid-table tr {
+            page-break-inside: avoid;
+        }
+
+        thead {
+            display: table-header-group;
+        }
     </style>
 </head>
+
 <body>
 
-    {{-- footer: repeats on every page --}}
-    <footer>
-        <div class="footer-wrapper">
-            <table class="footer-table">
-                <tr>
-                    <td class="footer-left">
-                        <div class="footer-company">{{ $header['company_name'] ?? 'Shilpa Medicare Pvt Ltd' }}</div>
-                        <div class="footer-meta">{{ $header['report_title'] ?? '-' }} &nbsp;|&nbsp; Controlled Document</div>
-                    </td>
-                    <td class="footer-right">
-                        <div>Generated By: <strong>{{ $footer['generated_by'] ?? 'System' }}</strong></div>
-                        <div class="footer-meta">Generated On: {{ $footer['generated_at'] ?? '-' }}</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </footer>
-
+    {{-- REPORT CONTENT --}}
     <div class="page-wrap">
 
-        {{-- header: first page only --}}
+        {{-- HEADER: FIRST PAGE --}}
         <div class="company-box">
-            <div class="company-name">{{ $header['company_name'] ?? 'Shilpa Medicare Pvt Ltd' }}</div>
+            <div class="company-name">
+                {{ $header['company_name'] ?? 'Shilpa Medicare Pvt Ltd' }}
+            </div>
         </div>
-        <div class="report-banner">{{ $header['report_title'] ?? 'Instrument Master' }}</div>
 
-        <table class="meta-table">
-            <tr>
-                <td><strong>Document Number:</strong> {{ $header['document_number'] ?? '-' }}</td>
-                <td><strong>Document Type:</strong> {{ $header['document_type'] ?? '-' }}</td>
-            </tr>
-        </table>
+        <div class="report-banner">
+            {{ $header['report_title'] ?? 'Instrument Master' }}
+        </div>
 
-        {{-- report content --}}
+        {{-- REPORT SECTIONS --}}
         @foreach($sections ?? [] as $section)
+
             @php
                 $sectionType = $section['type'] ?? 'fields';
                 $sectionTitle = $section['title'] ?? null;
             @endphp
 
-            {{-- ================= field section (label | value | label | value) ================= --}}
+            {{-- FIELD SECTION --}}
             @if($sectionType === 'fields')
+
                 <div class="section">
-                    {{-- a section without a title (HOD / QA review lines) is printed without a heading --}}
+
                     @if(!empty($sectionTitle))
-                        <div class="section-heading">{{ $sectionTitle }}</div>
+                        <div class="section-heading">
+                            {{ $sectionTitle }}
+                        </div>
                     @endif
 
                     <table class="data-table">
                         <tbody>
+
                             @foreach(array_chunk($section['fields'] ?? [], 2) as $fieldPair)
+
                                 <tr>
                                     @foreach($fieldPair as $field)
-                                        <td class="field-name">{{ $field['label'] ?? '-' }}</td>
-                                        <td class="field-value">{{ $field['value'] ?? '-' }}</td>
+
+                                        <td class="field-name">
+                                            {{ $field['label'] ?? '-' }}
+                                        </td>
+
+                                        <td class="field-value">
+                                            {{ $field['value'] ?? '-' }}
+                                        </td>
+
                                     @endforeach
 
                                     @if(count($fieldPair) === 1)
@@ -217,101 +299,19 @@
                                         <td class="field-value"></td>
                                     @endif
                                 </tr>
+
                             @endforeach
+
                         </tbody>
                     </table>
+
                 </div>
 
-            {{-- ================= checklist ================= --}}
-            @elseif($sectionType === 'checklist')
-                @php
-                    $checklist = $section['checklist'] ?? [];
-                    $checklistRows = $checklist['rows'] ?? [];
-                    $questionHeaders = $checklist['question_headers'] ?? [];
-                    $dataHeaders = $checklist['data_headers'] ?? [];
-                    $showSerial = $checklist['include_serial_number'] ?? true;
-                    $showFrequency = $checklist['show_frequency'] ?? false;
-
-                    /* column widths (%) sit on the header cells; question columns get more room than data columns */
-                    $srWidth = $showSerial ? 5 : 0;
-                    $frequencyWidth = $showFrequency ? 9 : 0;
-                    $questionWeight = 2;
-                    $dataWeight = 1.2;
-                    $totalWeight = max((count($questionHeaders) * $questionWeight) + (count($dataHeaders) * $dataWeight), 1);
-                    $remainingWidth = 100 - $srWidth - $frequencyWidth;
-                    $questionWidth = round($remainingWidth * $questionWeight / $totalWeight, 2);
-                    $dataWidth = round($remainingWidth * $dataWeight / $totalWeight, 2);
-                @endphp
-
-                <div class="section allow-break">
-                    <div class="section-heading">{{ $sectionTitle ?: 'Checklist' }}</div>
-
-                    @if(count($checklistRows) === 0)
-                        <div class="empty-grid">No checklist configured.</div>
-                    @else
-                        <table class="grid-table">
-                            <thead>
-                                <tr>
-                                    @if($showSerial)
-                                        <th style="width: {{ $srWidth }}%">Sr. No.</th>
-                                    @endif
-                                    @foreach($questionHeaders as $columnHeader)
-                                        <th style="width: {{ $questionWidth }}%">{{ $columnHeader }}</th>
-                                    @endforeach
-                                    @foreach($dataHeaders as $columnHeader)
-                                        <th style="width: {{ $dataWidth }}%">{{ $columnHeader }}</th>
-                                    @endforeach
-                                    @if($showFrequency)
-                                        <th style="width: {{ $frequencyWidth }}%">Frequency</th>
-                                    @endif
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                @foreach($checklistRows as $rowIndex => $row)
-                                    <tr>
-                                        @if($showSerial)
-                                            <td>{{ $rowIndex + 1 }}</td>
-                                        @endif
-                                        @foreach(($row['questions'] ?? []) as $text)
-                                            <td class="left">{{ $text }}</td>
-                                        @endforeach
-                                        @foreach(($row['cells'] ?? []) as $text)
-                                            <td>{{ $text }}</td>
-                                        @endforeach
-                                        @if($showFrequency)
-                                            <td>{{ $row['frequency'] ?? '-' }}</td>
-                                        @endif
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        <div class="grid-legend">* Required field</div>
-                    @endif
-                </div>
-
-            {{-- ================= notes ================= --}}
-            @elseif($sectionType === 'notes')
-                <div class="section">
-                    <div class="section-heading">{{ $sectionTitle ?: 'Notes' }}</div>
-
-                    <table class="data-table">
-                        <tbody>
-                            @foreach(($section['items'] ?? []) as $noteIndex => $item)
-                                <tr>
-                                    @if($section['include_serial_number'] ?? true)
-                                        <td class="field-name" style="width: 5%; text-align: center;">{{ $noteIndex + 1 }}</td>
-                                    @endif
-                                    <td style="background: #ffffff;">{{ $item }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
             @endif
+
         @endforeach
 
-    </div>{{-- /page-wrap --}}
+    </div>
 
 </body>
 </html>

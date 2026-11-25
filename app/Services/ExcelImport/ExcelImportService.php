@@ -244,117 +244,287 @@ class ExcelImportService
         }
     }
 
+    /* list all sheets with virtual row ranges */
+    public function getEquipmentMasterSheets(string $path): array
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+
+        $firstDataRow = (int) config('cmms-import.first_data_rows.equipment_master', 2);
+
+        $sheets = [];
+        $base = $firstDataRow;
+
+        foreach ($reader->listWorksheetInfo($path) as $info) {
+            $dataRows = max(0, (int) $info['totalRows'] - ($firstDataRow - 1));
+
+            $sheets[] = [
+                'name'       => $info['worksheetName'],
+                'base'       => $base,                       // first virtual row of this sheet
+                'data_rows'  => $dataRows,
+                'last_virtual' => $base + $dataRows - 1,     // last virtual row of this sheet
+            ];
+
+            $base += $dataRows;
+        }
+
+        return $sheets;
+    }
+
+    /* total data rows across all sheets (use for total_rows) */
+    public function countEquipmentMasterRows(string $path): int
+    {
+        return array_sum(array_column($this->getEquipmentMasterSheets($path), 'data_rows'));
+    }
+
+    /* unique codes in the file vs codes already in the database */
+    public function checkEquipmentMasterFile(string $path): array
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $spreadsheet = $reader->load($path);
+
+        $ids = [];
+
+        try {
+            foreach ($spreadsheet->getWorksheetIterator() as $sheet) {
+                $rows = $sheet->toArray(null, false, false, false);
+                $header = array_shift($rows) ?: [];
+
+                $headers = [];
+                foreach ($header as $i => $value) {
+                    $headers[$i + 1] = $this->normalizeHeader((string) $value);
+                }
+
+                $map = $this->buildEquipmentMasterColumnMap($headers);
+
+                if (!isset($map['equipment_name'], $map['equipment_id_no'])) {
+                    continue;
+                }
+
+                foreach ($rows as $row) {
+                    $name = $this->normalizeExcelValue($row[$map['equipment_name'] - 1] ?? null);
+                    $id = $this->normalizeExcelValue($row[$map['equipment_id_no'] - 1] ?? null);
+
+                    if ($name !== null && $id !== null) {
+                        $ids[mb_strtolower($id)] = $id;
+                    }
+                }
+            }
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+        }
+
+        $existing = [];
+
+        foreach (array_chunk(array_values($ids), 500) as $chunk) {
+            $found = DB::table('equipment_masters')
+                ->whereIn('equipment_id_no', $chunk)
+                ->pluck('equipment_id_no')
+                ->all();
+
+            $existing = array_merge($existing, $found);
+        }
+
+        return [
+            'unique' => count($ids),
+            'existing' => count($existing),
+            'sample' => array_slice($existing, 0, 3),
+        ];
+    }
+
+    /* throw a friendly error for empty files */
+    public function assertEquipmentMasterFileUsable(string $path): void
+    {
+        $sheets = $this->getEquipmentMasterSheets($path);
+
+        if (array_sum(array_column($sheets, 'data_rows')) <= 0) {
+            throw new RuntimeException(
+                'The Excel file you uploaded is empty. Please add the equipment details below the header row and upload it again.'
+            );
+        }
+    }
+
+    /* toaster [type, message] from final import totals */
+    public function buildImportMessage(int $success, int $failed, array $errors = []): array
+    {
+        $allDuplicates = !empty($errors)
+            && count(array_filter($errors, fn ($e) => ($e['type'] ?? '') === 'duplicate')) === count($errors);
+
+        if ($success === 0 && $failed === 0) {
+            return ['error', 'The Excel file you uploaded does not contain any equipment data. Please check the file and try again.'];
+        }
+
+        if ($success === 0 && $allDuplicates) {
+            return ['warning', 'This file has already been imported. All ' . $failed . ' equipment records in it already exist, so nothing new was added.'];
+        }
+
+        if ($success === 0) {
+            return ['error', 'No equipment could be imported. ' . $failed . ' rows had problems. Please check the error details, correct the file and upload it again.'];
+        }
+
+        if ($failed === 0) {
+            return ['success', $success . ' equipment records were imported successfully.'];
+        }
+
+        return ['warning', $success . ' equipment records were imported. ' . $failed . ' rows were skipped because they already exist or have missing details.'];
+    }
+
+    /* equipment master import: all sheets */
     private function processEquipmentMasterChunk(object $import, int $startRow): array
     {
         $chunkSize = max(1, (int) config('cmms-import.chunk_size', 500));
         $firstDataRow = (int) config('cmms-import.first_data_rows.equipment_master', 2);
-        $lastDataRow = $firstDataRow + (int) $import->total_rows - 1;
-        $endRow = min($startRow + $chunkSize - 1, $lastDataRow);
-
-        $category = strtolower(trim((string) ($import->euipment_master_type ?? '')));
+        $headerRow = $firstDataRow - 1;
 
         $departmentId = !empty($import->department_id)
             ? (int) $import->department_id
             : null;
 
-        $departmentRequired = !in_array($category, [
-            'master_instrument',
-            'spare_instrument_master',
-        ], true);
-
-        if ($departmentRequired && !$departmentId) {
-            throw new RuntimeException('Department ID is missing from this import.');
+        if (!$departmentId) {
+            throw new RuntimeException('Please select a department before importing.');
         }
 
         $disk = Storage::disk('local');
         $relativePath = $import->file_path;
 
         if (!$relativePath || !$disk->exists($relativePath)) {
-            throw new RuntimeException('The stored Excel file could not be found.');
+            throw new RuntimeException('The uploaded Excel file could not be found. Please upload it again.');
         }
 
         $path = $disk->path($relativePath);
-        $headers = $this->getEquipmentMasterHeaders($path);
-        $columnMap = $this->buildEquipmentMasterColumnMap($headers);
 
-        if (!isset($columnMap['equipment_name'])) {
-            throw new RuntimeException('Equipment / Instrument Name column is missing.');
+        /* all sheets, with virtual row ranges */
+        $sheets = $this->getEquipmentMasterSheets($path);
+        $totalVirtualRows = array_sum(array_column($sheets, 'data_rows'));
+        $lastVirtual = $firstDataRow + $totalVirtualRows - 1;
+
+        if ($totalVirtualRows <= 0) {
+            throw new RuntimeException(
+                'The Excel file you uploaded is empty. Please add the equipment details below the header row and upload it again.'
+            );
         }
 
-        if (!isset($columnMap['equipment_id_no'])) {
-            throw new RuntimeException('Equipment / Instrument Code Number column is missing.');
+        /* which sheet does startRow fall in? skip empty sheets */
+        $sheet = null;
+        foreach ($sheets as $candidate) {
+            if ($candidate['data_rows'] > 0 && $startRow <= $candidate['last_virtual']) {
+                $sheet = $candidate;
+                break;
+            }
+        }
+
+        if (!$sheet) {
+            return [
+                'processed' => 0,
+                'success' => 0,
+                'failed' => 0,
+                'errors' => [],
+                'next_row' => $startRow,
+                'done' => true,
+            ];
+        }
+
+        $startRow = max($startRow, $sheet['base']);
+        $endVirtual = min($startRow + $chunkSize - 1, $sheet['last_virtual']);
+
+        /* virtual row -> real row inside this sheet */
+        $offset = $sheet['base'] - $firstDataRow;
+        $realStart = $startRow - $offset;
+        $realEnd = $endVirtual - $offset;
+        $sheetName = $sheet['name'];
+
+        /* headers of THIS sheet (column order differs between sheets, e.g. PP2 / WHD have no Asset code) */
+        $headers = $this->getEquipmentMasterHeaders($path, $sheetName, $headerRow);
+        $columnMap = $this->buildEquipmentMasterColumnMap($headers);
+
+        if (!isset($columnMap['equipment_name']) || !isset($columnMap['equipment_id_no'])) {
+            /* a sheet with unknown headers is skipped with a clear message, the import continues */
+            return [
+                'processed' => $endVirtual - $startRow + 1,
+                'success' => 0,
+                'failed' => 1,
+                'errors' => [[
+                    'type' => 'header',
+                    'sheet' => $sheetName,
+                    'row' => $headerRow,
+                    'equipment_id_no' => null,
+                    'error' => "Sheet \"{$sheetName}\" was skipped because its Equipment Name or Equipment Code Number column heading could not be found.",
+                ]],
+                'next_row' => $endVirtual + 1,
+                'done' => $endVirtual >= $lastVirtual,
+            ];
         }
 
         $reader = IOFactory::createReaderForFile($path);
         $reader->setReadDataOnly(true);
-        $reader->setReadFilter(new ExcelChunkReadFilter($startRow, $endRow));
+        $reader->setLoadSheetsOnly([$sheetName]);
+        $reader->setReadFilter(new ExcelChunkReadFilter($realStart, $realEnd));
 
         $spreadsheet = $reader->load($path);
 
         try {
-            $sheet = $spreadsheet->getSheet(0);
+            $sheetObj = $spreadsheet->getSheetByName($sheetName) ?? $spreadsheet->getSheet(0);
             $rowsToInsert = [];
             $errors = [];
             $seenIds = [];
-            $processed = max(0, $endRow - $startRow + 1);
+            $processed = $endVirtual - $startRow + 1;
 
-            for ($rowNumber = $startRow; $rowNumber <= $endRow; $rowNumber++) {
+            for ($rowNumber = $realStart; $rowNumber <= $realEnd; $rowNumber++) {
                 $mapped = [];
 
                 foreach ($columnMap as $dbColumn => $excelColumn) {
-                    $cell = $sheet->getCell(
+                    $cell = $sheetObj->getCell(
                         Coordinate::stringFromColumnIndex($excelColumn) . $rowNumber
                     );
 
-                    $mapped[$dbColumn] = $this->normalizeExcelValue(
-                        $cell->getFormattedValue()
-                    );
-                }
-
-                $hasData = false;
-
-                foreach ($mapped as $value) {
-                    if ($value !== null && trim((string) $value) !== '') {
-                        $hasData = true;
-                        break;
-                    }
-                }
-
-                if (!$hasData) {
-                    continue;
+                    $mapped[$dbColumn] = $this->normalizeExcelValue($cell->getFormattedValue());
                 }
 
                 $equipmentName = trim((string) ($mapped['equipment_name'] ?? ''));
                 $equipmentId = trim((string) ($mapped['equipment_id_no'] ?? ''));
 
+                /* blank row, or a stray cell (e.g. only a capacity note) -> ignore silently */
+                if ($equipmentName === '' && $equipmentId === '') {
+                    continue;
+                }
+
                 if ($equipmentName === '') {
                     $errors[] = [
+                        'type' => 'missing',
+                        'sheet' => $sheetName,
                         'row' => $rowNumber,
-                        'equipment_id_no' => $equipmentId ?: null,
-                        'error' => 'Equipment / Instrument Name is required.',
+                        'equipment_id_no' => $equipmentId,
+                        'error' => "Sheet {$sheetName}, row {$rowNumber}: the equipment name is missing for code {$equipmentId}.",
                     ];
                     continue;
                 }
 
                 if ($equipmentId === '') {
                     $errors[] = [
+                        'type' => 'missing',
+                        'sheet' => $sheetName,
                         'row' => $rowNumber,
                         'equipment_id_no' => null,
-                        'error' => 'Equipment / Instrument Code Number is required.',
+                        'error' => "Sheet {$sheetName}, row {$rowNumber}: the equipment code number is missing for \"{$equipmentName}\".",
                     ];
                     continue;
                 }
 
-                if (isset($seenIds[$equipmentId])) {
+                $key = mb_strtolower($equipmentId);
+
+                if (isset($seenIds[$key])) {
                     $errors[] = [
+                        'type' => 'duplicate',
+                        'sheet' => $sheetName,
                         'row' => $rowNumber,
                         'equipment_id_no' => $equipmentId,
-                        'error' => 'Duplicate equipment ID in this Excel file.',
+                        'error' => "Sheet {$sheetName}, row {$rowNumber}: code {$equipmentId} appears more than once in this file.",
                     ];
                     continue;
                 }
 
-                $seenIds[$equipmentId] = true;
+                $seenIds[$key] = true;
 
                 $rowsToInsert[] = [
                     'row_number' => $rowNumber,
@@ -379,7 +549,7 @@ class ExcelImportService
                                 'items' => [],
                             ],
                         ], JSON_UNESCAPED_UNICODE),
-                        'stage_id' => (int) config('cmms-import.equipment_master_stage_id', 50),
+                        'stage_id' => null,
                         'process_id' => 10,
                         'initiator_id' => (int) $import->created_by,
                         'is_imported' => true,
@@ -399,7 +569,7 @@ class ExcelImportService
                 $existingIds = DB::table('equipment_masters')
                     ->whereIn('equipment_id_no', $ids)
                     ->pluck('equipment_id_no')
-                    ->map(fn ($id) => (string) $id)
+                    ->map(fn ($id) => mb_strtolower((string) $id))
                     ->all();
 
                 $existingLookup = array_fill_keys($existingIds, true);
@@ -407,17 +577,20 @@ class ExcelImportService
 
                 foreach ($batch as $item) {
                     $id = $item['equipment_id_no'];
+                    $key = mb_strtolower($id);
 
-                    if (isset($existingLookup[$id])) {
+                    if (isset($existingLookup[$key])) {
                         $errors[] = [
+                            'type' => 'duplicate',
+                            'sheet' => $sheetName,
                             'row' => $item['row_number'],
                             'equipment_id_no' => $id,
-                            'error' => 'Equipment ID already exists in equipment_masters.',
+                            'error' => "Sheet {$sheetName}, row {$item['row_number']}: code {$id} already exists in the system.",
                         ];
                         continue;
                     }
 
-                    $existingLookup[$id] = true;
+                    $existingLookup[$key] = true;
                     $insertRows[] = $item['data'];
                 }
 
@@ -435,33 +608,33 @@ class ExcelImportService
                 'success' => $success,
                 'failed' => count($errors),
                 'errors' => $errors,
-                'next_row' => $endRow + 1,
-                'done' => $endRow >= $lastDataRow,
+                'next_row' => $endVirtual + 1,
+                'done' => $endVirtual >= $lastVirtual,
             ];
         } finally {
             $spreadsheet->disconnectWorksheets();
         }
     }
 
-    private function getEquipmentMasterHeaders(string $path): array
+    /* headers of one sheet */
+    private function getEquipmentMasterHeaders(string $path, string $sheetName, int $headerRow = 1): array
     {
         $reader = IOFactory::createReaderForFile($path);
         $reader->setReadDataOnly(true);
-        $reader->setReadFilter(new ExcelChunkReadFilter(1, 1));
+        $reader->setLoadSheetsOnly([$sheetName]);
+        $reader->setReadFilter(new ExcelChunkReadFilter($headerRow, $headerRow));
 
         $spreadsheet = $reader->load($path);
 
         try {
-            $sheet = $spreadsheet->getSheet(0);
-            $highestColumn = Coordinate::columnIndexFromString(
-                $sheet->getHighestDataColumn(1)
-            );
+            $sheet = $spreadsheet->getSheetByName($sheetName) ?? $spreadsheet->getSheet(0);
+            $highestColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn($headerRow));
 
             $headers = [];
 
             for ($column = 1; $column <= $highestColumn; $column++) {
                 $value = $sheet->getCell(
-                    Coordinate::stringFromColumnIndex($column) . '1'
+                    Coordinate::stringFromColumnIndex($column) . $headerRow
                 )->getFormattedValue();
 
                 $headers[$column] = $this->normalizeHeader((string) $value);

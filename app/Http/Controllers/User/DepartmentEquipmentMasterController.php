@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\RecordActivityRequest;
 use App\Services\User\DepartmentEquipment\DepartmentEquipmentMasterService;
+use App\Services\UserReport\EquipmentMasterReportService;
 use Illuminate\Http\Request;
 
 class DepartmentEquipmentMasterController extends Controller
@@ -130,6 +131,20 @@ class DepartmentEquipmentMasterController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load data.',
+            ], 500);
+        }
+    }
+    /* equipment master single report */
+    public function equipmentMasterSingleReport($id) 
+    {
+        try {
+            return EquipmentMasterReportService::generateEquipmentInstrumentReport(
+                $id
+            );
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load report.',
             ], 500);
         }
     }
