@@ -236,7 +236,7 @@ class EquipmentMasterService
                         });
                 })
                 ->orderBy('id', 'asc')
-                ->paginate(25);
+                ->get();
 
             return ResponseHelper::success(
                 $equipments,

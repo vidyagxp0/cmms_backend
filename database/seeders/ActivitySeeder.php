@@ -106,7 +106,7 @@ class ActivitySeeder extends Seeder
                 [
                     'from' => 'Opened',
                     'to' => 'Reviewed By (User Department)',
-                    'name' => 'Start Maintenance',
+                    'name' => 'Submit',
                 ],
                 [
                     'from' => 'Reviewed By (User Department)',
@@ -150,7 +150,7 @@ class ActivitySeeder extends Seeder
                 [
                     'from' => 'Opened',
                     'to' => 'Reviewed By HOD/Designee',
-                    'name' => 'Start Calibration',
+                    'name' => 'Submit',
                 ],
                 [
                     'from' => 'Reviewed By HOD/Designee',
@@ -445,7 +445,7 @@ class ActivitySeeder extends Seeder
                 [
                     'from' => 'Opened',
                     'to' => 'Reviewed By HOD/Designee',
-                    'name' => 'Start Calibration',
+                    'name' => 'Submit',
                 ],
                 [
                     'from' => 'Reviewed By HOD/Designee',
@@ -479,7 +479,7 @@ class ActivitySeeder extends Seeder
                 [
                     'from' => 'Opened',
                     'to' => 'Reviewed By HOD/Designee',
-                    'name' => 'Start Calibration',
+                    'name' => 'Submit',
                 ],
                 [
                     'from' => 'Reviewed By HOD/Designee',
@@ -557,7 +557,7 @@ class ActivitySeeder extends Seeder
                 [
                     'from' => 'Opened',
                     'to' => 'Reviewed By HOD/Designee',
-                    'name' => 'Start Calibration',
+                    'name' => 'Submit',
                 ],
                 [
                     'from' => 'Reviewed By HOD/Designee',
