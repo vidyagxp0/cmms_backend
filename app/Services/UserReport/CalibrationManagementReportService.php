@@ -20,59 +20,36 @@ class CalibrationManagementReportService
     /* generate calibration management report */
 
     public static function generateReport($id)
-
     {
-
         try {
-
             $record = ProcessRecord::with(['process', 'stage', 'department', 'initiator', 'gridRecords'])->findOrFail($id);
 
-            /* process data */
-
+           /* process data */
             $processData = $record->process_data;
-
             if (is_string($processData)) {
 
                 $processData = json_decode($processData, true);
-
             }
-
             if (!is_array($processData)) {
-
                 $processData = [];
-
             }
 
             /* prepare process fields */
-
             $processFields = [];
-
             foreach ($processData as $field) {
-
                 if (!is_array($field)) {
-
                     continue;
-
                 }
-
                 $key = $field['key'] ?? null;
-
                 if (!$key) {
-
                     continue;
-
                 }
 
                 $processFields[$key] = [
-
                     'key' => $key,
-
                     'label' => $field['label'] ?? self::formatFieldLabel($key),
-
                     'value' => $field['value'] ?? null,
-
                 ];
-
             }
 
             /* get record attachments */
@@ -192,35 +169,24 @@ class CalibrationManagementReportService
             $data = [
 
                 'header' => [
-
                     'company_name' => 'Shilpa Medicare Pvt Ltd',
-
                     'report_title' => $record->process?->name ?? 'Calibration Management',
-
+                    'document_number' => "SMLJ/ENG/SOP-GEN/005/F08-02",
+                    'document_type' => "Formats",
                 ],
 
                 'record' => [
-
                     'record_id' => $record->id,
-
                     'record_number' => $recordNumber,
-
                     'site_location_code' => $siteLocationCode,
-
                     'process' => $record->process?->name,
-
                     'stage' => $record->stage?->name,
-
                     'department' => $record->department?->name,
-
                     'initiator' => $record->initiator?->name,
-
                     'short_description' => $record->short_description,
-
                     'initiation_date' => self::formatReportDate($record->initiation_date, 'd-m-Y H:i'),                    
                     'document_number' => $processFields['documentNumber']['value'] ?? null,
                     'document_type' => $processFields['documentType']['value'] ?? null,
-
                 ],
 
                 'tabs' => $tabs,
@@ -421,105 +387,94 @@ class CalibrationManagementReportService
     }
 
     /* prepare calibration result rows */
-
     private static function prepareCalibrationResultRows($rows)
-
     {
-
         $result = [];
 
         foreach ($rows as $row) {
-
             if (!is_array($row)) {
-
                 continue;
-
             }
 
-            /* if the base field has a value, the numbered columns are hidden */
-
-            $masterBaseValue = self::getRowFieldValue($row, 'masterInstrumentReadings');
-
-            $unitBaseValue = self::getRowFieldValue($row, 'unitUnderCalibrationReading');
+            /* if numbered fields (1, 2 ...) have data, show them and hide the single field; otherwise show the single field */
+            $useMasterNumbered = self::rowHasNumberedValue($row, '/^masterinstrumentreadings\d+$/i');
+            $useUnitNumbered = self::rowHasNumberedValue($row, '/^unitundercalibrationreading\d+$/i');
 
             $preparedRow = [];
 
             foreach ($row as $key => $field) {
-
                 if ($key === 'row_id') {
-
                     $preparedRow['row_id'] = $field;
-
                     continue;
-
-                }
-
-                if (strtolower($key) === 'result') {
-
-                    continue;
-
                 }
 
                 $lowerKey = strtolower((string) $key);
 
-                if ($masterBaseValue !== null && $masterBaseValue !== '' && preg_match('/^masterinstrumentreadings\d+$/i', $key)) {
-
+                if ($lowerKey === 'result') {
                     continue;
-
                 }
 
-                if ($unitBaseValue !== null && $unitBaseValue !== '' && preg_match('/^unitundercalibrationreading\d+$/i', $key)) {
-
+                /* master instrument readings: numbered OR single */
+                if ($lowerKey === 'masterinstrumentreadings' && $useMasterNumbered) {
                     continue;
+                }
+                if (preg_match('/^masterinstrumentreadings\d+$/i', $key) && !$useMasterNumbered) {
+                    continue;
+                }
 
+                /* unit under calibration readings: numbered OR single */
+                if ($lowerKey === 'unitundercalibrationreading' && $useUnitNumbered) {
+                    continue;
+                }
+                if (preg_match('/^unitundercalibrationreading\d+$/i', $key) && !$useUnitNumbered) {
+                    continue;
                 }
 
                 $fieldValue = is_array($field) ? ($field['value'] ?? null) : $field;
-
                 $fieldLabel = self::formatGridColumnLabel($key, 'calibrationResults', is_array($field) ? ($field['label'] ?? null) : null);
 
                 if (str_starts_with($lowerKey, 'masterinstrumentreadings') || str_starts_with($lowerKey, 'reading')) {
-
                     $group = 'Master Instrument Readings in';
-
                 } elseif (str_starts_with($lowerKey, 'unitundercalibrationreading') || str_starts_with($lowerKey, 'result')) {
-
-                    $group = 'Unit under calibration Readings in';
-
+                    $group = 'Unit Under Calibration Readings in';
                 } elseif ($lowerKey === 'error' || $lowerKey === 'errorin') {
-
                     $group = 'Error in';
-
                 } else {
-
                     $group = null;
-
                 }
 
                 $preparedRow[$key] = [
-
                     'key' => $key,
-
                     'label' => $fieldLabel,
-
                     'value' => $fieldValue,
-
                     'group' => $group,
-
                 ];
-
             }
 
             if (!empty($preparedRow)) {
-
                 $result[] = $preparedRow;
-
             }
-
         }
 
         return $result;
+    }
 
+    /* check if any numbered field (e.g. masterInstrumentReadings1) has a value */
+    private static function rowHasNumberedValue($row, $pattern)
+    {
+        foreach ($row as $key => $field) {
+            if (!is_string($key) || !preg_match($pattern, $key)) {
+                continue;
+            }
+
+            $value = is_array($field) ? ($field['value'] ?? null) : $field;
+
+            if ($value !== null && trim((string) $value) !== '') {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /* get a grid row field value */

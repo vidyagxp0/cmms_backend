@@ -234,6 +234,7 @@ class ProcessRecordService
                 /* Preventive Maintenance */
                 4 => [
                     'Opened' => 'Initiator',
+                    'Checklist Completion' => 'Initiator',
                     'Reviewed By (User Department)' => 'User Department Reviewer',
                     'Reviewed By (Engineering Department)' => 'Engineering Department Reviewer',
                     'Approved By QA' => 'QA Approver',

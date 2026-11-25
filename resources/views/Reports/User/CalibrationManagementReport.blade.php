@@ -562,7 +562,7 @@
 
                             @if(!empty($rows))
                                 @php
-                                    /* columns from first row; service already removed "result" column */
+                                    /* columns taken from first row, grouped like the form */
                                     $masterReadingColumns = [];
                                     $unitReadingColumns = [];
                                     $errorColumns = [];
@@ -577,39 +577,32 @@
 
                                         if ($group === 'Master Instrument Readings in') {
                                             $masterReadingColumns[] = $column;
-                                        } elseif ($group === 'Unit under calibration Readings in') {
+                                        } elseif ($group === 'Unit Under Calibration Readings in') {
                                             $unitReadingColumns[] = $column;
                                         } elseif ($group === 'Error in') {
                                             $errorColumns[] = $column;
                                         }
                                     }
+
+                                    $allColumns = array_merge($masterReadingColumns, $unitReadingColumns, $errorColumns);
                                 @endphp
 
                                 <table class="grid-table">
                                     <thead>
                                         <tr>
-                                            <th class="grid-number" rowspan="2">Sr. No.</th>
+                                            <th class="grid-number">Sr. No.</th>
 
                                             @if(!empty($masterReadingColumns))
                                                 <th colspan="{{ count($masterReadingColumns) }}">Master Instrument Readings in</th>
                                             @endif
 
                                             @if(!empty($unitReadingColumns))
-                                                <th colspan="{{ count($unitReadingColumns) }}">Unit under calibration Readings in</th>
+                                                <th colspan="{{ count($unitReadingColumns) }}">Unit Under Calibration Readings in</th>
                                             @endif
 
                                             @if(!empty($errorColumns))
-                                                <th rowspan="2">Error in</th>
+                                                <th colspan="{{ count($errorColumns) }}">Error in</th>
                                             @endif
-                                        </tr>
-
-                                        <tr>
-                                            @foreach($masterReadingColumns as $column)
-                                                <th>{{ $column['label'] }}</th>
-                                            @endforeach
-                                            @foreach($unitReadingColumns as $column)
-                                                <th>{{ $column['label'] }}</th>
-                                            @endforeach
                                         </tr>
                                     </thead>
 
@@ -618,7 +611,7 @@
                                             <tr>
                                                 <td class="grid-number">{{ $rowIndex + 1 }}</td>
 
-                                                @foreach(array_merge($masterReadingColumns, $unitReadingColumns, $errorColumns) as $column)
+                                                @foreach($allColumns as $column)
                                                     <td class="grid-value">{{ $cellValue($row, $column['key']) }}</td>
                                                 @endforeach
                                             </tr>
