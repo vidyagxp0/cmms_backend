@@ -135,7 +135,7 @@ class DashboardController extends Controller
             }
 
             /* match notifications with the user's roles */
-            $notifications = RecordNotification::with(['user'])
+            $notifications = RecordNotification::with(['user', 'process'])
                 ->where('user_id', $user->id)
                 ->whereIn('role_name', $roleNames)
                 ->when($request->filled('status'), function ($query) use ($request) {
@@ -159,7 +159,7 @@ class DashboardController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => 'Unable to fetch notifications.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

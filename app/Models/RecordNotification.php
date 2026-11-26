@@ -39,6 +39,11 @@ class RecordNotification extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function process(): BelongsTo
+    {
+        return $this->belongsTo(Process::class);
+    }
+
     public function scopePending($query)
     {
         return $query->where('status', self::STATUS_PENDING);
