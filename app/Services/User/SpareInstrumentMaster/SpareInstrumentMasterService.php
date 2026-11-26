@@ -41,7 +41,8 @@ class SpareInstrumentMasterService
             'initiator_id',
             'department_id',
             'asset_code',
-            'capacity'
+            'capacity',
+            'category'
         ];
     }
 
