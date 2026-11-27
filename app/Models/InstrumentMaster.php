@@ -29,13 +29,15 @@ class InstrumentMaster extends Model
         'is_imported',
         'department_id',
         'asset_code',
-        'capacity'
+        'capacity',
+        'certificate_attachment'
     ];
 
     protected $casts = [
         'checklist_config' => 'array',
         'hod_review_attachment' => 'array',
         'qa_review_attachment' => 'array',
+        'certificate_attachment' => 'array',
     ];
 
     public function process()

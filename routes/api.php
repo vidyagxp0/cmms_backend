@@ -142,6 +142,10 @@ Route::middleware('auth:sanctum')->group(function () {
         /* global attachment apis */
         Route::post('/upload-attachment/{recordId}',[ProcessRecordController::class, 'uploadAttachments'])->name('upload-attachment');
 
+        /* upload Instrument attachment */
+        Route::post('instrument-master/attachments/{id}', [EquipmentMasterController::class, 'uploadAttachments'])->name('instrument-master-attachment');
+        Route::get('view-instrument-master-attachment/{id}', [EquipmentMasterController::class, 'certificateAttachments'])->name('view-instrument-master-attachment');
+
         /* record activity routes */
         Route::post('/calibrationPlanner-record-stage/{id}',[CalibrationPlannerController::class, 'moveStage'])->name('calibrationPlanner-record-stage');
         Route::get('/user-activity-history/{recordId}/{processId}', [RecordActivityController::class, 'index'])->name('user-activity-history');
