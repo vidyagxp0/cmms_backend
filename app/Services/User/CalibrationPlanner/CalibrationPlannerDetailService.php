@@ -104,14 +104,26 @@ class CalibrationPlannerDetailService
         $row = self::writeGridValue($row, 'nextPlannedDate', $next?->toDateString());
         $row = self::writeGridValue($row, 'nextCalibrationDoneDate', self::qaDateOf($nextChild, $qaDates));
 
-        /* child creation flags for the frontend buttons */
+        /* created flags */
         $firstCreated = $rowChildren->isNotEmpty();
         $secondCreated = $firstCreated && $nextChild !== null;
 
+        /* button opens 30 days before the planned date */
+        $firstWindowOpen = self::isWithinCreateWindow($planned);
+        $secondWindowOpen = self::isWithinCreateWindow($next);
+
         $row = self::writeGridValue($row, 'is_first_child_created', $firstCreated);
         $row = self::writeGridValue($row, 'is_second_child_created', $secondCreated);
+        $row = self::writeGridValue($row, 'child_count', (int) $firstCreated + (int) $secondCreated);
+        $row = self::writeGridValue($row, 'can_create_first_child', $firstWindowOpen && !$firstCreated);
 
-        return self::writeGridValue($row, 'child_count', (int) $firstCreated + (int) $secondCreated);
+        return self::writeGridValue($row, 'can_create_second_child', $firstCreated && $secondWindowOpen && !$secondCreated);
+    }
+
+    /* true when today is 30 days or less before the date (or the date has passed) */
+    private static function isWithinCreateWindow(?Carbon $date, int $days = 30): bool
+    {
+        return $date !== null && $date->copy()->subDays($days)->lte(Carbon::today());
     }
 
     private static function findNextCycleChild(array $row, ?Carbon $next, Collection $followUps, Collection $followChildren)
