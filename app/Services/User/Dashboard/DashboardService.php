@@ -72,28 +72,28 @@ class DashboardService
     {
         return [
             'Calibration Planner' => [
-                'Opened' => [1, 2],
-                'Closed - Done' => [3, 4],
+                'Opened' => [1],
+                'Closed - Done' => [5],
             ],
 
             'Preventive Maintenance Planner' => [
-                'Opened' => [1, 2],
-                'Closed - Done' => [3, 4],
+                'Opened' => [7],
+                'Closed - Done' => [11],
             ],
 
             'Preventive Maintenance' => [
-                'Opened' => [1, 2],
-                'Closed - Done' => [3, 4],
+                'Opened' => [13],
+                'Closed - Done' => [17],
             ],
 
             'Calibration Management' => [
-                'Opened' => [1, 2],
-                'Closed - Done' => [3, 4],
+                'Opened' => [19],
+                'Closed - Done' => [22],
             ],
 
             'Field Instrument Calibration Addendum' => [
-                'Opened' => [1, 2],
-                'Closed - Done' => [3, 4],
+                'Opened' => [40],
+                'Closed - Done' => [44],
             ],
         ];
     }

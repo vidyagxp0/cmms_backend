@@ -225,7 +225,7 @@ class ProcessRecordService
 
                 /* Preventive Maintenance Planner */
                 2 => [
-                    'Opened' => 'Executor',
+                    'Opened' => 'Initiator',
                     'Reviewed By (HOD/Designee)' => 'HOD/Designee',
                     'User Department Review (HOD/Designee)' => 'User Department Reviewer',
                     'QA Approval' => 'QA Approver',
@@ -233,7 +233,7 @@ class ProcessRecordService
 
                 /* Preventive Maintenance */
                 4 => [
-                    'Opened' => 'Initiator',
+                    'Opened' => 'Executor',
                     'Checklist Completion' => 'Initiator',
                     'Reviewed By (User Department)' => 'User Department Reviewer',
                     'Reviewed By (Engineering Department)' => 'Engineering Department Reviewer',
