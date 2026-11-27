@@ -153,7 +153,7 @@ class CalibrationManagementService
                 'checklistRecords'
             ])->findOrFail($id);
 
-            /* get data from record activity history for QA verification */
+            /* QA verification date from history */
             $qaVerifiedAt = RecordActivityHistory::where(
                 'process_record_id',
                 $processRecord->id
@@ -164,10 +164,9 @@ class CalibrationManagementService
                 ->latest('performed_at')
                 ->value('performed_at');
 
-            /* pass data here */
             $processRecord->qaVerifiedAt = $qaVerifiedAt;
 
-            /* NEW: fill calibrationNextDueDate of masterInstrumentsDetails from the parent planner grid */
+            /* next due date from planner row */
             self::syncMasterInstrumentDueDates($processRecord);
 
             return ResponseHelper::success(
@@ -184,7 +183,7 @@ class CalibrationManagementService
 
     private static function syncMasterInstrumentDueDates(ProcessRecord $record): void
     {
-        if (empty($record->parent_id)) {
+        if (empty($record->parent_id) || $record->row_id === null || $record->row_id === '') {
             return;
         }
 
@@ -193,28 +192,37 @@ class CalibrationManagementService
             return;
         }
 
-        /* equipmentInstrumentId => nextPlannedDate, from every row of the parent planner grid */
-        $dueDates = [];
+        $childRowId = trim((string) $record->row_id);
+
+        /* planner row with same row_id */
+        $nextDueDate = null;
         foreach ($parent->gridRecords as $parentGrid) {
-            foreach (self::decodeMasterGrid($parentGrid->grid_data) as $parentRow) {
+            foreach (self::decodeMasterGrid($parentGrid->grid_data) as $index => $parentRow) {
                 if (!is_array($parentRow)) {
                     continue;
                 }
-                $equipmentId = self::normalizeMasterKey(self::readMasterField($parentRow, 'equipmentInstrumentId'));
-                $nextDone = self::readMasterField($parentRow, 'nextPlannedDate');
-                if ($equipmentId === '' || $nextDone === null || $nextDone === '') {
+
+                $parentRowId = self::readMasterField($parentRow, 'row_id');
+                if ($parentRowId === null || $parentRowId === '') {
+                    $parentRowId = $index + 1;
+                }
+                if (trim((string) $parentRowId) !== $childRowId) {
                     continue;
                 }
-                if (!isset($dueDates[$equipmentId])) { /* first row with a date wins */
-                    $dueDates[$equipmentId] = $nextDone;
+
+                $date = self::readMasterField($parentRow, 'nextPlannedDate');
+                if ($date !== null && $date !== '') {
+                    $nextDueDate = $date;
+                    break 2;
                 }
             }
         }
 
-        if (empty($dueDates)) {
+        if ($nextDueDate === null) {
             return;
         }
 
+        /* write date in master instruments rows */
         foreach ($record->gridRecords as $gridRecord) {
             $original = self::decodeMasterGrid($gridRecord->grid_data);
             if (empty($original)) {
@@ -230,18 +238,14 @@ class CalibrationManagementService
                     if (!is_array($row)) {
                         continue;
                     }
-                    $idNo = self::normalizeMasterKey(self::readMasterField($row, 'IdNo'));
-                    if ($idNo === '' || !isset($dueDates[$idNo])) {
-                        continue;
-                    }
-                    $group['rows'][$rowIndex] = self::writeMasterField($row, 'calibrationNextDueDate', $dueDates[$idNo]);
+                    $group['rows'][$rowIndex] = self::writeMasterField($row, 'calibrationNextDueDate', $nextDueDate);
                 }
                 $groups[$groupIndex] = $group;
             }
 
             if ($groups !== $original) {
                 DB::table('grid_records')->where('id', $gridRecord->id)->update([
-                    'grid_data' => json_encode($groups, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'grid_data'  => json_encode($groups, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                     'updated_at' => now(),
                 ]);
             }
@@ -255,6 +259,16 @@ class CalibrationManagementService
             $value = json_decode($value, true);
         }
         return is_array($value) ? $value : [];
+    }
+
+    /* {key,label,value:{key,label,value:...}} jaise nested wrapper ko kholkar asli value deta hai */
+    private static function unwrapMasterValue($value)
+    {
+        $guard = 0;
+        while (is_array($value) && array_key_exists('value', $value) && $guard++ < 10) {
+            $value = $value['value'];
+        }
+        return $value;
     }
 
     /* value of a grid field stored as ['key', 'label', 'value'], nested values are unwrapped */

@@ -12,6 +12,7 @@ class DashboardService
             'master_instruments' => DB::table('instrument_masters')->get()->count(),
             'field_instruments' => DB::table('field_instrument_masters')->get()->count(),
             'spare_instruments' => DB::table('spare_instrument_masters')->get()->count(),
+            'equipment_master' => DB::table('equipment_masters')->get()->count(),
         ];
 
         $processNames = [

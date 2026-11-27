@@ -12,13 +12,12 @@ use Illuminate\Support\Facades\DB;
 class CalibrationPlannerDetailService
 {
     private const QA_VERIFIED_ACTIVITY = 'QA Verification Complete';
-    private const CLOSED_DONE_STAGE = 'Closed - Done';
 
-    /* fetch a single process record with related data */
+    /* fetch planner with refreshed dates */
     public static function getCalibrationPlannerRecord($id)
     {
         try {
-            $processRecord = ProcessRecord::with([
+            $planner = ProcessRecord::with([
                 'process',
                 'stage',
                 'department',
@@ -26,16 +25,10 @@ class CalibrationPlannerDetailService
                 'gridRecords',
                 'checklistRecords',
             ])->findOrFail($id);
-            self::addChildDatesToGrid($processRecord);
 
-            /* NEW, separate from child_records: row wise QA Verification Complete data of the is_child = 1 records */
-            $qaRows = self::buildQaVerificationRows($processRecord->id);
-            $processRecord->setAttribute('qa_verification_rows', $qaRows);
+            self::refreshPlannerDates($planner);
 
-            /* NEW: store the QA verified dates in grid_data (calibrationDoneDate / nextCalibrationDoneDate) */
-            self::storeQaDatesInGrid($processRecord, $qaRows);
-
-            return ResponseHelper::success($processRecord, 'Process record fetched successfully.');
+            return ResponseHelper::success($planner, 'Process record fetched successfully.');
         } catch (ModelNotFoundException $e) {
             return ResponseHelper::error('Process record not found.', 404);
         } catch (\Throwable $e) {
@@ -48,7 +41,7 @@ class CalibrationPlannerDetailService
         }
     }
 
-    /* recalculate and store the dates of a record and of the planners it was generated from */
+    /* refresh dates up the parent chain */
     public static function syncPlannerDates($id): void
     {
         $seen = [];
@@ -58,42 +51,182 @@ class CalibrationPlannerDetailService
             if (!$record) {
                 return;
             }
-            self::addChildDatesToGrid($record);
-
-            /* NEW: keep the stored QA dates in grid_data up to date as well */
-            self::storeQaDatesInGrid($record, self::buildQaVerificationRows($record->id));
-
+            self::refreshPlannerDates($record);
             $id = $record->parent_id;
         }
     }
 
-    /* ================= NEW: row wise QA verification data (separate from the existing logic) ================= */
-
-    private static function buildQaVerificationRows($parentId): array
+    private static function refreshPlannerDates(ProcessRecord $planner): void
     {
-        $records = ProcessRecord::with('stage')
-            ->where('parent_id', $parentId)
-            ->where('is_child', 1)
-            ->get();
+        $children = self::findCalibrationChildren([$planner->id], $planner->process_id);
+        $followUps = self::findFollowUpPlanners($planner);
+        $followChildren = $followUps->isEmpty()
+            ? collect()
+            : self::findCalibrationChildren($followUps->pluck('id')->all(), $planner->process_id);
+        $qaDates = self::findQaDates($children->concat($followChildren)->pluck('id')->all());
 
-        if ($records->isEmpty()) {
+        foreach ($planner->gridRecords as $gridRecord) {
+            $original = self::decodeGridData($gridRecord->grid_data);
+            if (empty($original)) {
+                continue;
+            }
+
+            $rows = $original;
+            foreach ($rows as $index => $row) {
+                if (is_array($row)) {
+                    $rows[$index] = self::buildGridRow($row, $index, $children, $followUps, $followChildren, $qaDates);
+                }
+            }
+
+            if ($rows !== $original) {
+                self::storeGridData($gridRecord->id, $rows);
+            }
+            $gridRecord->setAttribute('grid_data', $rows);
+        }
+
+        $planner->setAttribute('child_records', self::summarizeChildren($children, $qaDates));
+        $planner->setAttribute('qa_verification_rows', self::buildQaVerificationRows($children, $qaDates));
+    }
+
+    private static function buildGridRow(array $row, $index, Collection $children, Collection $followUps, Collection $followChildren, array $qaDates): array
+    {
+        $rowId = (string) self::resolveRowId($row, $index);
+        $planned = self::parsePlannerDate(self::readGridValue($row, 'plannedDate'));
+        $months = self::resolveCategoryMonths(self::readGridValue($row, 'category'));
+        $next = ($planned && $months) ? $planned->copy()->addMonthsNoOverflow($months) : null;
+
+        $rowChildren = self::sortChildren($children->filter(fn($child) => (string) $child->row_id === $rowId));
+
+        /* 2nd child of row, else follow-up planner */
+        $nextChild = $rowChildren->get(1) ?? self::findNextCycleChild($row, $next, $followUps, $followChildren);
+
+        $row = self::writeGridValue($row, 'calibrationDoneDate', self::qaDateOf($rowChildren->first(), $qaDates));
+        $row = self::writeGridValue($row, 'nextPlannedDate', $next?->toDateString());
+        return self::writeGridValue($row, 'nextCalibrationDoneDate', self::qaDateOf($nextChild, $qaDates));
+    }
+
+    private static function findNextCycleChild(array $row, ?Carbon $next, Collection $followUps, Collection $followChildren)
+    {
+        $equipmentId = self::readGridValue($row, 'equipmentInstrumentId');
+        if (!$next || $equipmentId === null || $equipmentId === '') {
+            return null;
+        }
+
+        foreach ($followUps as $followUp) {
+            foreach ($followUp->gridRecords as $gridRecord) {
+                foreach (self::decodeGridData($gridRecord->grid_data) as $followIndex => $followRow) {
+                    if (!is_array($followRow) || self::readGridValue($followRow, 'equipmentInstrumentId') !== $equipmentId) {
+                        continue;
+                    }
+                    $followPlanned = self::parsePlannerDate(self::readGridValue($followRow, 'plannedDate'));
+                    if (!$followPlanned || !$followPlanned->isSameDay($next)) {
+                        continue;
+                    }
+                    $followRowId = (string) self::resolveRowId($followRow, $followIndex);
+                    return self::sortChildren(
+                        $followChildren->filter(
+                            fn($child) => $child->parent_id == $followUp->id && (string) $child->row_id === $followRowId
+                        )
+                    )->first();
+                }
+            }
+        }
+        return null;
+    }
+
+    /* same process planners chained by parent_id */
+    private static function findFollowUpPlanners(ProcessRecord $planner): Collection
+    {
+        $followUps = collect();
+        $parentIds = [$planner->id];
+        while (!empty($parentIds)) {
+            $found = ProcessRecord::with('gridRecords')
+                ->whereIn('parent_id', $parentIds)
+                ->where('process_id', $planner->process_id)
+                ->whereNotIn('id', $followUps->pluck('id')->push($planner->id)->all())
+                ->get();
+            $followUps = $followUps->concat($found);
+            $parentIds = $found->pluck('id')->all();
+        }
+        return $followUps;
+    }
+
+    private static function findCalibrationChildren(array $parentIds, $plannerProcessId): Collection
+    {
+        return ProcessRecord::with('stage')
+            ->whereIn('parent_id', $parentIds)
+            ->where('process_id', '!=', $plannerProcessId)
+            ->get();
+    }
+
+    /* record id => QA complete timestamps, oldest first */
+    private static function findQaDates(array $recordIds): array
+    {
+        if (empty($recordIds)) {
             return [];
         }
 
-        $histories = self::findQaVerificationHistories($records->pluck('id')->all());
+        $dates = [];
+        $rows = DB::table('record_activity_histories as history')
+            ->join('activities as activity', 'activity.id', '=', 'history.activity_id')
+            ->whereIn('history.process_record_id', $recordIds)
+            ->where('activity.name', self::QA_VERIFIED_ACTIVITY)
+            ->orderBy('history.created_at')
+            ->get(['history.process_record_id', 'history.created_at']);
 
-        return $records
-            ->groupBy(fn($record) => (string) $record->row_id)
+        foreach ($rows as $row) {
+            $dates[$row->process_record_id][] = (string) $row->created_at;
+        }
+        return $dates;
+    }
+
+    /* latest QA complete date of record */
+    private static function qaDateOf($child, array $qaDates): ?string
+    {
+        $entries = $child ? ($qaDates[$child->id] ?? []) : [];
+        return $entries ? Carbon::parse(max($entries))->toDateString() : null;
+    }
+
+    /* oldest initiation first */
+    private static function sortChildren(Collection $children): Collection
+    {
+        return $children
+            ->sort(fn($a, $b) => [self::initiatedAt($a), $a->id] <=> [self::initiatedAt($b), $b->id])
+            ->values();
+    }
+
+    /* raw value sorts, display format does not */
+    private static function initiatedAt($child): string
+    {
+        return (string) ($child->getRawOriginal('initiation_date') ?? $child->created_at);
+    }
+
+    private static function summarizeChildren(Collection $children, array $qaDates): array
+    {
+        return self::sortChildren($children)->map(fn($child) => [
+            'id' => $child->id,
+            'row_id' => $child->row_id,
+            'record_number' => self::readRecordNumber($child),
+            'stage' => $child->stage?->name,
+            'initiation_date' => $child->initiation_date,
+            'qa_verified_on' => self::qaDateOf($child, $qaDates),
+        ])->all();
+    }
+
+    private static function buildQaVerificationRows(Collection $children, array $qaDates): array
+    {
+        return $children
+            ->groupBy(fn($child) => (string) $child->row_id)
             ->sortBy(fn($group, $rowId) => (int) $rowId)
-            ->map(function (Collection $group, $rowId) use ($histories) {
-                $items = self::sortChildren($group)->map(function ($record) use ($histories) {
-                    $entries = $histories[$record->id] ?? [];
-                    $latest = empty($entries) ? null : max($entries);
+            ->map(function (Collection $group, $rowId) use ($qaDates) {
+                $items = self::sortChildren($group)->map(function ($child) use ($qaDates) {
+                    $entries = $qaDates[$child->id] ?? [];
+                    $latest = $entries ? max($entries) : null;
                     return [
-                        'id' => $record->id,
-                        'record_number' => self::readRecordNumber($record),
-                        'stage' => $record->stage?->name,
-                        'initiation_date' => $record->initiation_date,
+                        'id' => $child->id,
+                        'record_number' => self::readRecordNumber($child),
+                        'stage' => $child->stage?->name,
+                        'initiation_date' => $child->initiation_date,
                         'qa_verified_on' => $latest ? Carbon::parse($latest)->toDateString() : null,
                         'qa_verified_at' => $latest,
                         'qa_verification_history' => $entries,
@@ -111,249 +244,6 @@ class CalibrationPlannerDetailService
             ->all();
     }
 
-    /* record id => all "QA Verification Complete" timestamps (oldest first), whatever the stage of the record is */
-    private static function findQaVerificationHistories(array $recordIds): array
-    {
-        $result = [];
-        $rows = DB::table('record_activity_histories as history')
-            ->join('activities as activity', 'activity.id', '=', 'history.activity_id')
-            ->whereIn('history.process_record_id', $recordIds)
-            ->where('activity.name', self::QA_VERIFIED_ACTIVITY)
-            ->orderBy('history.created_at')
-            ->select('history.process_record_id', 'history.created_at')
-            ->get();
-
-        foreach ($rows as $row) {
-            $result[$row->process_record_id][] = (string) $row->created_at;
-        }
-        return $result;
-    }
-
-    /*
-     * Store qa_verified_on of the child records in grid_data of the parent record, matched by row_id:
-     *   1st record of the row (oldest initiation)  => calibrationDoneDate
-     *   2nd record of the row                      => nextCalibrationDoneDate
-     * A field is only written when the record has a QA verified date, an existing value is never cleared by this method.
-     */
-    private static function storeQaDatesInGrid(ProcessRecord $planner, array $qaRows): void
-    {
-        if (empty($qaRows)) {
-            return;
-        }
-
-        $datesByRow = [];
-        foreach ($qaRows as $qaRow) {
-            $records = $qaRow['records'] ?? [];
-            $datesByRow[(string) $qaRow['row_id']] = [
-                'done' => $records[0]['qa_verified_on'] ?? null,
-                'next' => $records[1]['qa_verified_on'] ?? null,
-            ];
-        }
-
-        foreach ($planner->gridRecords as $gridRecord) {
-            $original = self::decodeGridData($gridRecord->grid_data);
-            if (empty($original)) {
-                continue;
-            }
-
-            $rows = $original;
-            foreach ($rows as $index => $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                $rowId = (string) self::resolveRowId($row, $index);
-                if (!isset($datesByRow[$rowId])) {
-                    continue;
-                }
-                if ($datesByRow[$rowId]['done'] !== null) {
-                    $row = self::writeGridValue($row, 'calibrationDoneDate', $datesByRow[$rowId]['done']);
-                }
-                if ($datesByRow[$rowId]['next'] !== null) {
-                    $row = self::writeGridValue($row, 'nextCalibrationDoneDate', $datesByRow[$rowId]['next']);
-                }
-                $rows[$index] = $row;
-            }
-
-            if ($rows !== $original) {
-                self::storeGridData($gridRecord->id, $rows);
-            }
-            $gridRecord->setAttribute('grid_data', $rows);
-        }
-    }
-
-    /* row_id can be a plain number or a nested ['key', 'label', 'value' => ...] structure, read the innermost value */
-    private static function resolveRowId(array $row, $index)
-    {
-        $value = $row['row_id'] ?? null;
-        while (is_array($value)) {
-            $value = $value['value'] ?? null;
-        }
-        return ($value === null || $value === '') ? ($index + 1) : $value;
-    }
-
-    /* ================= EXISTING LOGIC (unchanged) ================= */
-
-    private static function addChildDatesToGrid(ProcessRecord $planner): void
-    {
-        $calibrationChildren = ProcessRecord::with('stage')
-            ->where('parent_id', $planner->id)
-            ->where('process_id', '!=', $planner->process_id)
-            ->get();
-        $followUpPlanners = self::findFollowUpPlanners($planner);
-        $followUpChildren = $followUpPlanners->isEmpty()
-            ? collect()
-            : ProcessRecord::with('stage')
-                ->whereIn('parent_id', $followUpPlanners->pluck('id')->all())
-                ->where('process_id', '!=', $planner->process_id)
-                ->get();
-        $verifiedDates = self::findQaVerifiedDates($calibrationChildren->concat($followUpChildren));
-        foreach ($planner->gridRecords as $gridRecord) {
-            $original = self::decodeGridData($gridRecord->grid_data);
-            $rows = $original;
-            foreach ($rows as $index => $row) {
-                if (is_array($row)) {
-                    $rows[$index] = self::buildGridRow($row, $index, $calibrationChildren, $followUpPlanners, $followUpChildren, $verifiedDates);
-                }
-            }
-            if (empty($rows)) {
-                continue;
-            }
-            if ($rows !== $original) {
-                self::storeGridData($gridRecord->id, $rows);
-            }
-            $gridRecord->setAttribute('grid_data', $rows);
-        }
-        $planner->setAttribute('child_records', self::summarizeChildren($calibrationChildren, $verifiedDates));
-    }
-
-    private static function storeGridData($gridRecordId, array $rows): void
-    {
-        DB::table('grid_records')->where('id', $gridRecordId)->update([
-            'grid_data' => json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            'updated_at' => now(),
-        ]);
-    }
-
-    private static function buildGridRow(array $row, $index, Collection $calibrationChildren, Collection $followUpPlanners, Collection $followUpChildren, array $verifiedDates): array
-    {
-        $rowId = $row['row_id'] ?? ($index + 1);
-        $planned = self::parsePlannerDate(self::readGridValue($row, 'plannedDate'));
-        $months = self::resolveCategoryMonths(self::readGridValue($row, 'category'));
-        $next = ($planned && $months) ? $planned->copy()->addMonthsNoOverflow($months) : null;
-        $rowChildren = self::sortChildren($calibrationChildren->where('row_id', $rowId));
-        /* next cycle in the same year: second child of this row, otherwise the child in the follow-up planner */
-        $nextChild = ($planned && $next && $next->year === $planned->year)
-            ? $rowChildren->get(1)
-            : self::findNextCycleChild($row, $next, $followUpPlanners, $followUpChildren);
-        $doneDate = self::doneDateOf($rowChildren->first(), $verifiedDates);
-        if ($doneDate !== null) {
-            $row = self::writeGridValue($row, 'calibrationDoneDate', $doneDate);
-        }
-        $row = self::writeGridValue($row, 'nextPlannedDate', $next?->toDateString());
-        return self::writeGridValue($row, 'nextCalibrationDoneDate', self::doneDateOf($nextChild, $verifiedDates));
-    }
-
-    private static function findNextCycleChild(array $row, ?Carbon $next, Collection $followUpPlanners, Collection $followUpChildren)
-    {
-        $equipmentId = self::readGridValue($row, 'equipmentInstrumentId');
-        if (!$next || $equipmentId === null || $equipmentId === '') {
-            return null;
-        }
-        foreach ($followUpPlanners as $followUpPlanner) {
-            foreach ($followUpPlanner->gridRecords as $gridRecord) {
-                foreach (self::decodeGridData($gridRecord->grid_data) as $followIndex => $followRow) {
-                    if (!is_array($followRow) || self::readGridValue($followRow, 'equipmentInstrumentId') !== $equipmentId) {
-                        continue;
-                    }
-                    $followPlanned = self::parsePlannerDate(self::readGridValue($followRow, 'plannedDate'));
-                    if (!$followPlanned || !$followPlanned->isSameDay($next)) {
-                        continue;
-                    }
-                    $followRowId = $followRow['row_id'] ?? ($followIndex + 1);
-                    return self::sortChildren(
-                        $followUpChildren->where('parent_id', $followUpPlanner->id)->where('row_id', $followRowId)
-                    )->first();
-                }
-            }
-        }
-        return null;
-    }
-
-    /* planners of the same process linked through parent_id, followed until none is left */
-    private static function findFollowUpPlanners(ProcessRecord $planner): Collection
-    {
-        $followUps = collect();
-        $parentIds = [$planner->id];
-        while (!empty($parentIds)) {
-            $found = ProcessRecord::with('gridRecords')
-                ->whereIn('parent_id', $parentIds)
-                ->where('process_id', $planner->process_id)
-                ->whereNotIn('id', $followUps->pluck('id')->push($planner->id)->all())
-                ->get();
-            $followUps = $followUps->concat($found);
-            $parentIds = $found->pluck('id')->all();
-        }
-        return $followUps;
-    }
-
-    /* record id => latest QA verification date, closed children only */
-    private static function findQaVerifiedDates(Collection $children): array
-    {
-        $closedIds = $children->filter(fn($child) => self::isClosedDone($child))->pluck('id')->all();
-        if (empty($closedIds)) {
-            return [];
-        }
-        return DB::table('record_activity_histories as history')
-            ->join('activities as activity', 'activity.id', '=', 'history.activity_id')
-            ->whereIn('history.process_record_id', $closedIds)
-            ->where('activity.name', self::QA_VERIFIED_ACTIVITY)
-            ->groupBy('history.process_record_id')
-            ->selectRaw('history.process_record_id, MAX(history.created_at) as verified_at')
-            ->get()
-            ->pluck('verified_at', 'process_record_id')
-            ->all();
-    }
-
-    private static function isClosedDone($child): bool
-    {
-        return strcasecmp(trim((string) ($child->stage?->name ?? '')), self::CLOSED_DONE_STAGE) === 0;
-    }
-
-    private static function doneDateOf($child, array $verifiedDates): ?string
-    {
-        if (!$child || !self::isClosedDone($child)) {
-            return null;
-        }
-        $verifiedAt = $verifiedDates[$child->id] ?? null;
-        return $verifiedAt ? Carbon::parse($verifiedAt)->toDateString() : null;
-    }
-
-    /* oldest initiation date first */
-    private static function sortChildren(Collection $children): Collection
-    {
-        return $children
-            ->sort(fn($a, $b) => [self::initiatedAt($a), $a->id] <=> [self::initiatedAt($b), $b->id])
-            ->values();
-    }
-
-    /* stored value, the model formats initiation_date for display and that format does not sort */
-    private static function initiatedAt($child): string
-    {
-        return (string) ($child->getRawOriginal('initiation_date') ?? $child->created_at);
-    }
-
-    private static function summarizeChildren(Collection $children, array $verifiedDates): array
-    {
-        return self::sortChildren($children)->map(fn($child) => [
-            'id' => $child->id,
-            'row_id' => $child->row_id,
-            'record_number' => self::readRecordNumber($child),
-            'stage' => $child->stage?->name,
-            'initiation_date' => $child->initiation_date,
-            'qa_verified_on' => self::doneDateOf($child, $verifiedDates),
-        ])->all();
-    }
-
     private static function readRecordNumber($record): ?string
     {
         foreach (self::decodeGridData($record->process_data) as $field) {
@@ -364,7 +254,7 @@ class CalibrationPlannerDetailService
         return null;
     }
 
-    /* months to add: Critical 6, Non Critical 12, Indicative 24 */
+    /* C = 6, NC = 12, I = 24 months */
     private static function resolveCategoryMonths($category): ?int
     {
         $category = strtolower(preg_replace('/[^a-z]/i', '', (string) $category));
@@ -392,6 +282,24 @@ class CalibrationPlannerDetailService
         }
     }
 
+    /* row_id may be nested, read innermost */
+    private static function resolveRowId(array $row, $index)
+    {
+        $value = $row['row_id'] ?? null;
+        while (is_array($value)) {
+            $value = $value['value'] ?? null;
+        }
+        return ($value === null || $value === '') ? ($index + 1) : $value;
+    }
+
+    private static function storeGridData($gridRecordId, array $rows): void
+    {
+        DB::table('grid_records')->where('id', $gridRecordId)->update([
+            'grid_data' => json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'updated_at' => now(),
+        ]);
+    }
+
     private static function decodeGridData($value): array
     {
         if (is_string($value)) {
@@ -400,7 +308,6 @@ class CalibrationPlannerDetailService
         return is_array($value) ? $value : [];
     }
 
-    /* value of a grid field stored as ['key', 'label', 'value'] */
     private static function readGridValue(array $row, string $key)
     {
         $field = $row[$key] ?? null;
