@@ -102,7 +102,16 @@ class CalibrationPlannerDetailService
 
         $row = self::writeGridValue($row, 'calibrationDoneDate', self::qaDateOf($rowChildren->first(), $qaDates));
         $row = self::writeGridValue($row, 'nextPlannedDate', $next?->toDateString());
-        return self::writeGridValue($row, 'nextCalibrationDoneDate', self::qaDateOf($nextChild, $qaDates));
+        $row = self::writeGridValue($row, 'nextCalibrationDoneDate', self::qaDateOf($nextChild, $qaDates));
+
+        /* child creation flags for the frontend buttons */
+        $firstCreated = $rowChildren->isNotEmpty();
+        $secondCreated = $firstCreated && $nextChild !== null;
+
+        $row = self::writeGridValue($row, 'is_first_child_created', $firstCreated);
+        $row = self::writeGridValue($row, 'is_second_child_created', $secondCreated);
+
+        return self::writeGridValue($row, 'child_count', (int) $firstCreated + (int) $secondCreated);
     }
 
     private static function findNextCycleChild(array $row, ?Carbon $next, Collection $followUps, Collection $followChildren)
